@@ -45,6 +45,80 @@ The following rest interface would then be exposed.
  * ***/resource/:id*** - (PUT) - Updates an existing resource.
  * ***/resource/:id*** - (DELETE) - Deletes an existing resource.
 
-Comming Soon
------------------
-Search and Pagination capabilities with the index endpoint.
+Only exposing certain methods
+-------------------
+You can also expose only a certain amount of methods, by instead of using
+the ***rest*** method, you can use the specific methods and then chain them
+together like so.
+
+```
+// Do not expose DELETE.
+Resource(app, '/', 'resource', ResourceModel).get().put().post().index();
+```
+
+Adding Before and After handlers
+-------------------
+This library allows you to handle middleware either before or after the
+request is made to the Mongoose query mechanism.  This allows you to
+either alter the query being made or, provide authentication.
+
+For example, if you wish to provide basic authentication to every endpoint,
+you can use the ***before*** callback attached to the ***rest*** method like so.
+
+```
+npm install basic-auth-connect
+```
+
+```
+var basicAuth = require('basic-auth-connect');
+
+...
+...
+
+Resource(app, '/', 'resource', ResourceModel).rest({
+  before: basicAuth('username', 'password')
+});
+```
+
+You can also target individual methods so if you wanted to protect POST, PUT, and DELETE
+but not GET and INDEX you would do the following.
+
+```
+Resource(app, '/', 'resource', ResourceModel).rest({
+  beforePut: basicAuth('username', 'password'),
+  beforePost: basicAuth('username', 'password'),
+  beforeDelete: basicAuth('username', 'password')
+});
+```
+
+You can also do this by specifying the handlers within the specific method calls like so.
+
+```
+Resource(app, '/', 'resource', ResourceModel)
+  .get()
+  .put({
+    before: basicAuth('username', 'password'),
+    after: function(req, res, next) {
+      console.log("PUT was just called!");
+    }
+  })
+  .post({
+  	before: basicAuth('username', 'password')
+  });
+```
+
+Adding custom queries
+---------------------------------
+Using the method above, it is possible to provide some custom queries in your ***before*** middleware.
+We can do this by adding a ***methodQuery*** to the ***req*** object during the middleware. This query
+uses the Mongoose query mechanism that you can see here http://mongoosejs.com/docs/api.html#query_Query-where.
+
+For example, if we wish to show an index that filters ages greater than 18, we would do the following.
+
+```
+Resource(app, '/', 'user', UserModel).rest({
+  before: function(req, res, next) {
+    req.modelQuery = this.model.where('age').gt(18);
+  }
+});
+```
