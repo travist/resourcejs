@@ -151,17 +151,6 @@ var app = express();
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-// Parent
-var ResourceSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true
-  },
-  description: {
-    type: String
-  }
-});
-
 // Parent model
 var Parent = mongoose.model('Parent', new mongoose.Schema({
   name: {
