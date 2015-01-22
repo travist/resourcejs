@@ -7,6 +7,9 @@ module.exports = function(app, route, name, model) {
   // Return the object that defines this resource.
   return {
 
+    // Allow access to the model.
+    model: model,
+
     /**
      * Register a new callback but add before and after options to the
      * middleware.
@@ -101,7 +104,7 @@ module.exports = function(app, route, name, model) {
      */
     index: function(options) {
       app.get.apply(app, this.register(route, function(req, res, next) {
-        model.find(function(err, items) {
+        this.model.find(function(err, items) {
           if (err) return this.respond(res, 500, err);
           res.json(items);
         }.bind(this));
@@ -114,7 +117,7 @@ module.exports = function(app, route, name, model) {
      */
     get: function(options) {
       app.get.apply(app, this.register(route + '/:' + name + 'Id', function(req, res, next) {
-        model.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
+        this.model.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           res.json(item);
@@ -128,7 +131,7 @@ module.exports = function(app, route, name, model) {
      */
     post: function(options) {
       app.post.apply(app, this.register(route, function(req, res, next) {
-        model.create(req.body, function(err, item) {
+        this.model.create(req.body, function(err, item) {
           if (err) return this.respond(res, 400, err);
           res.status(201).json(item);
         }.bind(this));
@@ -141,7 +144,7 @@ module.exports = function(app, route, name, model) {
      */
     put: function(options) {
       app.put.apply(app, this.register(route + '/:' + name + 'Id', function(req, res, next) {
-        model.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
+        this.model.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           item.set(req.body);
@@ -159,7 +162,7 @@ module.exports = function(app, route, name, model) {
      */
     delete: function(options) {
       app.delete.apply(app, this.register(route + '/:' + name + 'Id', function(req, res, next) {
-        model.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
+        this.model.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           item.remove(function (err, item) {
