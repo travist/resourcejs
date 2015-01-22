@@ -1,0 +1,36 @@
+{
+  "name": "resourcejs",
+  "version": "0.1.0",
+  "description": "A simple Express library to reflect Mongoose models to a REST interface.",
+  "main": "Resource.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/travist/resourcejs"
+  },
+  "keywords": [
+    "Express",
+    "Mongoose",
+    "Node",
+    "MEAN"
+  ],
+  "author": "Travis Tidwell",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/travist/resourcejs/issues"
+  },
+  "homepage": "https://github.com/travist/resourcejs",
+  "dependencies": {
+    "lodash": "^2.4.1"
+  },
+  "devDependencies": {
+    "body-parser": "^1.10.2",
+    "express": "^4.11.1",
+    "mongoose": "^3.8.21",
+    "should": "^4.6.1",
+    "supertest": "^0.15.0",
+    "mocha": "^2.1.0"
+  }
+}
