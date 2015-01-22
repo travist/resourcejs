@@ -42,7 +42,7 @@ The following rest interface would then be exposed.
  * ***/resource*** - (GET) - List all resources.
  * ***/resource*** - (POST) - Create a new resource.
  * ***/resource/:id*** - (GET) - Get a specific resource.
- * ***/resource/:id*** - (POST) - Updates an existing resource.
+ * ***/resource/:id*** - (PUT) - Updates an existing resource.
  * ***/resource/:id*** - (DELETE) - Deletes an existing resource.
 
 Comming Soon
