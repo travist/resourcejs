@@ -45,6 +45,17 @@ The following rest interface would then be exposed.
  * ***/resource/:id*** - (PUT) - Updates an existing resource.
  * ***/resource/:id*** - (DELETE) - Deletes an existing resource.
 
+Parameters
+----------------
+The ```Resource``` object takes 4 arguments.
+
+```Resource(app, route, name, model)```
+
+ - ***app*** - This is the Express application.
+ - ***route*** - This is the route to "mount" this resource onto. For example, if you were doing nested resources, this could be '/parent/:parentId'
+ - ***name*** - The name of the resource, which will then be used for the URL path of that resource.
+ - ***model*** - The Mongoose Model for this interface.
+
 Only exposing certain methods
 -------------------
 You can also expose only a certain amount of methods, by instead of using
