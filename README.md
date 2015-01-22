@@ -34,7 +34,7 @@ var ResourceSchema = new mongoose.Schema({
 var ResourceModel = mongoose.model('Resource', ResourceSchema);
 
 // Create the REST resource.
-Resource(app, '/', 'resource', ResourceModel).rest();
+Resource(app, '', 'resource', ResourceModel).rest();
 ```
 
 The following rest interface would then be exposed.
@@ -53,7 +53,7 @@ together like so.
 
 ```
 // Do not expose DELETE.
-Resource(app, '/', 'resource', ResourceModel).get().put().post().index();
+Resource(app, '', 'resource', ResourceModel).get().put().post().index();
 ```
 
 Adding Before and After handlers
@@ -75,7 +75,7 @@ var basicAuth = require('basic-auth-connect');
 ...
 ...
 
-Resource(app, '/', 'resource', ResourceModel).rest({
+Resource(app, '', 'resource', ResourceModel).rest({
   before: basicAuth('username', 'password')
 });
 ```
@@ -84,7 +84,7 @@ You can also target individual methods so if you wanted to protect POST, PUT, an
 but not GET and INDEX you would do the following.
 
 ```
-Resource(app, '/', 'resource', ResourceModel).rest({
+Resource(app, '', 'resource', ResourceModel).rest({
   beforePut: basicAuth('username', 'password'),
   beforePost: basicAuth('username', 'password'),
   beforeDelete: basicAuth('username', 'password')
@@ -94,7 +94,7 @@ Resource(app, '/', 'resource', ResourceModel).rest({
 You can also do this by specifying the handlers within the specific method calls like so.
 
 ```
-Resource(app, '/', 'resource', ResourceModel)
+Resource(app, '', 'resource', ResourceModel)
   .get()
   .put({
     before: basicAuth('username', 'password'),
@@ -116,7 +116,7 @@ uses the Mongoose query mechanism that you can see here http://mongoosejs.com/do
 For example, if we wish to show an index that filters ages greater than 18, we would do the following.
 
 ```
-Resource(app, '/', 'user', UserModel).rest({
+Resource(app, '', 'user', UserModel).rest({
   before: function(req, res, next) {
     req.modelQuery = this.model.where('age').gt(18);
   }
