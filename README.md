@@ -166,7 +166,7 @@ var Child = mongoose.model('Child', new mongoose.Schema({
     required: true
   },
   parent: {
-    type: mongoose.types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Parent',
     index: true,
     required: true
