@@ -187,3 +187,16 @@ Resource(app, '/parent/:parentId', 'child', Child).rest({
   }
 });
 ```
+
+This would now expose the following...
+
+ * ***/parent*** - (GET) - List all parents.
+ * ***/parent*** - (POST) - Create a new parent.
+ * ***/parent/:parentId*** - (GET) - Get a specific parent.
+ * ***/parent/:parentId*** - (PUT) - Updates an existing parent.
+ * ***/parent/:parentId*** - (DELETE) - Deletes an existing parent.
+ * ***/parent/:parentId/child*** - (GET) - List all children of a parent.
+ * ***/parent/:parentId/child*** - (POST) - Create a new child.
+ * ***/parent/:parentId/child/:childId*** - (GET) - Get a specific child per parent.
+ * ***/parent/:parentId/child/:childId*** - (PUT) - Update a child for a parent.
+ * ***/parent/:parentId/child/:childId*** - (DELETE) - Delete a child for a parent.
