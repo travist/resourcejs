@@ -1,7 +1,6 @@
 var _ = require('lodash');
-var mongoose = require('mongoose');
 
-module.exports = function(app, route, name, model, options) {
+module.exports = function(app, route, name, model) {
   name = name.toLowerCase();
   route += '/' + name;
 
