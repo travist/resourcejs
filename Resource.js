@@ -133,8 +133,7 @@ module.exports = function(app, route, name, model) {
      */
     post: function(options) {
       app.post.apply(app, this.register(route, function(req, res, next) {
-        var query = req.modelQuery || this.model;
-        query.create(req.body, function(err, item) {
+        this.model.create(req.body, function(err, item) {
           if (err) return this.respond(res, 400, err);
           res.status(201).json(item);
         }.bind(this));
