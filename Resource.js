@@ -1,14 +1,43 @@
 var _ = require('lodash');
+var mongoose = require('mongoose');
 
-module.exports = function(app, route, name, model) {
-  name = name.toLowerCase();
-  route += '/' + name;
+module.exports = function(app, route, modelName, model) {
+
+  // Create the name of the resource.
+  var name = modelName.toLowerCase();
 
   // Return the object that defines this resource.
   return {
 
-    // Allow access to the model.
+    /**
+     * The model for this resource.
+     */
     model: model,
+
+    /**
+     * The name of the model.
+     */
+    modelName: modelName,
+
+    /**
+     * The name of this resource.
+     */
+    name: name,
+
+    /**
+     * The route for this model.
+     */
+    route: route + '/' + name,
+
+    /**
+     * The methods that are exposed to this resource.
+     */
+    methods: [],
+
+    /**
+     * The swagger cache.
+     */
+    __swagger: null,
 
     /**
      * Register a new callback but add before and after options to the
@@ -103,7 +132,8 @@ module.exports = function(app, route, name, model) {
      * @param options
      */
     index: function(options) {
-      app.get.apply(app, this.register(route, function(req, res, next) {
+      this.methods.push('index');
+      app.get.apply(app, this.register(this.route, function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.find(function(err, items) {
           if (err) return this.respond(res, 500, err);
@@ -117,9 +147,10 @@ module.exports = function(app, route, name, model) {
      * Register the GET method for this resource.
      */
     get: function(options) {
-      app.get.apply(app, this.register(route + '/:' + name + 'Id', function(req, res, next) {
+      this.methods.push('get');
+      app.get.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
+        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           res.json(item);
@@ -132,7 +163,8 @@ module.exports = function(app, route, name, model) {
      * Post (Create) a new item
      */
     post: function(options) {
-      app.post.apply(app, this.register(route, function(req, res, next) {
+      this.methods.push('post');
+      app.post.apply(app, this.register(this.route, function(req, res, next) {
         this.model.create(req.body, function(err, item) {
           if (err) return this.respond(res, 400, err);
           res.status(201).json(item);
@@ -145,9 +177,10 @@ module.exports = function(app, route, name, model) {
      * Put (Update) a resource.
      */
     put: function(options) {
-      app.put.apply(app, this.register(route + '/:' + name + 'Id', function(req, res, next) {
+      this.methods.push('put');
+      app.put.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
+        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           item.set(req.body);
@@ -164,9 +197,10 @@ module.exports = function(app, route, name, model) {
      * Delete a resource.
      */
     delete: function(options) {
-      app.delete.apply(app, this.register(route + '/:' + name + 'Id', function(req, res, next) {
+      this.methods.push('delete');
+      app.delete.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[name + 'Id']}, function(err, item) {
+        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           item.remove(function (err, item) {
@@ -176,6 +210,16 @@ module.exports = function(app, route, name, model) {
         }.bind(this));
       }, options));
       return this;
+    },
+
+    /**
+     * Returns the swagger definition for this resource.
+     */
+    swagger: function() {
+      if (!this.__swagger) {
+        this.__swagger = require('./Swagger')(this);
+      }
+      return this.__swagger;
     }
   };
 };
