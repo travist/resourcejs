@@ -46,33 +46,34 @@ module.exports = function(resource) {
       type: 'boolean'
     };
 
-    // Reference
-    if (options.type === mongoose.Schema.Types.ObjectId) return {
-      '$sref': '#/definitions/' + options.ref
-    };
+    if (typeof options.type === 'function') {
+      var functionName = options.type.toString();
+      functionName = functionName.substr('function '.length);
+      functionName = functionName.substr(0, functionName.indexOf('('));
 
-    // Object ID
-    if (options.type === mongoose.Schema.Types.Oid) return {
-      '$sref': '#/definitions/' + options.ref
-    };
+      if (functionName == 'ObjectId') return {
+        '$ref': '#/definitions/' + options.ref
+      };
 
-    // Array declarations.
-    if (options.type === mongoose.Schema.Types.Array) return {
-      type: 'array',
-      items: {
+      if (functionName == 'Oid') return {
+        '$ref': '#/definitions/' + options.ref
+      };
+
+      if (functionName == 'Array') return {
+        type: 'array',
+        items: {
+          type: 'string'
+        }
+      };
+
+      if (functionName = 'Mixed') return {
         type: 'string'
-      }
-    };
+      };
 
-    // Mixed.
-    if (options.type === mongoose.Schema.Types.Mixed) return {
-      type: 'string'
-    };
-
-    // Buffer.
-    if (options.type === mongoose.Schema.Types.Buffer) return {
-      type: 'string'
-    };
+      if (functionName = 'Buffer') return {
+        type: 'string'
+      };
+    }
 
     if (options.type === Object) return null;
     if (options.type instanceof Object) return null;
@@ -127,7 +128,7 @@ module.exports = function(resource) {
         }
 
         if (!property.type) {
-          console.log('Warning: That field type is not yet supported in Swagger definitions, using "string."');
+          console.log('Warning: That field type is not yet supported in Swagger definitions, using "string"');
           console.log('Path name: %s.%s', definition.id, name);
           console.log('Mongoose type: %s', path.options.type);
           property.type = 'string';
