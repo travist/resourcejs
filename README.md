@@ -1,4 +1,4 @@
-Resource.js - A simple Express library to reflect Mongoose models to a REST interface.
+Resource.js - A simple Express library to reflect Mongoose models to a REST interface with a splash of Swagger.io love.
 ==============================================================
 
 Resource.js is designed to be a minimalistic Express library that reflects a Mongoose
@@ -200,3 +200,69 @@ This would now expose the following...
  * ***/parent/:parentId/child/:childId*** - (GET) - Get a specific child per parent.
  * ***/parent/:parentId/child/:childId*** - (PUT) - Update a child for a parent.
  * ***/parent/:parentId/child/:childId*** - (DELETE) - Delete a child for a parent.
+
+Adding Swagger.io v2 documentation
+--------------------------------
+Along with auto-generating API's for your application, this library also is able to
+auto generate Swagger.io documentation so that your API's are well documented and can
+be easily used and understood by everyone.
+
+Each Resource object has the ability to generate the Swagger docs for that resource,
+and this can then be combined to create the Swagger docs necessary to feed into the
+Swagger UI tools.
+
+***Getting the swagger documentation for a resource***
+```
+var resource = Resource(app, '', 'resource', ResourceModel).rest();
+
+// Print out the Swagger docs for this resource.
+console.log(resource.swagger());
+```
+
+You can then use this to create a full specification for you API with all your resources
+by doing the following.
+
+```
+  // Define all our resources.
+  var resources = {
+  	user: Resource(app, '', 'user', UserModel).rest(),
+  	group: Resource(app, '', 'group', GroupModel).rest(),
+  	role: Resource(app, '', 'role', RoleModel).rest()
+  };
+
+  // Get the Swagger paths and definitions for each resource.
+  var paths = {};
+  var definitions = {};
+  _.each(resources, function(resource) {
+    var swagger = resource.swagger();
+    paths = _.assign(paths, swagger.paths);
+    definitions = _.assign(definitions, swagger.definitions);
+  });
+
+  // Define the specification.
+  var specification = {
+    swagger: '2.0',
+    info: {
+      description: '',
+      version: '0.0.1',
+      title: '',
+      contact: {
+        name: 'test@example.com'
+      },
+      license: {
+        name: 'MIT',
+        url: 'http://opensource.org/licenses/MIT'
+      }
+    },
+    host: 'localhost:3000',
+    basePath: '',
+    schemes: ['http'],
+    definitions: definitions,
+    paths: paths
+  };
+
+  // Show the specification at the URL.
+  app.get('/spec', function(req, res, next) {
+  	res.json(specification);
+  });
+```
