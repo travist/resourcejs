@@ -127,6 +127,77 @@ module.exports = function(app, route, modelName, model) {
     },
 
     /**
+     * Returns a query parameters fields.
+     *
+     * @param req
+     * @param name
+     * @returns {*}
+     */
+    getParamQuery: function(req, name) {
+      if (!req.query.hasOwnProperty(name)) {
+        return null;
+      }
+      return _.words(req.query[name], /[^, ]+/g).join(' ');
+    },
+
+    /**
+     * Get the find query for the index.
+     *
+     * @param req
+     * @returns {Object}
+     */
+    getFindQuery: function(req) {
+      var findQuery = {};
+
+      // Get the filters and omit the limit, skip, select, and sort.
+      var filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort');
+
+      // Iterate through each filter.
+      _.each(filters, function(value, name) {
+
+        // Get the filter object.
+        var filter = _.zipObject(['name', 'selector'], _.words(name, /[^,_ ]+/g));
+
+        // See if this parameter is defined in our model.
+        var param = this.model.schema.paths[filter.name];
+        if (param) {
+
+          // See if there is a selector.
+          if (filter.selector) {
+
+            // See if this selector is a regular expression.
+            if (filter.selector == 'regex') {
+
+              // Set the regular expression for the filter.
+              var parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
+              findQuery[filter.name] = new RegExp(parts[1], parts[2]);
+            }
+            else {
+
+              // Init the filter.
+              if (!findQuery.hasOwnProperty(filter.name)) {
+                findQuery[filter.name] = {};
+              }
+
+              // Set the selector for this filter name.
+              value = (param.instance === 'Number') ? parseInt(value, 10) : value;
+              findQuery[filter.name]['$' + filter.selector] = value;
+            }
+          }
+          else {
+
+            // Set the find query to this value.
+            value = (param.instance === 'Number') ? parseInt(value, 10) : value;
+            findQuery[filter.name] = value;
+          }
+        }
+      }.bind(this));
+
+      // Return the findQuery.
+      return findQuery;
+    },
+
+    /**
      * The index for a resource.
      *
      * @param options
@@ -135,10 +206,16 @@ module.exports = function(app, route, modelName, model) {
       this.methods.push('index');
       app.get.apply(app, this.register(this.route, function(req, res, next) {
         var query = req.modelQuery || this.model;
-        query.find(function(err, items) {
-          if (err) return this.respond(res, 500, err);
-          res.json(items);
-        }.bind(this));
+        query
+          .find(this.getFindQuery(req))
+          .limit(req.query.limit || 10)
+          .skip(req.query.skip || 0)
+          .select(this.getParamQuery(req, 'select'))
+          .sort(this.getParamQuery(req, 'sort'))
+          .exec(function(err, items) {
+            if (err) return this.respond(res, 500, err);
+            res.json(items);
+          }.bind(this));
       }, options));
       return this;
     },

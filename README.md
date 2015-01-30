@@ -201,6 +201,22 @@ This would now expose the following...
  * ***/parent/:parentId/child/:childId*** - (PUT) - Update a child for a parent.
  * ***/parent/:parentId/child/:childId*** - (DELETE) - Delete a child for a parent.
 
+Filtering the results.
+--------------------------------
+The ```index()``` that is created is capable of doing some complex filtering using Query arguments within the URL. They are described as the following.
+
+| Filter                       | Query    | Example                                              | Description                                                      |
+|------------------------------|----------|------------------------------------------------------|------------------------------------------------------------------|
+| **equal**                    | `equals` | `/users?gender=male` 			                     | both return all male users                                       |
+| **not equal**                | `ne`     | `/users?gender__ne=male`                             | returns all users who are not male (`female` and `x`)            |
+| **greater than**             | `gt`     | `/users?age__gt=18`                                  | returns all users older than 18                                  |
+| **greater than or equal to** | `gte`    | `/users?age__gte=18`                                 | returns all users 18 and older (age should be a number property) |
+| **less than**                | `lt`     | `/users?age__lt=30`                                  | returns all users age 29 and younger                             |
+| **less than or equal to**    | `lte`    | `/users?age__lte=30`                                 | returns all users age 30 and younger                             |
+| **in**                       | `in`     | `/users?gender__in=female,male`                      | returns all female and male users                                |
+| **Regex**                    | `regex`  | `/users?username__regex=/^travis/i`                  | returns all users with a username starting with travis           |
+
+
 Adding Swagger.io v2 documentation
 --------------------------------
 Along with auto-generating API's for your application, this library also is able to
