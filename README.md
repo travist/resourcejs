@@ -223,46 +223,48 @@ You can then use this to create a full specification for you API with all your r
 by doing the following.
 
 ```
-  // Define all our resources.
-  var resources = {
-  	user: Resource(app, '', 'user', UserModel).rest(),
-  	group: Resource(app, '', 'group', GroupModel).rest(),
-  	role: Resource(app, '', 'role', RoleModel).rest()
-  };
+var _ = require('lodash');
 
-  // Get the Swagger paths and definitions for each resource.
-  var paths = {};
-  var definitions = {};
-  _.each(resources, function(resource) {
-    var swagger = resource.swagger();
-    paths = _.assign(paths, swagger.paths);
-    definitions = _.assign(definitions, swagger.definitions);
-  });
+// Define all our resources.
+var resources = {
+	user: Resource(app, '', 'user', UserModel).rest(),
+	group: Resource(app, '', 'group', GroupModel).rest(),
+	role: Resource(app, '', 'role', RoleModel).rest()
+};
 
-  // Define the specification.
-  var specification = {
-    swagger: '2.0',
-    info: {
-      description: '',
-      version: '0.0.1',
-      title: '',
-      contact: {
-        name: 'test@example.com'
-      },
-      license: {
-        name: 'MIT',
-        url: 'http://opensource.org/licenses/MIT'
-      }
+// Get the Swagger paths and definitions for each resource.
+var paths = {};
+var definitions = {};
+_.each(resources, function(resource) {
+  var swagger = resource.swagger();
+  paths = _.assign(paths, swagger.paths);
+  definitions = _.assign(definitions, swagger.definitions);
+});
+
+// Define the specification.
+var specification = {
+  swagger: '2.0',
+  info: {
+    description: '',
+    version: '0.0.1',
+    title: '',
+    contact: {
+      name: 'test@example.com'
     },
-    host: 'localhost:3000',
-    basePath: '',
-    schemes: ['http'],
-    definitions: definitions,
-    paths: paths
-  };
+    license: {
+      name: 'MIT',
+      url: 'http://opensource.org/licenses/MIT'
+    }
+  },
+  host: 'localhost:3000',
+  basePath: '',
+  schemes: ['http'],
+  definitions: definitions,
+  paths: paths
+};
 
-  // Show the specification at the URL.
-  app.get('/spec', function(req, res, next) {
-  	res.json(specification);
-  });
+// Show the specification at the URL.
+app.get('/spec', function(req, res, next) {
+	res.json(specification);
+});
 ```
