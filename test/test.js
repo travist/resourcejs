@@ -46,10 +46,9 @@ describe('Test full CRUD capabilities.', function() {
   var resource = {};
   it('/GET empty list', function(done) {
     request(app).get('/test/resource')
-      .expect('Content-Type', /json/)
-      .expect(200)
+      .expect('Content-Range', '*/0')
+      .expect(204)
       .end(function(err, res) {
-        assert.equal(res.body.length, 0);
         done(err);
       });
   });
@@ -132,10 +131,9 @@ describe('Test full CRUD capabilities.', function() {
   });
   it('/GET empty list', function(done) {
     request(app).get('/test/resource')
-      .expect('Content-Type', /json/)
-      .expect(200)
+      .expect('Content-Range', '*/0')
+      .expect(204)
       .end(function(err, res) {
-        assert.equal(res.body.length, 0);
         done(err);
       });
   });
@@ -171,7 +169,8 @@ describe('Test search capabilities', function() {
   it('Should limit 10', function(done) {
     request(app).get('/test/resource')
       .expect('Content-Type', /json/)
-      .expect(200)
+      .expect('Content-Range', '0-9/25')
+      .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
         var age = 0;
@@ -188,7 +187,7 @@ describe('Test search capabilities', function() {
   it('Should accept a change in limit', function(done) {
     request(app).get('/test/resource?limit=5')
       .expect('Content-Type', /json/)
-      .expect(200)
+      .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 5);
         var age = 0;
@@ -205,7 +204,7 @@ describe('Test search capabilities', function() {
   it('Should be able to skip and limit', function(done) {
     request(app).get('/test/resource?limit=5&skip=4')
       .expect('Content-Type', /json/)
-      .expect(200)
+      .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 5);
         var age = 4;
@@ -222,7 +221,7 @@ describe('Test search capabilities', function() {
   it('Should be able to select fields', function(done) {
     request(app).get('/test/resource?limit=10&skip=10&select=title,age')
       .expect('Content-Type', /json/)
-      .expect(200)
+      .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
         var age = 10;
@@ -239,7 +238,7 @@ describe('Test search capabilities', function() {
   it('Should be able to sort', function(done) {
     request(app).get('/test/resource?select=age&sort=-age')
       .expect('Content-Type', /json/)
-      .expect(200)
+      .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
         var age = 24;
@@ -256,7 +255,7 @@ describe('Test search capabilities', function() {
   it('Should paginate with a sort', function(done) {
     request(app).get('/test/resource?limit=5&skip=5&select=age&sort=-age')
       .expect('Content-Type', /json/)
-      .expect(200)
+      .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 5);
         var age = 19;

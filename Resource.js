@@ -1,5 +1,6 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
+var paginate = require('node-paginate-anything');
 
 module.exports = function(app, route, modelName, model) {
 
@@ -205,17 +206,35 @@ module.exports = function(app, route, modelName, model) {
     index: function(options) {
       this.methods.push('index');
       app.get.apply(app, this.register(this.route, function(req, res, next) {
+
+        // Get the find query.
+        var findQuery = this.getFindQuery(req);
+
+        // Get the query object.
         var query = req.modelQuery || this.model;
-        query
-          .find(this.getFindQuery(req))
-          .limit(req.query.limit || 10)
-          .skip(req.query.skip || 0)
-          .select(this.getParamQuery(req, 'select'))
-          .sort(this.getParamQuery(req, 'sort'))
-          .exec(function(err, items) {
-            if (err) return this.respond(res, 500, err);
-            res.json(items);
-          }.bind(this));
+
+        // First get the total count.
+        query.find(findQuery).count(function(err, count) {
+          if (err) return this.respond(res, 500, err);
+
+          // Get the page range.
+          var pageRange = paginate(req, res, count, 10) || {
+            limit: 10,
+            skip: 0
+          };
+
+          // Next get the items within the index.
+          query
+            .find(findQuery)
+            .limit(req.query.hasOwnProperty('limit') ? req.query.limit : pageRange.limit)
+            .skip(req.query.hasOwnProperty('skip') ? req.query.skip : pageRange.skip)
+            .select(this.getParamQuery(req, 'select'))
+            .sort(this.getParamQuery(req, 'sort'))
+            .exec(function(err, items) {
+              if (err) return this.respond(res, 500, err);
+              res.status(res.statusCode).json(items);
+            }.bind(this));
+        }.bind(this));
       }, options));
       return this;
     },
