@@ -217,8 +217,19 @@ module.exports = function(app, route, modelName, model) {
         query.find(findQuery).count(function(err, count) {
           if (err) return this.respond(res, 500, err);
 
+          // Get the default limit.
+          var defaultLimit = req.query.limit || 10;
+          defaultLimit = parseInt(defaultLimit, 10);
+
+          // If a skip is provided, then set the range headers.
+          if (req.query.skip && !req.headers.range) {
+            var defaultSkip = parseInt(req.query.skip, 10);
+            req.headers['range-unit'] = 'items';
+            req.headers.range = defaultSkip + '-' + (defaultSkip + (defaultLimit - 1));
+          }
+
           // Get the page range.
-          var pageRange = paginate(req, res, count, 10) || {
+          var pageRange = paginate(req, res, count, defaultLimit) || {
             limit: 10,
             skip: 0
           };

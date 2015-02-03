@@ -112,6 +112,7 @@ describe('Test full CRUD capabilities.', function() {
   it('/GET index of resources', function(done) {
     request(app).get('/test/resource')
       .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-0/1')
       .expect(200)
       .end(function(err, res) {
         assert.equal(res.body.length, 1);
@@ -187,6 +188,7 @@ describe('Test search capabilities', function() {
   it('Should accept a change in limit', function(done) {
     request(app).get('/test/resource?limit=5')
       .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-4/25')
       .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 5);
@@ -204,6 +206,7 @@ describe('Test search capabilities', function() {
   it('Should be able to skip and limit', function(done) {
     request(app).get('/test/resource?limit=5&skip=4')
       .expect('Content-Type', /json/)
+      .expect('Content-Range', '4-8/25')
       .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 5);
@@ -221,6 +224,7 @@ describe('Test search capabilities', function() {
   it('Should be able to select fields', function(done) {
     request(app).get('/test/resource?limit=10&skip=10&select=title,age')
       .expect('Content-Type', /json/)
+      .expect('Content-Range', '10-19/25')
       .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
@@ -238,6 +242,7 @@ describe('Test search capabilities', function() {
   it('Should be able to sort', function(done) {
     request(app).get('/test/resource?select=age&sort=-age')
       .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-9/25')
       .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
@@ -255,6 +260,7 @@ describe('Test search capabilities', function() {
   it('Should paginate with a sort', function(done) {
     request(app).get('/test/resource?limit=5&skip=5&select=age&sort=-age')
       .expect('Content-Type', /json/)
+      .expect('Content-Range', '5-9/25')
       .expect(206)
       .end(function(err, res) {
         assert.equal(res.body.length, 5);
@@ -272,6 +278,7 @@ describe('Test search capabilities', function() {
   it('Should be able to find', function(done) {
     request(app).get('/test/resource?limit=5&select=age&age=5')
       .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-0/1')
       .expect(200)
       .end(function(err, res) {
         assert.equal(res.body.length, 1);
@@ -284,6 +291,7 @@ describe('Test search capabilities', function() {
 
   it('$lt selector', function(done) {
     request(app).get('/test/resource?age__lt=5')
+      .expect('Content-Range', '0-4/5')
       .end(function(err, res) {
         assert.equal(res.body.length, 5);
         _.each(res.body, function(resource) {
@@ -295,6 +303,7 @@ describe('Test search capabilities', function() {
 
   it('$lte selector', function(done) {
     request(app).get('/test/resource?age__lte=5')
+      .expect('Content-Range', '0-5/6')
       .end(function(err, res) {
         assert.equal(res.body.length, 6);
         _.each(res.body, function(resource) {
@@ -306,6 +315,7 @@ describe('Test search capabilities', function() {
 
   it('$gt selector', function(done) {
     request(app).get('/test/resource?age__gt=5')
+      .expect('Content-Range', '0-9/19')
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
         _.each(res.body, function(resource) {
@@ -317,6 +327,7 @@ describe('Test search capabilities', function() {
 
   it('$gte selector', function(done) {
     request(app).get('/test/resource?age__gte=5')
+      .expect('Content-Range', '0-9/20')
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
         _.each(res.body, function(resource) {
@@ -328,6 +339,7 @@ describe('Test search capabilities', function() {
 
   it('regex selector', function(done) {
     request(app).get('/test/resource?title__regex=/.*Age [0-1]?[0-3]$/g')
+      .expect('Content-Range', '0-7/8')
       .end(function(err, res) {
         var valid = [0, 1, 2, 3, 10, 11, 12, 13];
         assert.equal(res.body.length, valid.length);
