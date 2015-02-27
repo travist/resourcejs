@@ -69,17 +69,17 @@ module.exports = function(app, route, modelName, model) {
     respond: function(res, status, err) {
       switch (status) {
         case 400:
-          res.status(400).json({
+          return res.status(400).json({
             status: 400,
             error: 'Bad Request: ' + err
           });
         case 404:
-          res.status(404).json({
+          return res.status(404).json({
             status: 404,
             error: 'Resource not found'
           });
         case 500:
-          res.status(500).json({
+          return res.status(500).json({
             status: 500,
             error: 'An error has occured' + (err ? ': ' + err : '')
           });
