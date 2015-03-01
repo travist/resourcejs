@@ -71,7 +71,10 @@ module.exports = function(app, route, modelName, model) {
         case 400:
           return res.status(400).json({
             status: 400,
-            error: 'Bad Request: ' + err
+            message: err.message,
+            errors: _.mapValues(err.errors, function(error) {
+              return _.pick(error, 'path', 'name', 'message');
+            })
           });
         case 404:
           return res.status(404).json({
@@ -81,7 +84,10 @@ module.exports = function(app, route, modelName, model) {
         case 500:
           return res.status(500).json({
             status: 500,
-            error: 'An error has occured' + (err ? ': ' + err : '')
+            message: err.message,
+            errors: _.mapValues(err.errors, function(error) {
+              return _.pick(error, 'path', 'name', 'message');
+            })
           });
       }
     },
