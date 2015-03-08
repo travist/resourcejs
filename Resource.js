@@ -54,10 +54,13 @@ module.exports = function(app, route, modelName, model) {
       if (options && options.before) {
         args.push(options.before.bind(this));
       }
+
       args.push(callback.bind(this));
+
       if (options && options.after) {
         args.push(options.after.bind(this));
       }
+
       return args;
     },
 
@@ -250,7 +253,7 @@ module.exports = function(app, route, modelName, model) {
             .exec(function(err, items) {
               if (err) return this.respond(res, 500, err);
               res.status(res.statusCode).json(items);
-              next();
+              next()
             }.bind(this));
         }.bind(this));
       }, options));
@@ -268,7 +271,7 @@ module.exports = function(app, route, modelName, model) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           res.json(item);
-          next();
+          next()
         }.bind(this));
       }, options));
       return this;
@@ -283,7 +286,8 @@ module.exports = function(app, route, modelName, model) {
         this.model.create(req.body, function(err, item) {
           if (err) return this.respond(res, 400, err);
           res.status(201).json(item);
-          next();
+          res.locals.item = item;
+          next()
         }.bind(this));
       }, options));
       return this;
@@ -303,7 +307,8 @@ module.exports = function(app, route, modelName, model) {
           item.save(function (err, item) {
             if (err) return this.respond(res, 400, err);
             res.json(item);
-            next();
+            res.locals.item = item;
+            next()
           }.bind(this));
         }.bind(this));
       }, options));
@@ -323,7 +328,8 @@ module.exports = function(app, route, modelName, model) {
           item.remove(function (err, item) {
             if (err) return this.respond(res, 400, err);
             res.status(204).json();
-            next();
+            res.locals.item = item;
+            next()
           }.bind(this));
         }.bind(this));
       }, options));
