@@ -253,7 +253,7 @@ module.exports = function(app, route, modelName, model) {
             .exec(function(err, items) {
               if (err) return this.respond(res, 500, err);
               res.status(res.statusCode).json(items);
-              next()
+              next();
             }.bind(this));
         }.bind(this));
       }, options));
@@ -271,7 +271,7 @@ module.exports = function(app, route, modelName, model) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           res.json(item);
-          next()
+          next();
         }.bind(this));
       }, options));
       return this;
@@ -287,7 +287,7 @@ module.exports = function(app, route, modelName, model) {
           if (err) return this.respond(res, 400, err);
           res.status(201).json(item);
           res.locals.item = item;
-          next()
+          next();
         }.bind(this));
       }, options));
       return this;
@@ -308,7 +308,7 @@ module.exports = function(app, route, modelName, model) {
             if (err) return this.respond(res, 400, err);
             res.json(item);
             res.locals.item = item;
-            next()
+            next();
           }.bind(this));
         }.bind(this));
       }, options));
@@ -329,7 +329,7 @@ module.exports = function(app, route, modelName, model) {
             if (err) return this.respond(res, 400, err);
             res.status(204).json();
             res.locals.item = item;
-            next()
+            next();
           }.bind(this));
         }.bind(this));
       }, options));
