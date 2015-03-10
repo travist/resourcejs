@@ -252,8 +252,9 @@ module.exports = function(app, route, modelName, model) {
             .sort(this.getParamQuery(req, 'sort'))
             .exec(function(err, items) {
               if (err) return this.respond(res, 500, err);
-              res.status(res.statusCode).json(items);
+              res.locals.items = items;
               next();
+              res.status(res.statusCode).json(items);
             }.bind(this));
         }.bind(this));
       }, options));
@@ -270,8 +271,9 @@ module.exports = function(app, route, modelName, model) {
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
-          res.json(item);
+          res.locals.item = item;
           next();
+          res.json(item);
         }.bind(this));
       }, options));
       return this;
@@ -285,9 +287,9 @@ module.exports = function(app, route, modelName, model) {
       app.post.apply(app, this.register(this.route, function(req, res, next) {
         this.model.create(req.body, function(err, item) {
           if (err) return this.respond(res, 400, err);
-          res.status(201).json(item);
           res.locals.item = item;
           next();
+          res.status(201).json(item);
         }.bind(this));
       }, options));
       return this;
@@ -306,9 +308,9 @@ module.exports = function(app, route, modelName, model) {
           item.set(req.body);
           item.save(function (err, item) {
             if (err) return this.respond(res, 400, err);
-            res.json(item);
             res.locals.item = item;
             next();
+            res.json(item);
           }.bind(this));
         }.bind(this));
       }, options));
@@ -327,9 +329,9 @@ module.exports = function(app, route, modelName, model) {
           if (!item) return this.respond(res, 404);
           item.remove(function (err, item) {
             if (err) return this.respond(res, 400, err);
-            res.status(204).json();
             res.locals.item = item;
             next();
+            res.status(204).json();
           }.bind(this));
         }.bind(this));
       }, options));
