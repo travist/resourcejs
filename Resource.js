@@ -1,6 +1,7 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
+var jsonpatch = require('jsonpatch');
 
 module.exports = function(app, route, modelName, model) {
 
@@ -132,6 +133,7 @@ module.exports = function(app, route, modelName, model) {
         .index(this.getMethodOptions('index', options))
         .get(this.getMethodOptions('get', options))
         .put(this.getMethodOptions('put', options))
+        .patch(this.getMethodOptions('patch', options))
         .post(this.getMethodOptions('post', options))
         .delete(this.getMethodOptions('delete', options));
     },
@@ -306,6 +308,31 @@ module.exports = function(app, route, modelName, model) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
           item.set(req.body);
+          item.save(function (err, item) {
+            if (err) return this.respond(res, 400, err);
+            res.locals.item = item;
+            next();
+            res.json(item);
+          }.bind(this));
+        }.bind(this));
+      }, options));
+      return this;
+    },
+
+    /**
+     * Patch (Partial Update) a resource.
+     */
+    patch: function(options) {
+      this.methods.push('patch');
+      app.patch.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        var query = req.modelQuery || this.model;
+        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
+          if (err) return this.respond(res, 500, err);
+          if (!item) return this.respond(res, 404);
+          try
+            item = jsonpatch.apply_patch item, req.body
+          catch(err)
+            return this.respond(res, 422, err);
           item.save(function (err, item) {
             if (err) return this.respond(res, 400, err);
             res.locals.item = item;
