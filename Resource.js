@@ -159,7 +159,6 @@ module.exports = function(app, route, modelName, model) {
         .index(this.getMethodOptions('index', options))
         .get(this.getMethodOptions('get', options))
         .put(this.getMethodOptions('put', options))
-        .patch(this.getMethodOptions('patch', options))
         .post(this.getMethodOptions('post', options))
         .delete(this.getMethodOptions('delete', options));
     },
@@ -339,28 +338,6 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 200, item: item}, next);
           }.bind(this));
         }.bind(this));
-      }, options));
-      return this;
-    },
-
-    /**
-     * Patch (Partial Update) a resource.
-     */
-    patch: function(options) {
-      this.methods.push('patch');
-      app.patch.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
-        var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.respond(res, 500, err);
-          if (!item) return this.respond(res, 404);
-          var patches = req.body
-          item.patch(patches, function (err) {
-            if (err) return this.setResponse(res, {status: 400, error: err}, next);
-            return this.setResponse(res, {status: 200, item: item}, next);
-          }.bind(this));
-        }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
       }, options));
       return this;
     },
