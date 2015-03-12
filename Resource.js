@@ -49,7 +49,7 @@ module.exports = function(app, route, modelName, model) {
      * @param options
      * @returns {*[]}
      */
-    register: function(path, callback, options) {
+    register: function(path, callback, last, options) {
       var args = [path];
       if (options && options.before) {
         args.push(options.before.bind(this));
@@ -58,40 +58,66 @@ module.exports = function(app, route, modelName, model) {
       if (options && options.after) {
         args.push(options.after.bind(this));
       }
+      args.push(last.bind(this));
       return args;
     },
 
     /**
      * The different responses.
-     * @param status
+     * @param res
+     *   The response to send to the client.
+     *
      * @returns {{status: number, error: string}}
      */
-    respond: function(res, status, err) {
-      switch (status) {
-        case 400:
-          return res.status(400).json({
-            status: 400,
-            message: err.message,
-            errors: _.mapValues(err.errors, function(error) {
-              return _.pick(error, 'path', 'name', 'message');
-            })
-          });
-        case 404:
-          return res.status(404).json({
-            status: 404,
-            error: 'Resource not found'
-          });
-        case 500:
-          return res.status(500).json({
-            status: 500,
-            message: err.message,
-            errors: _.mapValues(err.errors, function(error) {
-              return _.pick(error, 'path', 'name', 'message');
-            })
-          });
+    respond: function(res) {
+      if (res.resource) {
+        switch (res.resource.status) {
+          case 400:
+            return res.status(400).json({
+              status: 400,
+              message: res.resource.error.message,
+              errors: _.mapValues(res.resource.error.errors, function(error) {
+                return _.pick(error, 'path', 'name', 'message');
+              })
+            });
+          case 404:
+            return res.status(404).json({
+              status: 404,
+              errors: ['Resource not found']
+            });
+          case 500:
+            return res.status(500).json({
+              status: 500,
+              message: res.resource.error.message,
+              errors: _.mapValues(res.resource.error.errors, function(error) {
+                return _.pick(error, 'path', 'name', 'message');
+              })
+            });
+          default:
+            return res.status(res.resource.status).json(res.resource.item);
+        }
       }
     },
 
+    /**
+     * Sets the response that needs to be made and calls the next middleware for
+     * execution.
+     *
+     * @param res
+     * @param resource
+     * @param next
+     */
+    setResponse: function(res, resource, next) {
+      res.resource = resource;
+      next();
+    },
+
+    /**
+     * Returns the method options for a specific method to be executed.
+     * @param method
+     * @param options
+     * @returns {{}}
+     */
     getMethodOptions: function(method, options) {
       if (!options) return {};
 
@@ -221,7 +247,7 @@ module.exports = function(app, route, modelName, model) {
 
         // First get the total count.
         query.find(findQuery).count(function(err, count) {
-          if (err) return this.respond(res, 500, err);
+          if (err) return this.setResponse(res, {status: 500, error: err}, next);
 
           // Get the default limit.
           var defaultLimit = req.query.limit || 10;
@@ -248,10 +274,12 @@ module.exports = function(app, route, modelName, model) {
             .select(this.getParamQuery(req, 'select'))
             .sort(this.getParamQuery(req, 'sort'))
             .exec(function(err, items) {
-              if (err) return this.respond(res, 500, err);
-              res.status(res.statusCode).json(items);
+              if (err) return this.setResponse(res, {status: 500, error: err}, next);
+              return this.setResponse(res, {status: res.statusCode, item: items}, next);
             }.bind(this));
         }.bind(this));
+      }, function(req, res) {
+        this.respond(res);
       }, options));
       return this;
     },
@@ -264,10 +292,12 @@ module.exports = function(app, route, modelName, model) {
       app.get.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.respond(res, 500, err);
-          if (!item) return this.respond(res, 404);
-          res.json(item);
+          if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          if (!item) return this.setResponse(res, {status: 404}, next);
+          return this.setResponse(res, {status: 200, item: item}, next);
         }.bind(this));
+      }, function(req, res) {
+        this.respond(res);
       }, options));
       return this;
     },
@@ -279,9 +309,11 @@ module.exports = function(app, route, modelName, model) {
       this.methods.push('post');
       app.post.apply(app, this.register(this.route, function(req, res, next) {
         this.model.create(req.body, function(err, item) {
-          if (err) return this.respond(res, 400, err);
-          res.status(201).json(item);
+          if (err) return this.setResponse(res, {status: 400, error: err}, next);
+          return this.setResponse(res, {status: 201, item: item}, next);
         }.bind(this));
+      }, function(req, res) {
+        this.respond(res);
       }, options));
       return this;
     },
@@ -294,14 +326,16 @@ module.exports = function(app, route, modelName, model) {
       app.put.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.respond(res, 500, err);
-          if (!item) return this.respond(res, 404);
+          if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          if (!item) return this.setResponse(res, {status: 404}, next);
           item.set(req.body);
           item.save(function (err, item) {
-            if (err) return this.respond(res, 400, err);
-            res.json(item);
+            if (err) return this.setResponse(res, {status: 400, error: err}, next);
+            return this.setResponse(res, {status: 200, item: item}, next);
           }.bind(this));
         }.bind(this));
+      }, function(req, res) {
+        this.respond(res);
       }, options));
       return this;
     },
@@ -314,13 +348,15 @@ module.exports = function(app, route, modelName, model) {
       app.delete.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.respond(res, 500, err);
-          if (!item) return this.respond(res, 404);
+          if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          if (!item) return this.setResponse(res, {status: 404, error: err}, next);
           item.remove(function (err, item) {
-            if (err) return this.respond(res, 400, err);
-            res.status(204).json();
+            if (err) return this.setResponse(res, {status: 400, error: err}, next);
+            return this.setResponse(res, {status: 204, item: 'deleted'}, next);
           }.bind(this));
         }.bind(this));
+      }, function(req, res) {
+        this.respond(res);
       }, options));
       return this;
     },
