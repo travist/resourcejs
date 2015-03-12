@@ -336,6 +336,8 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 200, item: item}, next);
           }.bind(this));
         }.bind(this));
+      }, function(req, res) {
+        this.respond(res);
       }, options));
       return this;
     },
