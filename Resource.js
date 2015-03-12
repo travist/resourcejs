@@ -55,15 +55,11 @@ module.exports = function(app, route, modelName, model) {
       if (options && options.before) {
         args.push(options.before.bind(this));
       }
-
       args.push(callback.bind(this));
-
       if (options && options.after) {
         args.push(options.after.bind(this));
       }
-
       args.push(last.bind(this));
-
       return args;
     },
 
