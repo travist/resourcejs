@@ -118,8 +118,7 @@ Resource(app, '', 'resource', ResourceModel)
   });
 ```
 
-***After Handlers***
-The after handlers allow you to modify the contents of the resource before it is handed over to the client. It does this by setting a ```resource``` object on the ```res``` object. This ```resource``` object follows the following schema.
+***After Handlers***:  The after handlers allow you to modify the contents of the resource before it is handed over to the client. It does this by setting a ```resource``` object on the ```res``` object. This ```resource``` object follows the following schema.
 
   - status: The status code that will be sent to the client.
   - error: Any error that may have been caused within the request.
