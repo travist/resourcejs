@@ -351,4 +351,45 @@ describe('Test search capabilities', function() {
   });
 });
 
+describe('Test after handlers', function() {
+
+  it('Should call the global after handlers', function(done) {
+
+    // Create the REST resource.
+    Resource(app, '/test2', 'resource', ResourceModel).rest({
+      after: function(req, res, next) {
+        assert(res.hasOwnProperty('resource'));
+        assert(res.resource.hasOwnProperty('item'));
+        assert.equal(res.resource.item.title, 'Test1');
+        assert.equal(res.resource.item.description, '12345678');
+        next();
+      }
+    });
+
+    request(app)
+        .post('/test2/resource')
+        .send({
+            title: "Test1",
+            description: "12345678"
+        })
+        .expect('Content-Type', /json/)
+        .expect(201)
+        .end(function(err, res) {
+            resource = res.body;
+            assert.equal(resource.title, 'Test1');
+            assert.equal(resource.description, '12345678');
+            assert(resource.hasOwnProperty('_id'), 'Resource ID not found');
+            request(app)
+              .get('/test2/resource/' + resource._id)
+              .expect('Content-Type', /json/)
+              .expect(200)
+              .end(function(err, res) {
+                assert.equal(res.body.title, 'Test1');
+                assert.equal(res.body.description, '12345678');
+                assert.equal(res.body._id, resource._id);
+                done(err);
+              });
+        });
+  });
+});
 
