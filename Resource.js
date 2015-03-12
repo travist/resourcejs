@@ -3,7 +3,13 @@ var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
 var patcher = require('mongoose-json-patch');
 
-module.exports = function(app, route, modelName, model) {
+module.exports = function(app, route, modelName, schema) {
+
+  // Attach the mongoose-json-patch plugin
+  schema.plugin(patcher);
+
+  // Generate the mongoose model
+  var model= mongoose.model(modelName, schema);
 
   // Create the name of the resource.
   var name = modelName.toLowerCase();
