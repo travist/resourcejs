@@ -23,9 +23,9 @@
   },
   "homepage": "https://github.com/travist/resourcejs",
   "dependencies": {
-    "jsonpatch": "^1.0.1",
     "lodash": "^3.0.0",
     "mongoose": "^3.8.22",
+    "mongoose-json-patch": "^1.0.0",
     "node-paginate-anything": "git://github.com/travist/node-paginate-anything.git#d3fd205557614a67a0bdee19fe581f43aba539bc"
   },
   "devDependencies": {

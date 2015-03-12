@@ -1,7 +1,7 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
-var jsonpatch = require('jsonpatch');
+var patcher = require('mongoose-json-patch');
 
 module.exports = function(app, route, modelName, model) {
 
@@ -329,11 +329,8 @@ module.exports = function(app, route, modelName, model) {
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.respond(res, 500, err);
           if (!item) return this.respond(res, 404);
-          try
-            item = jsonpatch.apply_patch item, req.body
-          catch(err)
-            return this.respond(res, 422, err);
-          item.save(function (err, item) {
+          var patches = req.body
+          item.patch(patches, function (err) {
             if (err) return this.respond(res, 400, err);
             res.locals.item = item;
             next();
