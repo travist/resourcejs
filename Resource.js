@@ -1,7 +1,7 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
-
+var patcher = require('mongoose-json-patch');
 
 module.exports = function(app, route, modelName, model) {
 
