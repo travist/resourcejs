@@ -356,8 +356,8 @@ module.exports = function(app, route, modelName, schema) {
       app.patch.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.respond(res, 500, err);
-          if (!item) return this.respond(res, 404);
+          if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          if (!item) return this.setResponse(res, {status: 404, error: err}, next);
           var patches = req.body
           item.patch(patches, function (err) {
             if (err) return this.setResponse(res, {status: 400, error: err}, next);
