@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/travist/resourcejs",
   "dependencies": {
+    "fast-json-patch": "^0.5.1",
     "lodash": "^3.0.0",
     "mongoose": "^3.8.22",
     "mongoose-json-patch": "^1.0.0",

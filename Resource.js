@@ -1,15 +1,9 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
-var patcher = require('mongoose-json-patch');
+var jsonpatch = require('fast-json-patch');
 
-module.exports = function(app, route, modelName, schema) {
-
-  // Attach the mongoose-json-patch plugin
-  schema.plugin(patcher);
-
-  // Generate the mongoose model
-  var model= mongoose.model(modelName, schema);
+module.exports = function(app, route, modelName, model) {
 
   // Create the name of the resource.
   var name = modelName.toLowerCase();
@@ -359,7 +353,14 @@ module.exports = function(app, route, modelName, schema) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404, error: err}, next);
           var patches = req.body
-          item.patch(patches, function (err) {
+          //Apply the patch
+          try {
+            jsonpatch.apply(this, patches, true);
+          } catch(err) {
+            if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          }
+          item.set(req.body);
+          item.save(function (err, item) {
             if (err) return this.setResponse(res, {status: 400, error: err}, next);
             return this.setResponse(res, {status: 200, item: item}, next);
           }.bind(this));
