@@ -157,6 +157,7 @@ module.exports = function(app, route, modelName, model) {
         .index(this.getMethodOptions('index', options))
         .get(this.getMethodOptions('get', options))
         .put(this.getMethodOptions('put', options))
+        .patch(this.getMethodOptions('patch', options))
         .post(this.getMethodOptions('post', options))
         .delete(this.getMethodOptions('delete', options));
     },
@@ -353,13 +354,11 @@ module.exports = function(app, route, modelName, model) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404, error: err}, next);
           var patches = req.body
-          //Apply the patch
           try {
-            jsonpatch.apply(this, patches, true);
+            var result = jsonpatch.apply(item, patches, true);
           } catch(err) {
             if (err) return this.setResponse(res, {status: 500, error: err}, next);
           }
-          item.set(req.body);
           item.save(function (err, item) {
             if (err) return this.setResponse(res, {status: 400, error: err}, next);
             return this.setResponse(res, {status: 200, item: item}, next);
