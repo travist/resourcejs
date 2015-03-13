@@ -157,7 +157,6 @@ module.exports = function(app, route, modelName, model) {
         .index(this.getMethodOptions('index', options))
         .get(this.getMethodOptions('get', options))
         .put(this.getMethodOptions('put', options))
-        .patch(this.getMethodOptions('patch', options))
         .post(this.getMethodOptions('post', options))
         .delete(this.getMethodOptions('delete', options));
     },

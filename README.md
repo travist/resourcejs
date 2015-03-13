@@ -118,6 +118,23 @@ Resource(app, '', 'resource', ResourceModel)
   });
 ```
 
+***After Handlers***:  The after handlers allow you to modify the contents of the resource before it is handed over to the client. It does this by setting a ```resource``` object on the ```res``` object. This ```resource``` object follows the following schema.
+
+  - status: The status code that will be sent to the client.
+  - error: Any error that may have been caused within the request.
+  - item: The resource item that is going to be sent to the client.
+
+For example, if you have a resource that has a title that is sent to the user, you could change that title by doing the following.
+
+```
+Resource(app, '', 'resource', ResourceModel).get({
+  after: function(req, res, next) {
+    res.resource.item.title = 'I am changing!!';
+    next();
+  }
+});
+```
+
 Adding custom queries
 ---------------------------------
 Using the method above, it is possible to provide some custom queries in your ***before*** middleware.
