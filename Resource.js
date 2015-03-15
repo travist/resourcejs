@@ -82,10 +82,13 @@ module.exports = function(app, route, modelName, model) {
                 return _.pick(error, 'path', 'name', 'message');
               })
             });
-          case 404:
-            return res.status(404).json({
-              status: 404,
-              errors: ['Resource not found']
+          case 400:
+            return res.status(400).json({
+              status: 400,
+              message: res.resource.error.message,
+              errors: _.mapValues(res.resource.error.errors, function(error) {
+                return _.pick(error, 'path', 'name', 'message');
+              })
             });
           case 500:
             return res.status(500).json({
@@ -355,9 +358,24 @@ module.exports = function(app, route, modelName, model) {
           if (!item) return this.setResponse(res, {status: 404, error: err}, next);
           var patches = req.body
           try {
-            var result = jsonpatch.apply(item, patches, true);
+            for (var len = patches.length, i=0; i<len; ++i) {
+              var patch = patches[i];
+              if(patch.op=='test'){
+                var success = jsonpatch.apply(item, [].concat(patch), true);
+                if(!success){
+                  return this.setResponse(res, {
+                    status: 412,
+                    name: 'Precondition Failed',
+                    message: 'A json-patch test op has failed. No changes have been applied to the document',
+                    item:item,
+                    patch:patch,
+                  }, next);
+                }
+              }
+            }
+            jsonpatch.apply(item, patches, true)
           } catch(err) {
-            if (err) return this.setResponse(res, {status: 500, error: err}, next);
+            if (err) return this.setResponse(res, {status: 500, item: item, error: err}, next);
           }
           item.save(function (err, item) {
             if (err) return this.setResponse(res, {status: 400, error: err}, next);
