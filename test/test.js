@@ -97,6 +97,36 @@ describe('Test full CRUD capabilities.', function() {
         done(err);
       });
   });
+
+  it('/PATCH Change data on the resource', function(done) {
+    request(app)
+      .patch('/test/resource/' + resource._id)
+      .send([{ "op": "replace", "path": "/title", "value": "Test3" }])
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        assert.equal(res.body.title, 'Test3');
+        resource = res.body;
+        done(err);
+      });
+  });
+
+  it('/PATCH Reject update due to failed test op', function(done) {
+    request(app)
+      .patch('/test/resource/' + resource._id)
+      .send([
+        { "op": "test", "path": "/title", "value": "not-the-title" },
+        { "op": "replace", "path": "/title", "value": "Test4" }
+      ])
+      .expect('Content-Type', /json/)
+      .expect(412)
+      .end(function(err, res) {
+        assert.equal(res.body.title, 'Test3');
+        resource = res.body;
+        done(err);
+      });
+  });
+
   it('/GET The changed resource.', function(done) {
     request(app)
       .get('/test/resource/' + resource._id)
@@ -109,6 +139,7 @@ describe('Test full CRUD capabilities.', function() {
         done(err);
       });
   });
+
   it('/GET index of resources', function(done) {
     request(app).get('/test/resource')
       .expect('Content-Type', /json/)
@@ -116,7 +147,7 @@ describe('Test full CRUD capabilities.', function() {
       .expect(200)
       .end(function(err, res) {
         assert.equal(res.body.length, 1);
-        assert.equal(res.body[0].title, 'Test2');
+        assert.equal(res.body[0].title, 'Test3');
         assert.equal(res.body[0].description, resource.description);
         assert.equal(res.body[0]._id, resource._id);
         done(err);
