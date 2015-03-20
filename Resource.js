@@ -1,8 +1,6 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
-var jsonpatch = require('fast-json-patch');
-
 
 module.exports = function(app, route, modelName, model) {
 
@@ -56,11 +54,15 @@ module.exports = function(app, route, modelName, model) {
       if (options && options.before) {
         args.push(options.before.bind(this));
       }
+
       args.push(callback.bind(this));
+
       if (options && options.after) {
         args.push(options.after.bind(this));
       }
+
       args.push(last.bind(this));
+
       return args;
     },
 
@@ -82,13 +84,10 @@ module.exports = function(app, route, modelName, model) {
                 return _.pick(error, 'path', 'name', 'message');
               })
             });
-          case 400:
-            return res.status(400).json({
-              status: 400,
-              message: res.resource.error.message,
-              errors: _.mapValues(res.resource.error.errors, function(error) {
-                return _.pick(error, 'path', 'name', 'message');
-              })
+          case 404:
+            return res.status(404).json({
+              status: 404,
+              errors: ['Resource not found']
             });
           case 500:
             return res.status(500).json({
@@ -160,7 +159,6 @@ module.exports = function(app, route, modelName, model) {
         .index(this.getMethodOptions('index', options))
         .get(this.getMethodOptions('get', options))
         .put(this.getMethodOptions('put', options))
-        .patch(this.getMethodOptions('patch', options))
         .post(this.getMethodOptions('post', options))
         .delete(this.getMethodOptions('delete', options));
     },
@@ -340,50 +338,6 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 200, item: item}, next);
           }.bind(this));
         }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
-      }, options));
-      return this;
-    },
-
-    /**
-     * Patch (Partial Update) a resource.
-     */
-    patch: function(options) {
-      this.methods.push('patch');
-      app.patch.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
-        var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.setResponse(res, {status: 500, error: err}, next);
-          if (!item) return this.setResponse(res, {status: 404, error: err}, next);
-          var patches = req.body
-          try {
-            for (var len = patches.length, i=0; i<len; ++i) {
-              var patch = patches[i];
-              if(patch.op=='test'){
-                var success = jsonpatch.apply(item, [].concat(patch), true);
-                if(!success){
-                  return this.setResponse(res, {
-                    status: 412,
-                    name: 'Precondition Failed',
-                    message: 'A json-patch test op has failed. No changes have been applied to the document',
-                    item:item,
-                    patch:patch,
-                  }, next);
-                }
-              }
-            }
-            jsonpatch.apply(item, patches, true)
-          } catch(err) {
-            if (err) return this.setResponse(res, {status: 500, item: item, error: err}, next);
-          }
-          item.save(function (err, item) {
-            if (err) return this.setResponse(res, {status: 400, error: err}, next);
-            return this.setResponse(res, {status: 200, item: item}, next);
-          }.bind(this));
-        }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
       }, options));
       return this;
     },
