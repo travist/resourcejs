@@ -204,6 +204,7 @@ module.exports = function(app, route, modelName, model) {
               // Set the regular expression for the filter.
               var parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
               findQuery[filter.name] = new RegExp(parts[1], parts[2]);
+              return;
             }
             else {
 
@@ -215,6 +216,7 @@ module.exports = function(app, route, modelName, model) {
               // Set the selector for this filter name.
               value = (param.instance === 'Number') ? parseInt(value, 10) : value;
               findQuery[filter.name]['$' + filter.selector] = value;
+              return;
             }
           }
           else {
@@ -222,8 +224,12 @@ module.exports = function(app, route, modelName, model) {
             // Set the find query to this value.
             value = (param.instance === 'Number') ? parseInt(value, 10) : value;
             findQuery[filter.name] = value;
+            return;
           }
         }
+
+        // Set the find query to this value.
+        findQuery[filter.name] = value;
       }.bind(this));
 
       // Return the findQuery.
