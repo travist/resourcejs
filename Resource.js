@@ -51,7 +51,7 @@ module.exports = function(app, route, modelName, model) {
      * @param options
      * @returns {*[]}
      */
-    register: function(path, callback, last, options) {
+    register: function(app, method, path, callback, last, options) {
       var args = [path];
       if (options && options.before) {
         args.push(options.before.bind(this));
@@ -61,7 +61,21 @@ module.exports = function(app, route, modelName, model) {
         args.push(options.after.bind(this));
       }
       args.push(last.bind(this));
-      return args;
+
+      // Declare the resourcejs object on the app.
+      if (!app.resourcejs) {
+        app.resourcejs = {};
+      }
+
+      if (!app.resourcejs[path]) {
+        app.resourcejs[path] = {};
+      }
+
+      // Add these methods to resourcejs object in the app.
+      app.resourcejs[path][method] = args;
+
+      // Apply these callbacks to the application.
+      app[method].apply(app, args);
     },
 
     /**
@@ -69,9 +83,10 @@ module.exports = function(app, route, modelName, model) {
      * @param res
      *   The response to send to the client.
      *
-     * @returns {{status: number, error: string}}
+     * @returns Response or NULL.
      */
-    respond: function(res) {
+    respond: function(req, res) {
+      if (req.noResponse) { return; }
       if (res.resource) {
         switch (res.resource.status) {
           case 400:
@@ -246,7 +261,7 @@ module.exports = function(app, route, modelName, model) {
      */
     index: function(options) {
       this.methods.push('index');
-      app.get.apply(app, this.register(this.route, function(req, res, next) {
+      this.register(app, 'get', this.route, function(req, res, next) {
 
         // Get the find query.
         var findQuery = this.getFindQuery(req);
@@ -287,9 +302,7 @@ module.exports = function(app, route, modelName, model) {
               return this.setResponse(res, {status: res.statusCode, item: items}, next);
             }.bind(this));
         }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
-      }, options));
+      }, this.respond.bind(this), options);
       return this;
     },
 
@@ -298,16 +311,14 @@ module.exports = function(app, route, modelName, model) {
      */
     get: function(options) {
       this.methods.push('get');
-      app.get.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
+      this.register(app, 'get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404}, next);
           return this.setResponse(res, {status: 200, item: item}, next);
         }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
-      }, options));
+      }, this.respond.bind(this), options);
       return this;
     },
 
@@ -316,14 +327,12 @@ module.exports = function(app, route, modelName, model) {
      */
     post: function(options) {
       this.methods.push('post');
-      app.post.apply(app, this.register(this.route, function(req, res, next) {
+      this.register(app, 'post', this.route, function(req, res, next) {
         this.model.create(req.body, function(err, item) {
           if (err) return this.setResponse(res, {status: 400, error: err}, next);
           return this.setResponse(res, {status: 201, item: item}, next);
         }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
-      }, options));
+      }, this.respond.bind(this), options);
       return this;
     },
 
@@ -332,7 +341,7 @@ module.exports = function(app, route, modelName, model) {
      */
     put: function(options) {
       this.methods.push('put');
-      app.put.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
+      this.register(app, 'put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
@@ -343,9 +352,7 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 200, item: item}, next);
           }.bind(this));
         }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
-      }, options));
+      }, this.respond.bind(this), options);
       return this;
     },
 
@@ -354,7 +361,7 @@ module.exports = function(app, route, modelName, model) {
      */
     patch: function(options) {
       this.methods.push('patch');
-      app.patch.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
+      this.register(app, 'patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
@@ -385,9 +392,7 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 200, item: item}, next);
           }.bind(this));
         }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
-      }, options));
+      }, this.respond.bind(this), options);
       return this;
     },
 
@@ -396,7 +401,7 @@ module.exports = function(app, route, modelName, model) {
      */
     delete: function(options) {
       this.methods.push('delete');
-      app.delete.apply(app, this.register(this.route + '/:' + this.name + 'Id', function(req, res, next) {
+      this.register(app, 'delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
@@ -406,9 +411,7 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 204, item: 'deleted'}, next);
           }.bind(this));
         }.bind(this));
-      }, function(req, res) {
-        this.respond(res);
-      }, options));
+      }, this.respond.bind(this), options);
       return this;
     },
 
