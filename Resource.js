@@ -267,10 +267,11 @@ module.exports = function(app, route, modelName, model) {
         var findQuery = this.getFindQuery(req);
 
         // Get the query object.
+        var countQuery = req.countQuery || req.modelQuery || this.model;
         var query = req.modelQuery || this.model;
 
         // First get the total count.
-        query.find(findQuery).count(function(err, count) {
+        countQuery.find(findQuery).count(function(err, count) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
 
           // Get the default limit.
