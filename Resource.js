@@ -263,6 +263,9 @@ module.exports = function(app, route, modelName, model) {
       this.methods.push('index');
       this.register(app, 'get', this.route, function(req, res, next) {
 
+        // Allow before handlers the ability to disable resource CRUD.
+        if (req.skipResource) { return next(); }
+
         // Get the find query.
         var findQuery = this.getFindQuery(req);
 
@@ -313,6 +316,7 @@ module.exports = function(app, route, modelName, model) {
     get: function(options) {
       this.methods.push('get');
       this.register(app, 'get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
@@ -329,6 +333,7 @@ module.exports = function(app, route, modelName, model) {
     post: function(options) {
       this.methods.push('post');
       this.register(app, 'post', this.route, function(req, res, next) {
+        if (req.skipResource) { return next(); }
         this.model.create(req.body, function(err, item) {
           if (err) return this.setResponse(res, {status: 400, error: err}, next);
           return this.setResponse(res, {status: 201, item: item}, next);
@@ -343,6 +348,7 @@ module.exports = function(app, route, modelName, model) {
     put: function(options) {
       this.methods.push('put');
       this.register(app, 'put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
@@ -363,6 +369,7 @@ module.exports = function(app, route, modelName, model) {
     patch: function(options) {
       this.methods.push('patch');
       this.register(app, 'patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
@@ -403,6 +410,7 @@ module.exports = function(app, route, modelName, model) {
     delete: function(options) {
       this.methods.push('delete');
       this.register(app, 'delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
