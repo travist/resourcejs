@@ -118,8 +118,8 @@ module.exports = function(app, route, modelName, model) {
           default:
             res.status(res.resource.status).json(res.resource.item);
             break;
-          return next();
         }
+        return next();
       }
     },
 
