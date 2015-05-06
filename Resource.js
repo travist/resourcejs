@@ -85,8 +85,8 @@ module.exports = function(app, route, modelName, model) {
      *
      * @returns Response or NULL.
      */
-    respond: function(req, res) {
-      if (req.noResponse) { return; }
+    respond: function(req, res, next) {
+      if (req.noResponse) { return next(); }
       if (res.resource) {
         switch (res.resource.status) {
           case 400:
@@ -111,7 +111,8 @@ module.exports = function(app, route, modelName, model) {
               })
             });
           default:
-            return res.status(res.resource.status).json(res.resource.item);
+            res.status(res.resource.status).json(res.resource.item);
+            return next();
         }
       }
     },
