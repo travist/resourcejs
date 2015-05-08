@@ -54,10 +54,7 @@ module.exports = function(app, route, modelName, model) {
     register: function(app, method, path, callback, last, options) {
       var args = [path];
       if (options && options.before) {
-        before = [].concat options.before
-        for (var len = before.length, i=0; i<len; ++i) {
-          args.push(before[i].bind(this));
-        }
+        args.push(options.before.bind(this));
       }
       args.push(callback.bind(this));
       if (options && options.after) {
