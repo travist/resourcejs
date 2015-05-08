@@ -54,11 +54,17 @@ module.exports = function(app, route, modelName, model) {
     register: function(app, method, path, callback, last, options) {
       var args = [path];
       if (options && options.before) {
-        args.push(options.before.bind(this));
+        before = [].concat(options.before);
+        for (var len = before.length, i=0; i<len; ++i) {
+          args.push(before[i].bind(this));
+        }
       }
       args.push(callback.bind(this));
       if (options && options.after) {
-        args.push(options.after.bind(this));
+        after = [].concat(options.after);
+        for (var len = after.length, i=0; i<len; ++i) {
+          args.push(after[i].bind(this));
+        }
       }
       args.push(last.bind(this));
 
