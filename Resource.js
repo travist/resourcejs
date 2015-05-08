@@ -61,7 +61,10 @@ module.exports = function(app, route, modelName, model) {
       }
       args.push(callback.bind(this));
       if (options && options.after) {
-        args.push(options.after.bind(this));
+        after = [].concat(options.after);
+        for (var len = after.length, i=0; i<len; ++i) {
+          args.push(after[i].bind(this));
+        }
       }
       args.push(last.bind(this));
 
