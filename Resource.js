@@ -54,11 +54,17 @@ module.exports = function(app, route, modelName, model) {
     register: function(app, method, path, callback, last, options) {
       var args = [path];
       if (options && options.before) {
-        args.push(options.before.bind(this));
+        before = [].concat(options.before);
+        for (var len = before.length, i=0; i<len; ++i) {
+          args.push(before[i].bind(this));
+        }
       }
       args.push(callback.bind(this));
       if (options && options.after) {
-        args.push(options.after.bind(this));
+        after = [].concat(options.after);
+        for (var len = after.length, i=0; i<len; ++i) {
+          args.push(after[i].bind(this));
+        }
       }
       args.push(last.bind(this));
 
@@ -79,40 +85,47 @@ module.exports = function(app, route, modelName, model) {
     },
 
     /**
-     * The different responses.
+     * Sets the different responses and calls the next middleware for
+     * execution.
+     *
      * @param res
      *   The response to send to the client.
-     *
-     * @returns Response or NULL.
+     * @param next
+     *   The next middleware
      */
-    respond: function(req, res) {
-      if (req.noResponse) { return; }
+    respond: function(req, res, next) {
+      if (req.noResponse) { return next(); }
       if (res.resource) {
         switch (res.resource.status) {
           case 400:
-            return res.status(400).json({
+            res.status(400).json({
               status: 400,
               message: res.resource.error.message,
               errors: _.mapValues(res.resource.error.errors, function(error) {
                 return _.pick(error, 'path', 'name', 'message');
               })
             });
+            break;
           case 404:
-            return res.status(404).json({
+            res.status(404).json({
               status: 404,
               errors: ['Resource not found']
             });
+            break;
           case 500:
-            return res.status(500).json({
+            res.status(500).json({
               status: 500,
               message: res.resource.error.message,
               errors: _.mapValues(res.resource.error.errors, function(error) {
                 return _.pick(error, 'path', 'name', 'message');
               })
             });
+            break;
           default:
-            return res.status(res.resource.status).json(res.resource.item);
+            res.status(res.resource.status).json(res.resource.item);
+            break;
         }
+        return next();
       }
     },
 
