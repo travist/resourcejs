@@ -353,6 +353,7 @@ module.exports = function(app, route, modelName, model) {
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404}, next);
+          if (req.body.hasOwnProperty('__v')) { delete req.body.__v; }
           item.set(req.body);
           item.save(function (err, item) {
             if (err) return this.setResponse(res, {status: 400, error: err}, next);
