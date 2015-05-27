@@ -54,6 +54,7 @@ describe('Test full CRUD capabilities.', function() {
       .expect('Content-Range', '*/0')
       .expect(204)
       .end(function(err, res) {
+        assert.deepEqual(res.body, {});
         done(err);
       });
   });
@@ -168,15 +169,18 @@ describe('Test full CRUD capabilities.', function() {
       .delete('/test/resource/' + resource._id)
       .expect(204)
       .end(function(err, res) {
+        assert.deepEqual(res.body, {});
         done(err);
       });
   });
 
   it('/GET empty list', function(done) {
-    request(app).get('/test/resource')
+    request(app)
+      .get('/test/resource')
       .expect('Content-Range', '*/0')
       .expect(204)
       .end(function(err, res) {
+        assert.deepEqual(res.body, {});
         done(err);
       });
   });
@@ -405,43 +409,176 @@ describe('Test search capabilities', function() {
   });
 });
 
-describe('Test after handlers', function() {
-  it('Should call the global after handlers', function(done) {
-    // Create the REST resource.
-    Resource(app, '/test2', 'resource', ResourceModel).rest({
-      after: function(req, res, next) {
-        assert(res.hasOwnProperty('resource'));
-        assert(res.resource.hasOwnProperty('item'));
-        assert.equal(res.resource.item.title, 'Test1');
-        assert.equal(res.resource.item.description, '12345678');
-        next();
-      }
-    });
+describe('Test handlers', function() {
+  // An object to store handler events.
+  var handlers = {};
 
+  // Store the resource being mutated.
+  var resource = {};
+
+  /**
+   * Updates the reference for the handler invocation using the given sequence and method.
+   *
+   * @param sequence
+   *   The sequence of invocation: `before` or `after`.
+   * @req
+   *   The express request to manipulate.
+   */
+  var setInvoked = function(sequence, req) {
+    var method = req.method.toLowerCase();
+    if (method === 'get' && (req.params.length !== 0)) {
+      method = 'index';
+    }
+
+    if (!handlers.hasOwnProperty(sequence)) {
+      handlers[sequence] = {};
+      handlers[sequence][method] = true;
+    }
+    else if (!handlers[sequence].hasOwnProperty(method)) {
+      handlers[sequence][method] = true;
+    }
+  };
+
+  /**
+   * Determines if the handler for the sequence and method was invoked.
+   *
+   * @param sequence
+   *   The sequence of invocation: `before` or `after`.
+   * @param method
+   *   The HTTP method for the invocation: `post`, `get`, `put`, `delete`, or `patch`
+   */
+  var wasInvoked = function(sequence, method) {
+    if (handlers.hasOwnProperty(sequence) && handlers[sequence].hasOwnProperty(method)) {
+      return handlers[sequence][method];
+    }
+    else {
+      return false;
+    }
+  };
+
+  // Register a new resource with before/after global handlers.
+  Resource(app, '/test2', 'resource', ResourceModel).rest({
+    before: function(req, res, next) {
+      console.log('before.' + req.method.toLowerCase());
+
+      // Store the invoked handler and continue.
+      setInvoked('before', req);
+      next();
+    },
+    after: function(req, res, next) {
+      console.log('after.' + req.method.toLowerCase());
+
+      // Store the invoked handler and continue.
+      setInvoked('after', req);
+      next();
+    }
+  });
+
+  it('A POST request should invoke the global handlers', function(done) {
     request(app)
-    .post('/test2/resource')
-    .send({
-      title: "Test1",
-      description: "12345678"
-    })
-    .expect('Content-Type', /json/)
-    .expect(201)
-    .end(function(err, res) {
-      var resource = res.body;
-      assert.equal(resource.title, 'Test1');
-      assert.equal(resource.description, '12345678');
-      assert(resource.hasOwnProperty('_id'), 'Resource ID not found');
+      .post('/test2/resource')
+      .send({
+        title: "Test1",
+        description: "12345678"
+      })
+      .expect('Content-Type', /json/)
+      .expect(201)
+      .end(function(err, res) {
 
-      request(app)
-        .get('/test2/resource/' + resource._id)
-        .expect('Content-Type', /json/)
-        .expect(200)
-        .end(function(err, res) {
-          assert.equal(res.body.title, 'Test1');
-          assert.equal(res.body.description, '12345678');
-          assert.equal(res.body._id, resource._id);
-          done(err);
-        });
-    });
+        var response = res.body;
+        assert.equal(response.title, 'Test1');
+        assert.equal(response.description, '12345678');
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('before', 'post'), true);
+        assert.equal(wasInvoked('after', 'post'), true);
+
+        // Store the resource and continue.
+        resource = response;
+        done();
+      });
+  });
+
+  it('A GET request should invoke the global handlers', function(done) {
+    request(app)
+      .get('/test2/resource/' + resource._id)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        var response = res.body;
+        assert.equal(response.title, 'Test1');
+        assert.equal(response.description, '12345678');
+        assert(response.hasOwnProperty('_id'), 'Resource ID not found');
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('before', 'get'), true);
+        assert.equal(wasInvoked('after', 'get'), true);
+
+        // Store the resource and continue.
+        resource = response;
+        done();
+      });
+  });
+
+  it('A PUT request should invoke the global handlers', function(done) {
+    request(app)
+      .put('/test2/resource/' + resource._id)
+      .send({
+        title: 'Test1 - Updated'
+      })
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        var response = res.body;
+        assert.equal(response.title, 'Test1 - Updated');
+        assert.equal(response.description, '12345678');
+        assert(response.hasOwnProperty('_id'), 'Resource ID not found');
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('before', 'put'), true);
+        assert.equal(wasInvoked('after', 'put'), true);
+
+        // Store the resource and continue.
+        resource = response;
+        done();
+      });
+  });
+
+  it('A GET (Index) request should invoke the global handlers', function(done) {
+    request(app)
+      .get('/test2/resource')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        var response = res.body;
+        console.log(JSON.stringify(response));
+
+        assert.equal(response.length, 1);
+        assert.equal(response[0].title, 'Test1 - Updated');
+        assert.equal(response[0].description, '12345678');
+        assert(response[0].hasOwnProperty('_id'), 'Resource ID not found');
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('before', 'index'), true);
+        assert.equal(wasInvoked('after', 'index'), true);
+
+        // Store the resource and continue.
+        resource = response;
+        done();
+      });
+  });
+
+  it('A DELETE request should invoke the global handlers', function(done) {
+    request(app)
+      .delete('/test2/resource/' + resource._id)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        var response = res.text;
+        console.log(response);
+
+        done();
+      });
   });
 });
