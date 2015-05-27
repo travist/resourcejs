@@ -127,9 +127,56 @@ describe('Build Resources for following tests', function() {
 
     done();
   });
+
+  it('Build the /test/resource1/:resource1Id/nested endpoints', function(done) {
+    // Create the schema.
+    var NestedSchema = new mongoose.Schema({
+      resource1: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'resource1',
+        index: true,
+        required: true
+      },
+      title: {
+        type: String,
+        required: true
+      },
+      age: {
+        type: Number
+      },
+      description: {
+        type: String
+      }
+    });
+
+    // Create the model.
+    var NestedModel = mongoose.model('nested', NestedSchema);
+
+    // Create the REST resource and continue.
+    Resource(app, '/test/resource1/:resource1Id', 'nested', NestedModel).rest({
+      before: function(req, res, next) {
+        req.body.resource1 = req.params.resource1Id;
+        next();
+      }
+
+      //// Register before/after global handlers.
+      //before: function(req, res, next) {
+      //  // Store the invoked handler and continue.
+      //  setInvoked('before', req);
+      //  next();
+      //},
+      //after: function(req, res, next) {
+      //  // Store the invoked handler and continue.
+      //  setInvoked('after', req);
+      //  next();
+      //}
+    });
+
+    done();
+  });
 });
 
-describe('Test full CRUD capabilities.', function() {
+describe('Test single resource CRUD capabilities', function() {
   var resource = {};
 
   it('/GET empty list', function(done) {
@@ -161,7 +208,7 @@ describe('Test full CRUD capabilities.', function() {
       });
   });
 
-  it('/GET The new resource.', function(done) {
+  it('/GET The new resource', function(done) {
     request(app)
       .get('/test/resource1/' + resource._id)
       .expect('Content-Type', /json/)
@@ -220,7 +267,7 @@ describe('Test full CRUD capabilities.', function() {
       });
   });
 
-  it('/GET The changed resource.', function(done) {
+  it('/GET The changed resource', function(done) {
     request(app)
       .get('/test/resource1/' + resource._id)
       .expect('Content-Type', /json/)
@@ -270,7 +317,7 @@ describe('Test full CRUD capabilities.', function() {
   });
 });
 
-describe('Test search capabilities', function() {
+describe('Test single resource search capabilities', function() {
   it('Create a full index of resources', function(done) {
     var age = 0;
 
@@ -493,7 +540,7 @@ describe('Test search capabilities', function() {
   });
 });
 
-describe('Test handlers', function() {
+describe('Test single resource handlers capabilities', function() {
   // Store the resource being mutated.
   var resource = {};
 
@@ -600,6 +647,240 @@ describe('Test handlers', function() {
 
         // Store the resource and continue.
         resource = response;
+        done();
+      });
+  });
+});
+
+describe('Test nested resource CRUD capabilities', function() {
+  var resource = {};
+  var nested = {};
+
+  it('/POST a new parent resource', function(done) {
+    request(app)
+      .post('/test/resource1')
+      .send({
+        title: 'Test1',
+        description: '123456789'
+      })
+      .expect('Content-Type', /json/)
+      .expect(201)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, 'Test1');
+        assert.equal(response.description, '123456789');
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        resource = response;
+        done();
+      });
+  });
+
+  it('/GET an empty list of nested resources', function(done) {
+    request(app)
+      .get('/test/resource1/' + resource._id + '/nested')
+      .expect(204)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.deepEqual(response, {});
+        done();
+      });
+  });
+
+  it('/POST a new nested resource', function(done) {
+    request(app)
+      .post('/test/resource1/' + resource._id + '/nested')
+      .send({
+        title: 'Nest1',
+        description: '987654321'
+      })
+      .expect('Content-Type', /json/)
+      .expect(201)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.resource1, resource._id);
+        assert.equal(response.title, 'Nest1');
+        assert.equal(response.description, '987654321');
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        nested = response;
+        done();
+      });
+  });
+
+  it('/GET the list of nested resources', function(done) {
+    request(app)
+      .get('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, nested.title);
+        assert.equal(response.description, nested.description);
+        assert(response.hasOwnProperty('resource1'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource1, resource._id);
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response._id, nested._id);
+        done();
+      });
+  });
+
+  it('/PUT the nested resource', function(done) {
+    request(app)
+      .put('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .send({
+        title: 'Nest1 - Updated1'
+      })
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, 'Nest1 - Updated1');
+        assert.equal(response.description, nested.description);
+        assert(response.hasOwnProperty('resource1'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource1, resource._id);
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response._id, nested._id);
+        nested = response;
+        done();
+      });
+  });
+
+  it('/PATCH data on the nested resource', function(done) {
+    request(app)
+      .patch('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .send([{ 'op': 'replace', 'path': '/title', 'value': 'Nest1 - Updated2' }])
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, 'Nest1 - Updated2');
+        assert.equal(response.description, nested.description);
+        assert(response.hasOwnProperty('resource1'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource1, resource._id);
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response._id, nested._id);
+        nested = response;
+        done();
+      });
+  });
+
+  it('/PATCH rejection on the nested resource due to failed test op', function(done) {
+    request(app)
+      .patch('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .send([
+        { 'op': 'test', 'path': '/title', 'value': 'not-the-title' },
+        { 'op': 'replace', 'path': '/title', 'value': 'Nest1 - Updated3' }
+      ])
+      .expect('Content-Type', /json/)
+      .expect(412)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, nested.title);
+        assert.equal(response.description, nested.description);
+        assert(response.hasOwnProperty('resource1'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource1, resource._id);
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response._id, nested._id);
+        done();
+      });
+  });
+
+  it('/GET the nested resource with patch changes', function(done) {
+    request(app)
+      .get('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, nested.title);
+        assert.equal(response.description, nested.description);
+        assert(response.hasOwnProperty('resource1'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource1, resource._id);
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response._id, nested._id);
+        done();
+      });
+  });
+
+  it('/GET index of nested resources', function(done) {
+    request(app)
+      .get('/test/resource1/' + resource._id + '/nested')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].title, nested.title);
+        assert.equal(response[0].description, nested.description);
+        assert(response[0].hasOwnProperty('resource1'), 'The response must contain the parent object `_id`');
+        assert.equal(response[0].resource1, resource._id);
+        assert(response[0].hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response[0]._id, nested._id);
+        done();
+      });
+  });
+
+  it('/DELETE the nested resource', function(done) {
+    request(app)
+      .delete('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .expect(204)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.deepEqual(response, {});
+        done();
+      });
+  });
+
+  it('/GET an empty list of nested resources', function(done) {
+    request(app)
+      .get('/test/resource1/' + resource._id + '/nested/')
+      .expect(204)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.deepEqual(response, {});
         done();
       });
   });
