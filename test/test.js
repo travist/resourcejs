@@ -14,34 +14,118 @@ var async = require('async');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-// Create the schema.
-var ResourceSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true
-  },
-  age: {
-    type: Number
-  },
-  description: {
-    type: String
+// An object to store handler events.
+var handlers = {};
+
+/**
+ * Updates the reference for the handler invocation using the given sequence and method.
+ *
+ * @param sequence
+ *   The sequence of invocation: `before` or `after`.
+ * @req
+ *   The express request to manipulate.
+ */
+var setInvoked = function(sequence, req) {
+  var method = req.method.toLowerCase();
+  if (method === 'get' && (Object.keys(req.params).length === 0)) {
+    method = 'index';
   }
-});
 
-// Create the model.
-var ResourceModel = mongoose.model('Resource', ResourceSchema);
+  if (!handlers.hasOwnProperty(sequence)) {
+    handlers[sequence] = {};
+  }
 
-// Create the REST resource.
-Resource(app, '/test', 'resource', ResourceModel).rest();
+  handlers[sequence][method] = true;
+};
+
+/**
+ * Determines if the handler for the sequence and method was invoked.
+ *
+ * @param sequence
+ *   The sequence of invocation: `before` or `after`.
+ * @param method
+ *   The HTTP method for the invocation: `post`, `get`, `put`, `delete`, or `patch`
+ *
+ * @return
+ *   If the given handler was invoked or not.
+ */
+var wasInvoked = function(sequence, method) {
+  if (handlers.hasOwnProperty(sequence) && handlers[sequence].hasOwnProperty(method)) {
+    return handlers[sequence][method];
+  }
+  else {
+    return false;
+  }
+};
 
 describe('Connect to MongoDB', function() {
   it('Connect to MongoDB', function (done) {
     mongoose.connect('mongodb://localhost/test', done);
   });
 
-
   it('Drop test database', function(done) {
     mongoose.connection.db.dropDatabase(done);
+  });
+});
+
+describe('Build Resources for following tests', function() {
+  it('Build the /test/resource1 endpoints', function(done) {
+    // Create the schema.
+    var Resource1Schema = new mongoose.Schema({
+      title: {
+        type: String,
+        required: true
+      },
+      age: {
+        type: Number
+      },
+      description: {
+        type: String
+      }
+    });
+
+    // Create the model.
+    var Resource1Model = mongoose.model('resource1', Resource1Schema);
+
+    // Create the REST resource and continue.
+    Resource(app, '/test', 'resource1', Resource1Model).rest();
+    done();
+  });
+
+  it('Build the /test/resource2 endpoints', function(done) {
+    // Create the schema.
+    var Resource2Schema = new mongoose.Schema({
+      title: {
+        type: String,
+        required: true
+      },
+      age: {
+        type: Number
+      },
+      description: {
+        type: String
+      }
+    });
+
+    // Create the model.
+    var Resource2Model = mongoose.model('resource2', Resource2Schema);
+
+    // Create the REST resource and continue.
+    Resource(app, '/test', 'resource2', Resource2Model).rest({
+      // Register before/after global handlers.
+      before: function(req, res, next) {
+        // Store the invoked handler and continue.
+        setInvoked('before', req);
+        next();
+      },
+      after: function(req, res, next) {
+        // Store the invoked handler and continue.
+        setInvoked('after', req);
+        next();
+      }
+    });
+
+    done();
   });
 });
 
@@ -50,7 +134,7 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/GET empty list', function(done) {
     request(app)
-      .get('/test/resource')
+      .get('/test/resource1')
       .expect('Content-Range', '*/0')
       .expect(204)
       .end(function(err, res) {
@@ -61,10 +145,10 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/POST Create new resource', function(done) {
     request(app)
-      .post('/test/resource')
+      .post('/test/resource1')
       .send({
-        title: "Test1",
-        description: "12345678"
+        title: 'Test1',
+        description: '12345678'
       })
       .expect('Content-Type', /json/)
       .expect(201)
@@ -79,7 +163,7 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/GET The new resource.', function(done) {
     request(app)
-      .get('/test/resource/' + resource._id)
+      .get('/test/resource1/' + resource._id)
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
@@ -92,7 +176,7 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/PUT Change data on the resource', function(done) {
     request(app)
-      .put('/test/resource/' + resource._id)
+      .put('/test/resource1/' + resource._id)
       .send({
         title: 'Test2'
       })
@@ -109,8 +193,8 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/PATCH Change data on the resource', function(done) {
     request(app)
-      .patch('/test/resource/' + resource._id)
-      .send([{ "op": "replace", "path": "/title", "value": "Test3" }])
+      .patch('/test/resource1/' + resource._id)
+      .send([{ 'op': 'replace', 'path': '/title', 'value': 'Test3' }])
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
@@ -122,10 +206,10 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/PATCH Reject update due to failed test op', function(done) {
     request(app)
-      .patch('/test/resource/' + resource._id)
+      .patch('/test/resource1/' + resource._id)
       .send([
-        { "op": "test", "path": "/title", "value": "not-the-title" },
-        { "op": "replace", "path": "/title", "value": "Test4" }
+        { 'op': 'test', 'path': '/title', 'value': 'not-the-title' },
+        { 'op': 'replace', 'path': '/title', 'value': 'Test4' }
       ])
       .expect('Content-Type', /json/)
       .expect(412)
@@ -138,7 +222,7 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/GET The changed resource.', function(done) {
     request(app)
-      .get('/test/resource/' + resource._id)
+      .get('/test/resource1/' + resource._id)
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
@@ -151,7 +235,7 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/GET index of resources', function(done) {
     request(app)
-      .get('/test/resource')
+      .get('/test/resource1')
       .expect('Content-Type', /json/)
       .expect('Content-Range', '0-0/1')
       .expect(200)
@@ -166,7 +250,7 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/DELETE the resource', function(done) {
     request(app)
-      .delete('/test/resource/' + resource._id)
+      .delete('/test/resource1/' + resource._id)
       .expect(204)
       .end(function(err, res) {
         assert.deepEqual(res.body, {});
@@ -176,7 +260,7 @@ describe('Test full CRUD capabilities.', function() {
 
   it('/GET empty list', function(done) {
     request(app)
-      .get('/test/resource')
+      .get('/test/resource1')
       .expect('Content-Range', '*/0')
       .expect(204)
       .end(function(err, res) {
@@ -194,10 +278,10 @@ describe('Test search capabilities', function() {
       function() { return age < 25; },
       function(cb) {
         request(app)
-          .post('/test/resource')
+          .post('/test/resource1')
           .send({
-            title: "Test Age " + age,
-            description: "Description of test age " + age,
+            title: 'Test Age ' + age,
+            description: 'Description of test age ' + age,
             age: age
           })
           .end(function(err, res) {
@@ -215,7 +299,7 @@ describe('Test search capabilities', function() {
 
   it('Should limit 10', function(done) {
     request(app)
-      .get('/test/resource')
+      .get('/test/resource1')
       .expect('Content-Type', /json/)
       .expect('Content-Range', '0-9/25')
       .expect(206)
@@ -234,7 +318,7 @@ describe('Test search capabilities', function() {
 
   it('Should accept a change in limit', function(done) {
     request(app)
-      .get('/test/resource?limit=5')
+      .get('/test/resource1?limit=5')
       .expect('Content-Type', /json/)
       .expect('Content-Range', '0-4/25')
       .expect(206)
@@ -253,7 +337,7 @@ describe('Test search capabilities', function() {
 
   it('Should be able to skip and limit', function(done) {
     request(app)
-      .get('/test/resource?limit=5&skip=4')
+      .get('/test/resource1?limit=5&skip=4')
       .expect('Content-Type', /json/)
       .expect('Content-Range', '4-8/25')
       .expect(206)
@@ -272,7 +356,7 @@ describe('Test search capabilities', function() {
 
   it('Should be able to select fields', function(done) {
     request(app)
-      .get('/test/resource?limit=10&skip=10&select=title,age')
+      .get('/test/resource1?limit=10&skip=10&select=title,age')
       .expect('Content-Type', /json/)
       .expect('Content-Range', '10-19/25')
       .expect(206)
@@ -291,7 +375,7 @@ describe('Test search capabilities', function() {
 
   it('Should be able to sort', function(done) {
     request(app)
-      .get('/test/resource?select=age&sort=-age')
+      .get('/test/resource1?select=age&sort=-age')
       .expect('Content-Type', /json/)
       .expect('Content-Range', '0-9/25')
       .expect(206)
@@ -310,7 +394,7 @@ describe('Test search capabilities', function() {
 
   it('Should paginate with a sort', function(done) {
     request(app)
-      .get('/test/resource?limit=5&skip=5&select=age&sort=-age')
+      .get('/test/resource1?limit=5&skip=5&select=age&sort=-age')
       .expect('Content-Type', /json/)
       .expect('Content-Range', '5-9/25')
       .expect(206)
@@ -329,7 +413,7 @@ describe('Test search capabilities', function() {
 
   it('Should be able to find', function(done) {
     request(app)
-      .get('/test/resource?limit=5&select=age&age=5')
+      .get('/test/resource1?limit=5&select=age&age=5')
       .expect('Content-Type', /json/)
       .expect('Content-Range', '0-0/1')
       .expect(200)
@@ -344,7 +428,7 @@ describe('Test search capabilities', function() {
 
   it('$lt selector', function(done) {
     request(app)
-      .get('/test/resource?age__lt=5')
+      .get('/test/resource1?age__lt=5')
       .expect('Content-Range', '0-4/5')
       .end(function(err, res) {
         assert.equal(res.body.length, 5);
@@ -357,7 +441,7 @@ describe('Test search capabilities', function() {
 
   it('$lte selector', function(done) {
     request(app)
-      .get('/test/resource?age__lte=5')
+      .get('/test/resource1?age__lte=5')
       .expect('Content-Range', '0-5/6')
       .end(function(err, res) {
         assert.equal(res.body.length, 6);
@@ -370,7 +454,7 @@ describe('Test search capabilities', function() {
 
   it('$gt selector', function(done) {
     request(app)
-      .get('/test/resource?age__gt=5')
+      .get('/test/resource1?age__gt=5')
       .expect('Content-Range', '0-9/19')
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
@@ -383,7 +467,7 @@ describe('Test search capabilities', function() {
 
   it('$gte selector', function(done) {
     request(app)
-      .get('/test/resource?age__gte=5')
+      .get('/test/resource1?age__gte=5')
       .expect('Content-Range', '0-9/20')
       .end(function(err, res) {
         assert.equal(res.body.length, 10);
@@ -396,7 +480,7 @@ describe('Test search capabilities', function() {
 
   it('regex selector', function(done) {
     request(app)
-      .get('/test/resource?title__regex=/.*Age [0-1]?[0-3]$/g')
+      .get('/test/resource1?title__regex=/.*Age [0-1]?[0-3]$/g')
       .expect('Content-Range', '0-7/8')
       .end(function(err, res) {
         var valid = [0, 1, 2, 3, 10, 11, 12, 13];
@@ -410,76 +494,15 @@ describe('Test search capabilities', function() {
 });
 
 describe('Test handlers', function() {
-  // An object to store handler events.
-  var handlers = {};
-
   // Store the resource being mutated.
   var resource = {};
 
-  /**
-   * Updates the reference for the handler invocation using the given sequence and method.
-   *
-   * @param sequence
-   *   The sequence of invocation: `before` or `after`.
-   * @req
-   *   The express request to manipulate.
-   */
-  var setInvoked = function(sequence, req) {
-    var method = req.method.toLowerCase();
-    if (method === 'get' && (req.params.length !== 0)) {
-      method = 'index';
-    }
-
-    if (!handlers.hasOwnProperty(sequence)) {
-      handlers[sequence] = {};
-      handlers[sequence][method] = true;
-    }
-    else if (!handlers[sequence].hasOwnProperty(method)) {
-      handlers[sequence][method] = true;
-    }
-  };
-
-  /**
-   * Determines if the handler for the sequence and method was invoked.
-   *
-   * @param sequence
-   *   The sequence of invocation: `before` or `after`.
-   * @param method
-   *   The HTTP method for the invocation: `post`, `get`, `put`, `delete`, or `patch`
-   */
-  var wasInvoked = function(sequence, method) {
-    if (handlers.hasOwnProperty(sequence) && handlers[sequence].hasOwnProperty(method)) {
-      return handlers[sequence][method];
-    }
-    else {
-      return false;
-    }
-  };
-
-  // Register a new resource with before/after global handlers.
-  Resource(app, '/test2', 'resource', ResourceModel).rest({
-    before: function(req, res, next) {
-      console.log('before.' + req.method.toLowerCase());
-
-      // Store the invoked handler and continue.
-      setInvoked('before', req);
-      next();
-    },
-    after: function(req, res, next) {
-      console.log('after.' + req.method.toLowerCase());
-
-      // Store the invoked handler and continue.
-      setInvoked('after', req);
-      next();
-    }
-  });
-
   it('A POST request should invoke the global handlers', function(done) {
     request(app)
-      .post('/test2/resource')
+      .post('/test/resource2')
       .send({
-        title: "Test1",
-        description: "12345678"
+        title: 'Test1',
+        description: '12345678'
       })
       .expect('Content-Type', /json/)
       .expect(201)
@@ -502,7 +525,7 @@ describe('Test handlers', function() {
 
   it('A GET request should invoke the global handlers', function(done) {
     request(app)
-      .get('/test2/resource/' + resource._id)
+      .get('/test/resource2/' + resource._id)
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
@@ -523,7 +546,7 @@ describe('Test handlers', function() {
 
   it('A PUT request should invoke the global handlers', function(done) {
     request(app)
-      .put('/test2/resource/' + resource._id)
+      .put('/test/resource2/' + resource._id)
       .send({
         title: 'Test1 - Updated'
       })
@@ -547,13 +570,11 @@ describe('Test handlers', function() {
 
   it('A GET (Index) request should invoke the global handlers', function(done) {
     request(app)
-      .get('/test2/resource')
+      .get('/test/resource2')
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
         var response = res.body;
-        console.log(JSON.stringify(response));
-
         assert.equal(response.length, 1);
         assert.equal(response[0].title, 'Test1 - Updated');
         assert.equal(response[0].description, '12345678');
@@ -564,20 +585,21 @@ describe('Test handlers', function() {
         assert.equal(wasInvoked('after', 'index'), true);
 
         // Store the resource and continue.
-        resource = response;
+        resource = response[0];
         done();
       });
   });
 
   it('A DELETE request should invoke the global handlers', function(done) {
     request(app)
-      .delete('/test2/resource/' + resource._id)
-      .expect('Content-Type', /json/)
-      .expect(200)
+      .delete('/test/resource2/' + resource._id)
+      .expect(204)
       .end(function(err, res) {
-        var response = res.text;
-        console.log(response);
+        var response = res.body;
+        assert.deepEqual(response, {});
 
+        // Store the resource and continue.
+        resource = response;
         done();
       });
   });
