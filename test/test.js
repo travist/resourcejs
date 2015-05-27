@@ -20,27 +20,35 @@ var handlers = {};
 /**
  * Updates the reference for the handler invocation using the given sequence and method.
  *
+ * @param entity
+ *   The entity this handler is associated with.
  * @param sequence
  *   The sequence of invocation: `before` or `after`.
- * @req
+ * @param req
  *   The express request to manipulate.
  */
-var setInvoked = function(sequence, req) {
+var setInvoked = function(entity, sequence, req) {
   var method = req.method.toLowerCase();
   if (method === 'get' && (Object.keys(req.params).length === 0)) {
     method = 'index';
   }
 
-  if (!handlers.hasOwnProperty(sequence)) {
-    handlers[sequence] = {};
+  if (!handlers.hasOwnProperty(entity)) {
+    handlers[entity] = {};
+  }
+  if (!handlers[entity].hasOwnProperty(sequence)) {
+    handlers[entity][sequence] = {};
   }
 
-  handlers[sequence][method] = true;
+  console.log('[' + entity + '] ' + sequence + '.' + method);
+  handlers[entity][sequence][method] = true;
 };
 
 /**
  * Determines if the handler for the sequence and method was invoked.
  *
+ * @param entity
+ *   The entity this handler is associated with.
  * @param sequence
  *   The sequence of invocation: `before` or `after`.
  * @param method
@@ -49,9 +57,13 @@ var setInvoked = function(sequence, req) {
  * @return
  *   If the given handler was invoked or not.
  */
-var wasInvoked = function(sequence, method) {
-  if (handlers.hasOwnProperty(sequence) && handlers[sequence].hasOwnProperty(method)) {
-    return handlers[sequence][method];
+var wasInvoked = function(entity, sequence, method) {
+  if (
+    handlers.hasOwnProperty(entity)
+    && handlers[entity].hasOwnProperty(sequence)
+    && handlers[entity][sequence].hasOwnProperty(method)
+  ) {
+    return handlers[entity][sequence][method];
   }
   else {
     return false;
@@ -115,12 +127,12 @@ describe('Build Resources for following tests', function() {
       // Register before/after global handlers.
       before: function(req, res, next) {
         // Store the invoked handler and continue.
-        setInvoked('before', req);
+        setInvoked('resource2', 'before', req);
         next();
       },
       after: function(req, res, next) {
         // Store the invoked handler and continue.
-        setInvoked('after', req);
+        setInvoked('resource2', 'after', req);
         next();
       }
     });
@@ -128,9 +140,9 @@ describe('Build Resources for following tests', function() {
     done();
   });
 
-  it('Build the /test/resource1/:resource1Id/nested endpoints', function(done) {
+  it('Build the /test/resource1/:resource1Id/nested1 endpoints', function(done) {
     // Create the schema.
-    var NestedSchema = new mongoose.Schema({
+    var Nested1Schema = new mongoose.Schema({
       resource1: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'resource1',
@@ -150,26 +162,60 @@ describe('Build Resources for following tests', function() {
     });
 
     // Create the model.
-    var NestedModel = mongoose.model('nested', NestedSchema);
+    var Nested1Model = mongoose.model('nested1', Nested1Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test/resource1/:resource1Id', 'nested', NestedModel).rest({
+    Resource(app, '/test/resource1/:resource1Id', 'nested1', Nested1Model).rest({
+      // Register before global handlers to set the resource1 variable.
       before: function(req, res, next) {
         req.body.resource1 = req.params.resource1Id;
         next();
       }
+    });
 
-      //// Register before/after global handlers.
-      //before: function(req, res, next) {
-      //  // Store the invoked handler and continue.
-      //  setInvoked('before', req);
-      //  next();
-      //},
-      //after: function(req, res, next) {
-      //  // Store the invoked handler and continue.
-      //  setInvoked('after', req);
-      //  next();
-      //}
+    done();
+  });
+
+  it('Build the /test/resource2/:resource2Id/nested2 endpoints', function(done) {
+    // Create the schema.
+    var Nested2Schema = new mongoose.Schema({
+      resource2: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'resource2',
+        index: true,
+        required: true
+      },
+      title: {
+        type: String,
+        required: true
+      },
+      age: {
+        type: Number
+      },
+      description: {
+        type: String
+      }
+    });
+
+    // Create the model.
+    var Nested2Model = mongoose.model('nested2', Nested2Schema);
+
+    // Create the REST resource and continue.
+    Resource(app, '/test/resource2/:resource2Id', 'nested2', Nested2Model).rest({
+      // Register before/after global handlers.
+      before: function(req, res, next) {
+        req.body.resource2 = req.params.resource2Id;
+        req.modelQuery = this.model.where('resource2', req.params.resource2Id);
+
+        // Store the invoked handler and continue.
+        setInvoked('nested2', 'before', req);
+        next();
+      },
+      after: function(req, res, next) {
+        // Store the invoked handler and continue.
+        setInvoked('nested2', 'after', req);
+        next();
+      }
     });
 
     done();
@@ -554,6 +600,9 @@ describe('Test single resource handlers capabilities', function() {
       .expect('Content-Type', /json/)
       .expect(201)
       .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
 
         var response = res.body;
         assert.equal(response.title, 'Test1');
@@ -561,8 +610,8 @@ describe('Test single resource handlers capabilities', function() {
         assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
 
         // Confirm that the handlers were called.
-        assert.equal(wasInvoked('before', 'post'), true);
-        assert.equal(wasInvoked('after', 'post'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'post'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'post'), true);
 
         // Store the resource and continue.
         resource = response;
@@ -576,14 +625,18 @@ describe('Test single resource handlers capabilities', function() {
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
         var response = res.body;
         assert.equal(response.title, 'Test1');
         assert.equal(response.description, '12345678');
         assert(response.hasOwnProperty('_id'), 'Resource ID not found');
 
         // Confirm that the handlers were called.
-        assert.equal(wasInvoked('before', 'get'), true);
-        assert.equal(wasInvoked('after', 'get'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'get'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'get'), true);
 
         // Store the resource and continue.
         resource = response;
@@ -600,14 +653,18 @@ describe('Test single resource handlers capabilities', function() {
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
         var response = res.body;
         assert.equal(response.title, 'Test1 - Updated');
         assert.equal(response.description, '12345678');
         assert(response.hasOwnProperty('_id'), 'Resource ID not found');
 
         // Confirm that the handlers were called.
-        assert.equal(wasInvoked('before', 'put'), true);
-        assert.equal(wasInvoked('after', 'put'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'put'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'put'), true);
 
         // Store the resource and continue.
         resource = response;
@@ -621,6 +678,10 @@ describe('Test single resource handlers capabilities', function() {
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
         var response = res.body;
         assert.equal(response.length, 1);
         assert.equal(response[0].title, 'Test1 - Updated');
@@ -628,8 +689,8 @@ describe('Test single resource handlers capabilities', function() {
         assert(response[0].hasOwnProperty('_id'), 'Resource ID not found');
 
         // Confirm that the handlers were called.
-        assert.equal(wasInvoked('before', 'index'), true);
-        assert.equal(wasInvoked('after', 'index'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'index'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'index'), true);
 
         // Store the resource and continue.
         resource = response[0];
@@ -642,8 +703,16 @@ describe('Test single resource handlers capabilities', function() {
       .delete('/test/resource2/' + resource._id)
       .expect(204)
       .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
         var response = res.body;
         assert.deepEqual(response, {});
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('resource2', 'before', 'delete'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'delete'), true);
 
         // Store the resource and continue.
         resource = response;
@@ -681,7 +750,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/GET an empty list of nested resources', function(done) {
     request(app)
-      .get('/test/resource1/' + resource._id + '/nested')
+      .get('/test/resource1/' + resource._id + '/nested1')
       .expect(204)
       .end(function(err, res) {
         if (err) {
@@ -696,7 +765,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/POST a new nested resource', function(done) {
     request(app)
-      .post('/test/resource1/' + resource._id + '/nested')
+      .post('/test/resource1/' + resource._id + '/nested1')
       .send({
         title: 'Nest1',
         description: '987654321'
@@ -709,9 +778,10 @@ describe('Test nested resource CRUD capabilities', function() {
         }
 
         var response = res.body;
-        assert.equal(response.resource1, resource._id);
         assert.equal(response.title, 'Nest1');
         assert.equal(response.description, '987654321');
+        assert(response.hasOwnProperty('resource1'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource1, resource._id);
         assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
         nested = response;
         done();
@@ -720,7 +790,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/GET the list of nested resources', function(done) {
     request(app)
-      .get('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .get('/test/resource1/' + resource._id + '/nested1/' + nested._id)
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
@@ -741,7 +811,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/PUT the nested resource', function(done) {
     request(app)
-      .put('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .put('/test/resource1/' + resource._id + '/nested1/' + nested._id)
       .send({
         title: 'Nest1 - Updated1'
       })
@@ -766,7 +836,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/PATCH data on the nested resource', function(done) {
     request(app)
-      .patch('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .patch('/test/resource1/' + resource._id + '/nested1/' + nested._id)
       .send([{ 'op': 'replace', 'path': '/title', 'value': 'Nest1 - Updated2' }])
       .expect('Content-Type', /json/)
       .expect(200)
@@ -789,7 +859,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/PATCH rejection on the nested resource due to failed test op', function(done) {
     request(app)
-      .patch('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .patch('/test/resource1/' + resource._id + '/nested1/' + nested._id)
       .send([
         { 'op': 'test', 'path': '/title', 'value': 'not-the-title' },
         { 'op': 'replace', 'path': '/title', 'value': 'Nest1 - Updated3' }
@@ -814,7 +884,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/GET the nested resource with patch changes', function(done) {
     request(app)
-      .get('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .get('/test/resource1/' + resource._id + '/nested1/' + nested._id)
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
@@ -835,7 +905,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/GET index of nested resources', function(done) {
     request(app)
-      .get('/test/resource1/' + resource._id + '/nested')
+      .get('/test/resource1/' + resource._id + '/nested1')
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function(err, res) {
@@ -857,7 +927,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/DELETE the nested resource', function(done) {
     request(app)
-      .delete('/test/resource1/' + resource._id + '/nested/' + nested._id)
+      .delete('/test/resource1/' + resource._id + '/nested1/' + nested._id)
       .expect(204)
       .end(function(err, res) {
         if (err) {
@@ -872,7 +942,7 @@ describe('Test nested resource CRUD capabilities', function() {
 
   it('/GET an empty list of nested resources', function(done) {
     request(app)
-      .get('/test/resource1/' + resource._id + '/nested/')
+      .get('/test/resource1/' + resource._id + '/nested1/')
       .expect(204)
       .end(function(err, res) {
         if (err) {
@@ -881,6 +951,185 @@ describe('Test nested resource CRUD capabilities', function() {
 
         var response = res.body;
         assert.deepEqual(response, {});
+        done();
+      });
+  });
+});
+
+describe('Test nested resource handlers capabilities', function() {
+  // Store the resources being mutated.
+  var resource = {};
+  var nested = {};
+
+  it('/POST a new parent resource', function(done) {
+    request(app)
+      .post('/test/resource2')
+      .send({
+        title: 'Test2',
+        description: '987654321'
+      })
+      .expect('Content-Type', /json/)
+      .expect(201)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, 'Test2');
+        assert.equal(response.description, '987654321');
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        resource = response;
+        done();
+      });
+  });
+
+  it('Reset the history of the global handlers', function(done) {
+    handlers = {};
+    done();
+  });
+
+  it('A POST request to a child resource should invoke the global handlers', function(done) {
+    request(app)
+      .post('/test/resource2/' + resource._id + '/nested2')
+      .send({
+        title: 'Nest2',
+        description: '987654321'
+      })
+      .expect('Content-Type', /json/)
+      .expect(201)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, 'Nest2');
+        assert.equal(response.description, '987654321');
+        assert(response.hasOwnProperty('resource2'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource2, resource._id);
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('nested2', 'before', 'post'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'post'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'post'), true);
+        assert.equal(wasInvoked('nested2', 'after', 'post'), true);
+
+        // Store the resource and continue.
+        nested = response;
+        done();
+      });
+  });
+
+  it('A GET request to a child resource should invoke the global handlers', function(done) {
+    request(app)
+      .get('/test/resource2/' + resource._id + '/nested2/' + nested._id)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, nested.title);
+        assert.equal(response.description, nested.description);
+        assert(response.hasOwnProperty('resource2'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource2, resource._id);
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response._id, nested._id);
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('nested2', 'before', 'get'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'get'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'get'), true);
+        assert.equal(wasInvoked('nested2', 'after', 'get'), true);
+        done();
+      });
+  });
+
+  it('A PUT request to a child resource should invoke the global handlers', function(done) {
+    request(app)
+      .put('/test/resource2/' + resource._id + '/nested2/' + nested._id)
+      .send({
+        title: 'Nest2 - Updated'
+      })
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.title, 'Nest2 - Updated');
+        assert.equal(response.description, nested.description);
+        assert(response.hasOwnProperty('resource2'), 'The response must contain the parent object `_id`');
+        assert.equal(response.resource2, resource._id);
+        assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response._id, nested._id);
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('nested2', 'before', 'put'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'put'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'put'), true);
+        assert.equal(wasInvoked('nested2', 'after', 'put'), true);
+
+        // Store the resource and continue.
+        nested = response;
+        done();
+      });
+  });
+
+  it('A GET (Index) request to a child resource should invoke the global handlers', function(done) {
+    request(app)
+      .get('/test/resource2/' + resource._id + '/nested2')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].title, nested.title);
+        assert.equal(response[0].description, nested.description);
+        assert(response[0].hasOwnProperty('resource2'), 'The response must contain the parent object `_id`');
+        assert.equal(response[0].resource2, resource._id);
+        assert(response[0].hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response[0]._id, nested._id);
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('nested2', 'before', 'index'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'index'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'index'), true);
+        assert.equal(wasInvoked('nested2', 'after', 'index'), true);
+        done();
+      });
+  });
+
+  it('A DELETE request to a child resource should invoke the global handlers', function(done) {
+    request(app)
+      .delete('/test/resource2/' + resource._id + '/nested2/' + nested._id)
+      .expect(204)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.deepEqual(response, {});
+
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('nested2', 'before', 'delete'), true);
+        assert.equal(wasInvoked('resource2', 'before', 'delete'), true);
+        assert.equal(wasInvoked('resource2', 'after', 'delete'), true);
+        assert.equal(wasInvoked('nested2', 'after', 'delete'), true);
+
+        // Store the resource and continue.
+        resource = response;
         done();
       });
   });
