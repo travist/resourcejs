@@ -28,8 +28,12 @@ var handlers = {};
  *   The express request to manipulate.
  */
 var setInvoked = function(entity, sequence, req) {
+  // Get the url fragments, to determine if this request is a get or index.
+  var parts = req.url.split('/');
+  parts.shift(); // Remove empty string element.
+
   var method = req.method.toLowerCase();
-  if (method === 'get' && (Object.keys(req.params).length === 0)) {
+  if (method === 'get' && (parts.length % 2 === 0)) {
     method = 'index';
   }
 
@@ -40,7 +44,6 @@ var setInvoked = function(entity, sequence, req) {
     handlers[entity][sequence] = {};
   }
 
-  console.log('[' + entity + '] ' + sequence + '.' + method);
   handlers[entity][sequence][method] = true;
 };
 
@@ -378,12 +381,16 @@ describe('Test single resource search capabilities', function() {
             age: age
           })
           .end(function(err, res) {
-            var resource = res.body;
-            assert.equal(resource.title, 'Test Age ' + age);
-            assert.equal(resource.description, 'Description of test age ' + age);
-            assert.equal(resource.age, age);
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+            assert.equal(response.title, 'Test Age ' + age);
+            assert.equal(response.description, 'Description of test age ' + age);
+            assert.equal(response.age, age);
             age++;
-            cb(err);
+            cb();
           });
       },
       done
@@ -397,15 +404,20 @@ describe('Test single resource search capabilities', function() {
       .expect('Content-Range', '0-9/25')
       .expect(206)
       .end(function(err, res) {
-        assert.equal(res.body.length, 10);
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
         var age = 0;
-        _.each(res.body, function(resource) {
+        _.each(response, function(resource) {
           assert.equal(resource.title, 'Test Age ' + age);
           assert.equal(resource.description, 'Description of test age ' + age);
           assert.equal(resource.age, age);
           age++;
         });
-        done(err);
+        done();
       });
   });
 
@@ -416,15 +428,20 @@ describe('Test single resource search capabilities', function() {
       .expect('Content-Range', '0-4/25')
       .expect(206)
       .end(function(err, res) {
-        assert.equal(res.body.length, 5);
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
         var age = 0;
-        _.each(res.body, function(resource) {
+        _.each(response, function(resource) {
           assert.equal(resource.title, 'Test Age ' + age);
           assert.equal(resource.description, 'Description of test age ' + age);
           assert.equal(resource.age, age);
           age++;
         });
-        done(err);
+        done();
       });
   });
 
@@ -435,15 +452,20 @@ describe('Test single resource search capabilities', function() {
       .expect('Content-Range', '4-8/25')
       .expect(206)
       .end(function(err, res) {
-        assert.equal(res.body.length, 5);
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
         var age = 4;
-        _.each(res.body, function(resource) {
+        _.each(response, function(resource) {
           assert.equal(resource.title, 'Test Age ' + age);
           assert.equal(resource.description, 'Description of test age ' + age);
           assert.equal(resource.age, age);
           age++;
         });
-        done(err);
+        done();
       });
   });
 
@@ -454,15 +476,20 @@ describe('Test single resource search capabilities', function() {
       .expect('Content-Range', '10-19/25')
       .expect(206)
       .end(function(err, res) {
-        assert.equal(res.body.length, 10);
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
         var age = 10;
-        _.each(res.body, function(resource) {
+        _.each(response, function(resource) {
           assert.equal(resource.title, 'Test Age ' + age);
           assert.equal(resource.description, undefined);
           assert.equal(resource.age, age);
           age++;
         });
-        done(err);
+        done();
       });
   });
 
@@ -473,15 +500,20 @@ describe('Test single resource search capabilities', function() {
       .expect('Content-Range', '0-9/25')
       .expect(206)
       .end(function(err, res) {
-        assert.equal(res.body.length, 10);
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
         var age = 24;
-        _.each(res.body, function(resource) {
+        _.each(response, function(resource) {
           assert.equal(resource.title, undefined);
           assert.equal(resource.description, undefined);
           assert.equal(resource.age, age);
           age--;
         });
-        done(err);
+        done();
       });
   });
 
@@ -492,15 +524,20 @@ describe('Test single resource search capabilities', function() {
       .expect('Content-Range', '5-9/25')
       .expect(206)
       .end(function(err, res) {
-        assert.equal(res.body.length, 5);
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
         var age = 19;
-        _.each(res.body, function(resource) {
+        _.each(response, function(resource) {
           assert.equal(resource.title, undefined);
           assert.equal(resource.description, undefined);
           assert.equal(resource.age, age);
           age--;
         });
-        done(err);
+        done();
       });
   });
 
@@ -511,11 +548,16 @@ describe('Test single resource search capabilities', function() {
       .expect('Content-Range', '0-0/1')
       .expect(200)
       .end(function(err, res) {
-        assert.equal(res.body.length, 1);
-        assert.equal(res.body[0].title, undefined);
-        assert.equal(res.body[0].description, undefined);
-        assert.equal(res.body[0].age, 5);
-        done(err);
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].title, undefined);
+        assert.equal(response[0].description, undefined);
+        assert.equal(response[0].age, 5);
+        done();
       });
   });
 
@@ -524,11 +566,16 @@ describe('Test single resource search capabilities', function() {
       .get('/test/resource1?age__lt=5')
       .expect('Content-Range', '0-4/5')
       .end(function(err, res) {
-        assert.equal(res.body.length, 5);
-        _.each(res.body, function(resource) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        _.each(response, function(resource) {
           assert.ok(resource.age < 5);
         });
-        done(err);
+        done();
       });
   });
 
@@ -537,11 +584,16 @@ describe('Test single resource search capabilities', function() {
       .get('/test/resource1?age__lte=5')
       .expect('Content-Range', '0-5/6')
       .end(function(err, res) {
-        assert.equal(res.body.length, 6);
-        _.each(res.body, function(resource) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 6);
+        _.each(response, function(resource) {
           assert.ok(resource.age <= 5);
         });
-        done(err);
+        done();
       });
   });
 
@@ -550,11 +602,16 @@ describe('Test single resource search capabilities', function() {
       .get('/test/resource1?age__gt=5')
       .expect('Content-Range', '0-9/19')
       .end(function(err, res) {
-        assert.equal(res.body.length, 10);
-        _.each(res.body, function(resource) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        _.each(response, function(resource) {
           assert.ok(resource.age > 5);
         });
-        done(err);
+        done();
       });
   });
 
@@ -563,11 +620,16 @@ describe('Test single resource search capabilities', function() {
       .get('/test/resource1?age__gte=5')
       .expect('Content-Range', '0-9/20')
       .end(function(err, res) {
-        assert.equal(res.body.length, 10);
-        _.each(res.body, function(resource) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        _.each(response, function(resource) {
           assert.ok(resource.age >= 5);
         });
-        done(err);
+        done();
       });
   });
 
@@ -576,12 +638,17 @@ describe('Test single resource search capabilities', function() {
       .get('/test/resource1?title__regex=/.*Age [0-1]?[0-3]$/g')
       .expect('Content-Range', '0-7/8')
       .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
         var valid = [0, 1, 2, 3, 10, 11, 12, 13];
-        assert.equal(res.body.length, valid.length);
-        _.each(res.body, function(resource) {
+        assert.equal(response.length, valid.length);
+        _.each(response, function(resource) {
           assert.ok(valid.indexOf(resource.age) !== -1);
         });
-        done(err);
+        done();
       });
   });
 });
@@ -1012,8 +1079,6 @@ describe('Test nested resource handlers capabilities', function() {
 
         // Confirm that the handlers were called.
         assert.equal(wasInvoked('nested2', 'before', 'post'), true);
-        assert.equal(wasInvoked('resource2', 'before', 'post'), true);
-        assert.equal(wasInvoked('resource2', 'after', 'post'), true);
         assert.equal(wasInvoked('nested2', 'after', 'post'), true);
 
         // Store the resource and continue.
@@ -1042,8 +1107,6 @@ describe('Test nested resource handlers capabilities', function() {
 
         // Confirm that the handlers were called.
         assert.equal(wasInvoked('nested2', 'before', 'get'), true);
-        assert.equal(wasInvoked('resource2', 'before', 'get'), true);
-        assert.equal(wasInvoked('resource2', 'after', 'get'), true);
         assert.equal(wasInvoked('nested2', 'after', 'get'), true);
         done();
       });
@@ -1072,8 +1135,6 @@ describe('Test nested resource handlers capabilities', function() {
 
         // Confirm that the handlers were called.
         assert.equal(wasInvoked('nested2', 'before', 'put'), true);
-        assert.equal(wasInvoked('resource2', 'before', 'put'), true);
-        assert.equal(wasInvoked('resource2', 'after', 'put'), true);
         assert.equal(wasInvoked('nested2', 'after', 'put'), true);
 
         // Store the resource and continue.
@@ -1103,8 +1164,6 @@ describe('Test nested resource handlers capabilities', function() {
 
         // Confirm that the handlers were called.
         assert.equal(wasInvoked('nested2', 'before', 'index'), true);
-        assert.equal(wasInvoked('resource2', 'before', 'index'), true);
-        assert.equal(wasInvoked('resource2', 'after', 'index'), true);
         assert.equal(wasInvoked('nested2', 'after', 'index'), true);
         done();
       });
@@ -1124,8 +1183,6 @@ describe('Test nested resource handlers capabilities', function() {
 
         // Confirm that the handlers were called.
         assert.equal(wasInvoked('nested2', 'before', 'delete'), true);
-        assert.equal(wasInvoked('resource2', 'before', 'delete'), true);
-        assert.equal(wasInvoked('resource2', 'after', 'delete'), true);
         assert.equal(wasInvoked('nested2', 'after', 'delete'), true);
 
         // Store the resource and continue.
