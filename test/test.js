@@ -344,6 +344,23 @@ describe('Test single resource CRUD capabilities', function() {
       });
   });
 
+  it('Cannot /POST to an existing resource', function(done) {
+    request(app)
+      .post('/test/resource1/' + resource._id)
+      .expect('Content-Type', /text\/html/)
+      .expect(404)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.text;
+        var expected = 'Cannot POST /test/resource1/' + resource._id + '\n';
+        assert.deepEqual(response, expected);
+        done();
+      });
+  });
+
   it('/DELETE the resource', function(done) {
     request(app)
       .delete('/test/resource1/' + resource._id)
@@ -988,6 +1005,23 @@ describe('Test nested resource CRUD capabilities', function() {
         assert.equal(response[0].resource1, resource._id);
         assert(response[0].hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
         assert.equal(response[0]._id, nested._id);
+        done();
+      });
+  });
+
+  it('Cannot /POST to an existing nested resource', function(done) {
+    request(app)
+      .post('/test/resource1/' + resource._id + '/nested1/' + nested._id)
+      .expect('Content-Type', /text\/html/)
+      .expect(404)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.text;
+        var expected = 'Cannot POST /test/resource1/' + resource._id + '/nested1/' + nested._id + '\n';
+        assert.deepEqual(response, expected);
         done();
       });
   });
