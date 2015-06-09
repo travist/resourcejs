@@ -183,6 +183,7 @@ module.exports = function(app, route, modelName, model) {
     rest: function(options) {
       return this
         .index(this.getMethodOptions('index', options))
+        .aggregate(this.getMethodOptions('aggregate', options))
         .get(this.getMethodOptions('get', options))
         .put(this.getMethodOptions('put', options))
         .patch(this.getMethodOptions('patch', options))
@@ -318,6 +319,23 @@ module.exports = function(app, route, modelName, model) {
               if (err) return this.setResponse(res, {status: 500, error: err}, next);
               return this.setResponse(res, {status: res.statusCode, item: items}, next);
             }.bind(this));
+        }.bind(this));
+      }, this.respond.bind(this), options);
+      return this;
+    },
+
+    /**
+     * Register the GET method for this resource.
+     */
+    aggregate: function(options) {
+      this.methods.push('aggregate');
+      this.register(app, 'get', this.route + '/agg', function(req, res, next) {
+        if (req.skipResource) { return next(); }
+        var query = req.modelQuery || this.model;
+        query.exec(function(err, item) {
+          if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          if (!item) return this.setResponse(res, {status: 404}, next);
+          return this.setResponse(res, {status: 200, item: item}, next);
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
