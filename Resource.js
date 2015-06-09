@@ -330,11 +330,9 @@ module.exports = function(app, route, modelName, model) {
      */
     aggregate: function(options) {
       this.methods.push('aggregate');
-      var aggregate = req.aggregate;
-      if (!aggregate) { return next(); }
-      this.register(app, 'get', this.route + '/aggregate/' + aggregate.name, function(req, res, next) {
+      this.register(app, 'get', this.route + '/aggregate/' + options.name, function(req, res, next) {
         if (req.skipResource) { return next(); }
-        var query = aggregate.query;
+        var query = options.query;
         query.exec(function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404}, next);
