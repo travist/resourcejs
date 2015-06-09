@@ -54,14 +54,14 @@ module.exports = function(app, route, modelName, model) {
     register: function(app, method, path, callback, last, options) {
       var args = [path];
       if (options && options.before) {
-        before = [].concat(options.before);
+        var before = [].concat(options.before);
         for (var len = before.length, i=0; i<len; ++i) {
           args.push(before[i].bind(this));
         }
       }
       args.push(callback.bind(this));
       if (options && options.after) {
-        after = [].concat(options.after);
+        var after = [].concat(options.after);
         for (var len = after.length, i=0; i<len; ++i) {
           args.push(after[i].bind(this));
         }
@@ -94,7 +94,7 @@ module.exports = function(app, route, modelName, model) {
      *   The next middleware
      */
     respond: function(req, res, next) {
-      if (req.noResponse) { return next(); }
+      if (req.noResponse || res.headerSent || res.headersSent) { return next(); }
       if (res.resource) {
         switch (res.resource.status) {
           case 400:
@@ -125,8 +125,9 @@ module.exports = function(app, route, modelName, model) {
             res.status(res.resource.status).json(res.resource.item);
             break;
         }
-        return next();
       }
+
+      next();
     },
 
     /**
@@ -384,6 +385,7 @@ module.exports = function(app, route, modelName, model) {
         query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404}, next);
+          if (req.body.hasOwnProperty('__v')) { delete req.body.__v; }
           item.set(req.body);
           item.save(function (err, item) {
             if (err) return this.setResponse(res, {status: 400, error: err}, next);
