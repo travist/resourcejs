@@ -330,6 +330,7 @@ module.exports = function(app, route, modelName, model) {
      */
     aggregate: function(options) {
       this.methods.push('virtual');
+      console.log('options', options);
       this.register(app, 'get', this.route + '/virtual/' + options.name, function(req, res, next) {
         if (req.skipResource) { return next(); }
         var query = options.query;
