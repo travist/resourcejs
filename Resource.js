@@ -184,7 +184,7 @@ module.exports = function(app, route, modelName, model) {
     rest: function(options) {
       return this
         .index(this.getMethodOptions('index', options))
-        .aggregate(this.getMethodOptions('aggregate', options))
+        .virtual(this.getMethodOptions('virtual', options))
         .get(this.getMethodOptions('get', options))
         .put(this.getMethodOptions('put', options))
         .patch(this.getMethodOptions('patch', options))
@@ -329,8 +329,8 @@ module.exports = function(app, route, modelName, model) {
      * Register the GET method for this resource.
      */
     aggregate: function(options) {
-      this.methods.push('aggregate');
-      this.register(app, 'get', this.route + '/aggregate/' + options.name, function(req, res, next) {
+      this.methods.push('virtual');
+      this.register(app, 'get', this.route + '/virtual/' + options.name, function(req, res, next) {
         if (req.skipResource) { return next(); }
         var query = options.query;
         query.exec(function(err, item) {
