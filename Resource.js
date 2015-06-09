@@ -328,7 +328,7 @@ module.exports = function(app, route, modelName, model) {
     /**
      * Register the GET method for this resource.
      */
-    aggregate: function(options) {
+    virtual: function(options) {
       this.methods.push('virtual');
       console.log('options', options);
       this.register(app, 'get', this.route + '/virtual/' + options.name, function(req, res, next) {
