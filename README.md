@@ -10,7 +10,7 @@ Provided the following code
 var express = require('express');
 var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
-var Resource = require('../Resource');
+var Resource = require('resourcejs');
 
 // Create the app.
 var app = express();
