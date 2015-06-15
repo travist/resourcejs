@@ -4,13 +4,23 @@ Resource.js - A simple Express library to reflect Mongoose models to a REST inte
 Resource.js is designed to be a minimalistic Express library that reflects a Mongoose
 model to a RESTful interface. It does this through a very simple and extensible interface.
 
+Installation
+--------------
+You can install Resource.js using NPM.
+
+```
+npm install --save resourcejs
+```
+
+Usage
+--------------
 Provided the following code
 
 ```javascript
 var express = require('express');
 var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
-var Resource = require('../Resource');
+var Resource = require('resourcejs');
 
 // Create the app.
 var app = express();
