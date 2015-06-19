@@ -1,0 +1,105 @@
+0 info it worked if it ends with ok
+1 verbose cli [ 'C:\\Program Files\\nodejs\\\\node.exe',
+1 verbose cli   'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
+1 verbose cli   'publish' ]
+2 info using npm@2.5.1
+3 info using node@v0.12.1
+4 verbose node symlink C:\Program Files\nodejs\\node.exe
+5 verbose publish [ '.' ]
+6 silly cache add args [ '.', null ]
+7 verbose cache add spec .
+8 silly cache add parsed spec { raw: '.',
+8 silly cache add   scope: null,
+8 silly cache add   name: null,
+8 silly cache add   rawSpec: '.',
+8 silly cache add   spec: 'X:\\Development\\forks\\resourcejs',
+8 silly cache add   type: 'directory' }
+9 verbose addLocalDirectory C:\Users\Jonny\AppData\Roaming\npm-cache\resourcejs\0.1.20\package.tgz not in flight; packing
+10 verbose tar pack [ 'C:\\Users\\Jonny\\AppData\\Roaming\\npm-cache\\resourcejs\\0.1.20\\package.tgz',
+10 verbose tar pack   'X:\\Development\\forks\\resourcejs' ]
+11 verbose tarball C:\Users\Jonny\AppData\Roaming\npm-cache\resourcejs\0.1.20\package.tgz
+12 verbose folder X:\Development\forks\resourcejs
+13 info prepublish resourcejs@0.1.20
+14 verbose addLocalTarball adding from inside cache C:\Users\Jonny\AppData\Roaming\npm-cache\resourcejs\0.1.20\package.tgz
+15 silly cache afterAdd resourcejs@0.1.20
+16 verbose afterAdd C:\Users\Jonny\AppData\Roaming\npm-cache\resourcejs\0.1.20\package\package.json not in flight; writing
+17 verbose afterAdd C:\Users\Jonny\AppData\Roaming\npm-cache\resourcejs\0.1.20\package\package.json written
+18 silly publish { name: 'resourcejs',
+18 silly publish   version: '0.1.20',
+18 silly publish   description: 'A simple Express library to reflect Mongoose models to a REST interface.',
+18 silly publish   main: 'Resource.js',
+18 silly publish   scripts: { test: 'node ./node_modules/mocha/bin/mocha' },
+18 silly publish   repository: { type: 'git', url: 'https://github.com/travist/resourcejs' },
+18 silly publish   keywords: [ 'Express', 'Mongoose', 'Node', 'MEAN' ],
+18 silly publish   author: { name: 'Travis Tidwell' },
+18 silly publish   license: 'MIT',
+18 silly publish   bugs: { url: 'https://github.com/travist/resourcejs/issues' },
+18 silly publish   homepage: 'https://github.com/travist/resourcejs',
+18 silly publish   dependencies:
+18 silly publish    { 'fast-json-patch': '^0.5.1',
+18 silly publish      lodash: '^3.0.0',
+18 silly publish      mongoose: '^3.8.22',
+18 silly publish      'node-paginate-anything': 'git://github.com/travist/node-paginate-anything.git#d3fd205557614a67a0bdee19fe581f43aba539bc' },
+18 silly publish   devDependencies:
+18 silly publish    { async: '^0.9.0',
+18 silly publish      'body-parser': '^1.10.2',
+18 silly publish      express: '^4.11.1',
+18 silly publish      mocha: '^2.1.0',
+18 silly publish      mongoose: '^3.8.21',
+18 silly publish      should: '^4.6.1',
+18 silly publish      supertest: '^0.15.0' },
+18 silly publish   readme: 'Resource.js - A simple Express library to reflect Mongoose models to a REST interface with a splash of Swagger.io love.\r\n==============================================================\r\n\r\nResource.js is designed to be a minimalistic Express library that reflects a Mongoose\r\nmodel to a RESTful interface. It does this through a very simple and extensible interface.\r\n\r\nProvided the following code\r\n\r\n```\r\nvar express = require(\'express\');\r\nvar bodyParser = require(\'body-parser\');\r\nvar mongoose = require(\'mongoose\');\r\nvar Resource = require(\'../Resource\');\r\n\r\n// Create the app.\r\nvar app = express();\r\n\r\n// Use the body parser.\r\napp.use(bodyParser.urlencoded({extended: true}));\r\napp.use(bodyParser.json());\r\n\r\n// Create the schema.\r\nvar ResourceSchema = new mongoose.Schema({\r\n  title: {\r\n    type: String,\r\n    required: true\r\n  },\r\n  description: {\r\n    type: String\r\n  }\r\n});\r\n\r\n// Create the model.\r\nvar ResourceModel = mongoose.model(\'Resource\', ResourceSchema);\r\n\r\n// Create the REST resource.\r\nResource(app, \'\', \'resource\', ResourceModel).rest();\r\n```\r\n\r\nThe following rest interface would then be exposed.\r\n\r\n * ***/resource*** - (GET) - List all resources.\r\n * ***/resource*** - (POST) - Create a new resource.\r\n * ***/resource/:id*** - (GET) - Get a specific resource.\r\n * ***/resource/:id*** - (PUT) - Updates an existing resource.\r\n * ***/resource/:id*** - (DELETE) - Deletes an existing resource.\r\n\r\nParameters\r\n----------------\r\nThe ```Resource``` object takes 4 arguments.\r\n\r\n```Resource(app, route, name, model)```\r\n\r\n - ***app*** - This is the Express application.\r\n - ***route*** - This is the route to "mount" this resource onto. For example, if you were doing nested resources, this could be \'/parent/:parentId\'\r\n - ***name*** - The name of the resource, which will then be used for the URL path of that resource.\r\n - ***model*** - The Mongoose Model for this interface.\r\n\r\nOnly exposing certain methods\r\n-------------------\r\nYou can also expose only a certain amount of methods, by instead of using\r\nthe ***rest*** method, you can use the specific methods and then chain them\r\ntogether like so.\r\n\r\n```\r\n// Do not expose DELETE.\r\nResource(app, \'\', \'resource\', ResourceModel).get().put().post().index();\r\n```\r\n\r\nAdding Before and After handlers\r\n-------------------\r\nThis library allows you to handle middleware either before or after the\r\nrequest is made to the Mongoose query mechanism.  This allows you to\r\neither alter the query being made or, provide authentication.\r\n\r\nFor example, if you wish to provide basic authentication to every endpoint,\r\nyou can use the ***before*** callback attached to the ***rest*** method like so.\r\n\r\n```\r\nnpm install basic-auth-connect\r\n```\r\n\r\n```\r\nvar basicAuth = require(\'basic-auth-connect\');\r\n\r\n...\r\n...\r\n\r\nResource(app, \'\', \'resource\', ResourceModel).rest({\r\n  before: basicAuth(\'username\', \'password\')\r\n});\r\n```\r\n\r\nYou can also target individual methods so if you wanted to protect POST, PUT, and DELETE\r\nbut not GET and INDEX you would do the following.\r\n\r\n```\r\nResource(app, \'\', \'resource\', ResourceModel).rest({\r\n  beforePut: basicAuth(\'username\', \'password\'),\r\n  beforePost: basicAuth(\'username\', \'password\'),\r\n  beforeDelete: basicAuth(\'username\', \'password\')\r\n});\r\n```\r\n\r\nYou can also do this by specifying the handlers within the specific method calls like so.\r\n\r\n```\r\nResource(app, \'\', \'resource\', ResourceModel)\r\n  .get()\r\n  .put({\r\n    before: basicAuth(\'username\', \'password\'),\r\n    after: function(req, res, next) {\r\n      console.log("PUT was just called!");\r\n    }\r\n  })\r\n  .post({\r\n  \tbefore: basicAuth(\'username\', \'password\')\r\n  });\r\n```\r\n\r\n***After Handlers***:  The after handlers allow you to modify the contents of the resource before it is handed over to the client. It does this by setting a ```resource``` object on the ```res``` object. This ```resource``` object follows the following schema.\r\n\r\n  - status: The status code that will be sent to the client.\r\n  - error: Any error that may have been caused within the request.\r\n  - item: The resource item that is going to be sent to the client.\r\n\r\nFor example, if you have a resource that has a title that is sent to the user, you could change that title by doing the following.\r\n\r\n```\r\nResource(app, \'\', \'resource\', ResourceModel).get({\r\n  after: function(req, res, next) {\r\n    res.resource.item.title = \'I am changing!!\';\r\n    next();\r\n  }\r\n});\r\n```\r\n\r\nAdding custom queries\r\n---------------------------------\r\nUsing the method above, it is possible to provide some custom queries in your ***before*** middleware.\r\nWe can do this by adding a ***methodQuery*** to the ***req*** object during the middleware. This query\r\nuses the Mongoose query mechanism that you can see here http://mongoosejs.com/docs/api.html#query_Query-where.\r\n\r\nFor example, if we wish to show an index that filters ages greater than 18, we would do the following.\r\n\r\n```\r\nResource(app, \'\', \'user\', UserModel).rest({\r\n  before: function(req, res, next) {\r\n    req.modelQuery = this.model.where(\'age\').gt(18);\r\n  }\r\n});\r\n```\r\n\r\nNested Resources\r\n-----------------\r\nWith this library, it is also pretty easy to nest resources. Here is an example of how to do it.\r\n\r\n```\r\nvar express = require(\'express\');\r\nvar bodyParser = require(\'body-parser\');\r\nvar mongoose = require(\'mongoose\');\r\nvar Resource = require(\'../Resource\');\r\n\r\n// Create the app.\r\nvar app = express();\r\n\r\n// Use the body parser.\r\napp.use(bodyParser.urlencoded({extended: true}));\r\napp.use(bodyParser.json());\r\n\r\n// Parent model\r\nvar Parent = mongoose.model(\'Parent\', new mongoose.Schema({\r\n  name: {\r\n    type: String,\r\n    required: true\r\n  }\r\n}));\r\n\r\n// Child model.\r\nvar Child = mongoose.model(\'Child\', new mongoose.Schema({\r\n  name: {\r\n    type: String,\r\n    required: true\r\n  },\r\n  parent: {\r\n    type: mongoose.Schema.Types.ObjectId,\r\n    ref: \'Parent\',\r\n    index: true,\r\n    required: true\r\n  }\r\n}));\r\n\r\n// The parent REST interface.\r\nResource(app, \'\', \'parent\', Parent).rest();\r\n\r\n// The child REST interface.\r\nResource(app, \'/parent/:parentId\', \'child\', Child).rest({\r\n\r\n  // Add a before handler to include filter and parent information.\r\n  before: function(req, res, next) {\r\n    req.body.parent = req.params.parentId;\r\n    req.modelQuery = this.model.where(\'parent\', req.params.parentId);\r\n    next();\r\n  }\r\n});\r\n```\r\n\r\nThis would now expose the following...\r\n\r\n * ***/parent*** - (GET) - List all parents.\r\n * ***/parent*** - (POST) - Create a new parent.\r\n * ***/parent/:parentId*** - (GET) - Get a specific parent.\r\n * ***/parent/:parentId*** - (PUT) - Updates an existing parent.\r\n * ***/parent/:parentId*** - (DELETE) - Deletes an existing parent.\r\n * ***/parent/:parentId/child*** - (GET) - List all children of a parent.\r\n * ***/parent/:parentId/child*** - (POST) - Create a new child.\r\n * ***/parent/:parentId/child/:childId*** - (GET) - Get a specific child per parent.\r\n * ***/parent/:parentId/child/:childId*** - (PUT) - Update a child for a parent.\r\n * ***/parent/:parentId/child/:childId*** - (DELETE) - Delete a child for a parent.\r\n\r\nFiltering the results.\r\n--------------------------------\r\nThe ```index()``` that is created is capable of doing some complex filtering using Query arguments within the URL. They are described as the following.\r\n\r\n| Filter                       | Query    | Example                                              | Description                                                      |\r\n|------------------------------|----------|------------------------------------------------------|------------------------------------------------------------------|\r\n| **equal**                    | `equals` | `/users?gender=male` \t\t\t                     | both return all male users                                       |\r\n| **not equal**                | `ne`     | `/users?gender__ne=male`                             | returns all users who are not male (`female` and `x`)            |\r\n| **greater than**             | `gt`     | `/users?age__gt=18`                                  | returns all users older than 18                                  |\r\n| **greater than or equal to** | `gte`    | `/users?age__gte=18`                                 | returns all users 18 and older (age should be a number property) |\r\n| **less than**                | `lt`     | `/users?age__lt=30`                                  | returns all users age 29 and younger                             |\r\n| **less than or equal to**    | `lte`    | `/users?age__lte=30`                                 | returns all users age 30 and younger                             |\r\n| **in**                       | `in`     | `/users?gender__in=female,male`                      | returns all female and male users                                |\r\n| **Regex**                    | `regex`  | `/users?username__regex=/^travis/i`                  | returns all users with a username starting with travis           |\r\n\r\n\r\nAdding Swagger.io v2 documentation\r\n--------------------------------\r\nAlong with auto-generating API\'s for your application, this library also is able to\r\nauto generate Swagger.io documentation so that your API\'s are well documented and can\r\nbe easily used and understood by everyone.\r\n\r\nEach Resource object has the ability to generate the Swagger docs for that resource,\r\nand this can then be combined to create the Swagger docs necessary to feed into the\r\nSwagger UI tools.\r\n\r\n***Getting the swagger documentation for a resource***\r\n```\r\nvar resource = Resource(app, \'\', \'resource\', ResourceModel).rest();\r\n\r\n// Print out the Swagger docs for this resource.\r\nconsole.log(resource.swagger());\r\n```\r\n\r\nYou can then use this to create a full specification for you API with all your resources\r\nby doing the following.\r\n\r\n```\r\nvar _ = require(\'lodash\');\r\n\r\n// Define all our resources.\r\nvar resources = {\r\n\tuser: Resource(app, \'\', \'user\', UserModel).rest(),\r\n\tgroup: Resource(app, \'\', \'group\', GroupModel).rest(),\r\n\trole: Resource(app, \'\', \'role\', RoleModel).rest()\r\n};\r\n\r\n// Get the Swagger paths and definitions for each resource.\r\nvar paths = {};\r\nvar definitions = {};\r\n_.each(resources, function(resource) {\r\n  var swagger = resource.swagger();\r\n  paths = _.assign(paths, swagger.paths);\r\n  definitions = _.assign(definitions, swagger.definitions);\r\n});\r\n\r\n// Define the specification.\r\nvar specification = {\r\n  swagger: \'2.0\',\r\n  info: {\r\n    description: \'\',\r\n    version: \'0.0.1\',\r\n    title: \'\',\r\n    contact: {\r\n      name: \'test@example.com\'\r\n    },\r\n    license: {\r\n      name: \'MIT\',\r\n      url: \'http://opensource.org/licenses/MIT\'\r\n    }\r\n  },\r\n  host: \'localhost:3000\',\r\n  basePath: \'\',\r\n  schemes: [\'http\'],\r\n  definitions: definitions,\r\n  paths: paths\r\n};\r\n\r\n// Show the specification at the URL.\r\napp.get(\'/spec\', function(req, res, next) {\r\n\tres.json(specification);\r\n});\r\n```\r\n',
+18 silly publish   readmeFilename: 'README.md',
+18 silly publish   gitHead: '2d461fdc61964d5a17980f4e32d83592f2249afb',
+18 silly publish   _id: 'resourcejs@0.1.20',
+18 silly publish   _shasum: '60696cdfdb35c2ba26983513e6b21c677c2aecbe',
+18 silly publish   _from: '.' }
+19 silly mapToRegistry name resourcejs
+20 silly mapToRegistry using default registry
+21 silly mapToRegistry registry https://registry.npmjs.org/
+22 silly mapToRegistry uri https://registry.npmjs.org/resourcejs
+23 verbose publish registryBase https://registry.npmjs.org/
+24 silly publish uploading C:\Users\Jonny\AppData\Roaming\npm-cache\resourcejs\0.1.20\package.tgz
+25 verbose request uri https://registry.npmjs.org/resourcejs
+26 verbose request sending authorization for write operation
+27 info attempt registry request try #1 at 1:55:14 PM
+28 verbose request using bearer token for auth
+29 verbose request id cec3ccdef18cf72c
+30 http request PUT https://registry.npmjs.org/resourcejs
+31 http 403 https://registry.npmjs.org/resourcejs
+32 verbose headers { 'content-type': 'application/json',
+32 verbose headers   'cache-control': 'max-age=60',
+32 verbose headers   'content-length': '102',
+32 verbose headers   'accept-ranges': 'bytes',
+32 verbose headers   date: 'Fri, 19 Jun 2015 12:55:11 GMT',
+32 verbose headers   via: '1.1 varnish',
+32 verbose headers   connection: 'keep-alive',
+32 verbose headers   'x-served-by': 'cache-lhr6329-LHR',
+32 verbose headers   'x-cache': 'MISS',
+32 verbose headers   'x-cache-hits': '0',
+32 verbose headers   'x-timer': 'S1434718510.655095,VS0,VE1222' }
+33 verbose request invalidating C:\Users\Jonny\AppData\Roaming\npm-cache\registry.npmjs.org\resourcejs on PUT
+34 error publish Failed PUT 403
+35 verbose stack Error: You do not have permission to publish 'resourcejs'. Are you logged in as the correct user? : resourcejs
+35 verbose stack     at CachingRegistryClient.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\npm-registry-client\lib\request.js:254:14)
+35 verbose stack     at Request._callback (C:\Program Files\nodejs\node_modules\npm\node_modules\npm-registry-client\lib\request.js:178:14)
+35 verbose stack     at Request.self.callback (C:\Program Files\nodejs\node_modules\npm\node_modules\request\request.js:344:22)
+35 verbose stack     at Request.emit (events.js:110:17)
+35 verbose stack     at Request.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\request\request.js:1239:14)
+35 verbose stack     at Request.emit (events.js:129:20)
+35 verbose stack     at IncomingMessage.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\request\request.js:1187:12)
+35 verbose stack     at IncomingMessage.emit (events.js:129:20)
+35 verbose stack     at _stream_readable.js:908:16
+35 verbose stack     at process._tickCallback (node.js:355:11)
+36 verbose statusCode 403
+37 verbose pkgid resourcejs
+38 verbose cwd X:\Development\forks\resourcejs
+39 error Windows_NT 6.1.7601
+40 error argv "C:\\Program Files\\nodejs\\\\node.exe" "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js" "publish"
+41 error node v0.12.1
+42 error npm  v2.5.1
+43 error code E403
+44 error You do not have permission to publish 'resourcejs'. Are you logged in as the correct user? : resourcejs
+45 error If you need help, you may report this error at:
+45 error     <http://github.com/npm/npm/issues>
+46 verbose exit [ 1, true ]
