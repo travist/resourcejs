@@ -329,7 +329,8 @@ module.exports = function(app, route, modelName, model) {
      */
     virtual: function(options) {
       this.methods.push('virtual');
-      this.register(app, 'get', this.route, function(req, res, next) {
+      var route = this.route + '/virtual/' + options.path;
+      this.register(app, 'get', route, function(req, res, next) {
         if (req.skipResource) { return next(); }
         var query = req.modelQuery;
         query.exec(function(err, item) {
