@@ -3,7 +3,6 @@ var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
 
-
 module.exports = function(app, route, modelName, model) {
 
   // Create the name of the resource.
@@ -184,6 +183,7 @@ module.exports = function(app, route, modelName, model) {
     rest: function(options) {
       return this
         .index(this.getMethodOptions('index', options))
+        .virtual(this.getMethodOptions('virtual', options))
         .get(this.getMethodOptions('get', options))
         .put(this.getMethodOptions('put', options))
         .patch(this.getMethodOptions('patch', options))
@@ -319,6 +319,25 @@ module.exports = function(app, route, modelName, model) {
               if (err) return this.setResponse(res, {status: 500, error: err}, next);
               return this.setResponse(res, {status: res.statusCode, item: items}, next);
             }.bind(this));
+        }.bind(this));
+      }, this.respond.bind(this), options);
+      return this;
+    },
+
+    /**
+     * Virtual (GET) method. Returns a user-defined projection (typically an aggregate result)
+     * derived from this resource
+     */
+    virtual: function(options) {
+      this.methods.push('virtual');
+      var path = (options.path === undefined) ? this.path : options.path;
+      this.register(app, 'get', this.route + '/virtual/' + path, function(req, res, next) {
+        if (req.skipResource) { return next(); }
+        var query = req.modelQuery;
+        query.exec(function(err, item) {
+          if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          if (!item) return this.setResponse(res, {status: 404}, next);
+          return this.setResponse(res, {status: 200, item: item}, next);
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
