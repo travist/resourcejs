@@ -325,12 +325,13 @@ module.exports = function(app, route, modelName, model) {
     },
 
     /**
-     * Register the GET method for this resource.
+     * Virtual (GET) method. Returns a user-defined projection (typically an aggregate result)
+     * derived from this resource
      */
     virtual: function(options) {
       this.methods.push('virtual');
-      var route = this.route + '/virtual/' + options.path;
-      this.register(app, 'get', route, function(req, res, next) {
+      var path = (options.path === undefined) ? this.path : options.path;
+      this.register(app, 'get', this.route + '/virtual/' + path, function(req, res, next) {
         if (req.skipResource) { return next(); }
         var query = req.modelQuery;
         query.exec(function(err, item) {
