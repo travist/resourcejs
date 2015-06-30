@@ -16,7 +16,7 @@ Usage
 --------------
 Provided the following code
 
-```
+```javascript
 var express = require('express');
 var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
@@ -59,7 +59,9 @@ Parameters
 ----------------
 The ```Resource``` object takes 4 arguments.
 
-```Resource(app, route, name, model)```
+```javascript
+Resource(app, route, name, model)
+```
 
  - ***app*** - This is the Express application.
  - ***route*** - This is the route to "mount" this resource onto. For example, if you were doing nested resources, this could be '/parent/:parentId'
@@ -72,7 +74,7 @@ You can also expose only a certain amount of methods, by instead of using
 the ***rest*** method, you can use the specific methods and then chain them
 together like so.
 
-```
+```javascript
 // Do not expose DELETE.
 Resource(app, '', 'resource', ResourceModel).get().put().post().index();
 ```
@@ -90,7 +92,7 @@ you can use the ***before*** callback attached to the ***rest*** method like so.
 npm install basic-auth-connect
 ```
 
-```
+```javascript
 var basicAuth = require('basic-auth-connect');
 
 ...
@@ -104,7 +106,7 @@ Resource(app, '', 'resource', ResourceModel).rest({
 You can also target individual methods so if you wanted to protect POST, PUT, and DELETE
 but not GET and INDEX you would do the following.
 
-```
+```javascript
 Resource(app, '', 'resource', ResourceModel).rest({
   beforePut: basicAuth('username', 'password'),
   beforePost: basicAuth('username', 'password'),
@@ -114,7 +116,7 @@ Resource(app, '', 'resource', ResourceModel).rest({
 
 You can also do this by specifying the handlers within the specific method calls like so.
 
-```
+```javascript
 Resource(app, '', 'resource', ResourceModel)
   .get()
   .put({
@@ -136,7 +138,7 @@ Resource(app, '', 'resource', ResourceModel)
 
 For example, if you have a resource that has a title that is sent to the user, you could change that title by doing the following.
 
-```
+```javascript
 Resource(app, '', 'resource', ResourceModel).get({
   after: function(req, res, next) {
     res.resource.item.title = 'I am changing!!';
@@ -153,7 +155,7 @@ uses the Mongoose query mechanism that you can see here http://mongoosejs.com/do
 
 For example, if we wish to show an index that filters ages greater than 18, we would do the following.
 
-```
+```javascript
 Resource(app, '', 'user', UserModel).rest({
   before: function(req, res, next) {
     req.modelQuery = this.model.where('age').gt(18);
@@ -165,7 +167,7 @@ Nested Resources
 -----------------
 With this library, it is also pretty easy to nest resources. Here is an example of how to do it.
 
-```
+```javascript
 var express = require('express');
 var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
@@ -255,7 +257,7 @@ and this can then be combined to create the Swagger docs necessary to feed into 
 Swagger UI tools.
 
 ***Getting the swagger documentation for a resource***
-```
+```javascript
 var resource = Resource(app, '', 'resource', ResourceModel).rest();
 
 // Print out the Swagger docs for this resource.
@@ -265,7 +267,7 @@ console.log(resource.swagger());
 You can then use this to create a full specification for you API with all your resources
 by doing the following.
 
-```
+```javascript
 var _ = require('lodash');
 
 // Define all our resources.

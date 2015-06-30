@@ -2,6 +2,7 @@ var _ = require('lodash');
 var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
+var middleware = require( 'composable-middleware' );
 
 
 module.exports = function(app, route, modelName, model) {
@@ -43,30 +44,35 @@ module.exports = function(app, route, modelName, model) {
     __swagger: null,
 
     /**
-     * Register a new callback but add before and after options to the
-     * middleware.
+     * Register a new callback but add before and after options to the middleware.
      *
+     * @param app
+     * @param method
      * @param path
      * @param callback
+     * @param last
      * @param options
-     * @returns {*[]}
      */
     register: function(app, method, path, callback, last, options) {
-      var args = [path];
+      var mw = middleware();
+
+      // The before middleware.
       if (options && options.before) {
         var before = [].concat(options.before);
         for (var len = before.length, i=0; i<len; ++i) {
-          args.push(before[i].bind(this));
+          mw.use(before[i].bind(this));
         }
       }
-      args.push(callback.bind(this));
+      mw.use(callback.bind(this));
+
+      // The after middleware.
       if (options && options.after) {
         var after = [].concat(options.after);
         for (var len = after.length, i=0; i<len; ++i) {
-          args.push(after[i].bind(this));
+          mw.use(after[i].bind(this));
         }
       }
-      args.push(last.bind(this));
+      mw.use(last.bind(this));
 
       // Declare the resourcejs object on the app.
       if (!app.resourcejs) {
@@ -78,10 +84,10 @@ module.exports = function(app, route, modelName, model) {
       }
 
       // Add these methods to resourcejs object in the app.
-      app.resourcejs[path][method] = args;
+      app.resourcejs[path][method] = mw;
 
       // Apply these callbacks to the application.
-      app[method].apply(app, args);
+      app[method](path, mw);
     },
 
     /**
@@ -330,11 +336,15 @@ module.exports = function(app, route, modelName, model) {
     get: function(options) {
       this.methods.push('get');
       this.register(app, 'get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
-        if (req.skipResource) { return next(); }
+        if (req.skipResource) {
+          return next();
+        }
+
         var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
+        query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404}, next);
+
           return this.setResponse(res, {status: 200, item: item}, next);
         }.bind(this));
       }, this.respond.bind(this), options);
@@ -364,7 +374,7 @@ module.exports = function(app, route, modelName, model) {
       this.register(app, 'put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
+        query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404}, next);
           if (req.body.hasOwnProperty('__v')) { delete req.body.__v; }
@@ -386,7 +396,7 @@ module.exports = function(app, route, modelName, model) {
       this.register(app, 'patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
+        query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404, error: err}, next);
           var patches = req.body
@@ -427,7 +437,7 @@ module.exports = function(app, route, modelName, model) {
       this.register(app, 'delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
-        query.findOne({"_id": req.params[this.name + 'Id']}, function(err, item) {
+        query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404, error: err}, next);
           item.remove(function (err, item) {
