@@ -163,7 +163,8 @@ This example uses the [request](https://www.npmjs.com/package/request) npm packa
 
 ```javascript
 request = require('request')
-increaseCount: function(currentCount, resourceId, next) {
+
+function increaseCount(currentCount, resourceId, next) {
   var options, patch;
   patch = [
     {
