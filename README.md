@@ -38,6 +38,9 @@ var ResourceSchema = new mongoose.Schema({
   description: {
     type: String
   }
+  count: {
+    type: Number
+  }
 });
 
 // Create the model.
@@ -52,7 +55,8 @@ The following rest interface would then be exposed.
  * ***/resource*** - (GET) - List all resources.
  * ***/resource*** - (POST) - Create a new resource.
  * ***/resource/:id*** - (GET) - Get a specific resource.
- * ***/resource/:id*** - (PUT) - Updates an existing resource.
+ * ***/resource/:id*** - (PUT) - Replaces an existing resource.
+ * ***/resource/:id*** - (PATCH) - Updates an existing resource.
  * ***/resource/:id*** - (DELETE) - Deletes an existing resource.
 
 Parameters
@@ -144,6 +148,46 @@ Resource(app, '', 'resource', ResourceModel).get({
     res.resource.item.title = 'I am changing!!';
     next();
   }
+});
+```
+
+Using the PATCH method
+----------------------
+Implements the JSON-Patch spec [RFC-6902](https://tools.ietf.org/html/rfc6902). This allows for partial updates to be made to a resource. It is a much more efficient way of updating a resource
+compared to using the `PUT` method as you do not need to first `GET` the complete object.
+
+With JSON-Patch you can also test whether a resource is suitable for a updating and if it is then only update the fields you actually need to update. You can apply an arbitrary sequence of tests and actions (see the spec [RFC-6902](https://tools.ietf.org/html/rfc6902) for more details) and if any one should fail all the changes are rolled back and the resource is left untouched.
+
+For example, using the `Resource` schema we want to increment the numeric `count` field but only if the count value is the same as the value we are currently holding for it, in other words
+only update the value if nobody else has updated it in the meantime.
+
+This example uses the [request](https://www.npmjs.com/package/request) npm package
+
+```javascript
+request = require('request')
+increaseCount: function(currentCount, resourceId, next) {
+  var options, patch;
+  patch = [
+    {
+      "op": "test",
+      "path": "/count",
+      "value": currentCount
+    }, {
+      "op": "replace",
+      "path": "/count",
+      "value": currentCount + 1
+    }
+  ];
+  options = {
+    method: 'PATCH',
+    uri: "/resource/" + resourceId,
+    body: patch,
+    json: true
+  };
+  return request(options, function(err, response, data) {
+    return next(data);
+  });
+}
 });
 ```
 
