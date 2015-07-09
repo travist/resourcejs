@@ -153,8 +153,7 @@ Resource(app, '', 'resource', ResourceModel).get({
 
 Using the PATCH method
 ----------------------
-Implements the JSON-Patch spec [RFC-6902](https://tools.ietf.org/html/rfc6902). This allows for partial updates to be made to a resource. It is a much more efficient way of updating a resource
-compared to using the `PUT` method as you do not need to first `GET` the complete object.
+ResourceJS fully implements the JSON-Patch spec [RFC-6902](https://tools.ietf.org/html/rfc6902). This allows for partial updates to be made to a resource and is a much more efficient way of updating a resource compared to `PUT` (you do not need to first `GET` and then replace the complete resource).
 
 With JSON-Patch you can also test whether a resource is suitable for a updating and if it is then only update the fields you actually need to update. You can apply an arbitrary sequence of tests and actions (see the spec [RFC-6902](https://tools.ietf.org/html/rfc6902) for more details) and if any one should fail all the changes are rolled back and the resource is left untouched.
 
