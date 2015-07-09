@@ -151,7 +151,7 @@ Resource(app, '', 'resource', ResourceModel).get({
 });
 ```
 
-Using the PATCH method
+Calling the PATCH method
 ----------------------
 ResourceJS fully implements the JSON-Patch spec [RFC-6902](https://tools.ietf.org/html/rfc6902). This allows for partial updates to be made directly to a resource and is therefore a very efficient way of updating a resource.
 
