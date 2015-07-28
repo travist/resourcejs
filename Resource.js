@@ -463,7 +463,7 @@ module.exports = function(app, route, modelName, model) {
           if (!item) return this.setResponse(res, {status: 404, error: err}, next);
           item.remove(function (err, item) {
             if (err) return this.setResponse(res, {status: 400, error: err}, next);
-            return this.setResponse(res, {status: 204, item: 'deleted'}, next);
+            return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
           }.bind(this));
         }.bind(this));
       }, this.respond.bind(this), options);
