@@ -9,6 +9,8 @@ var Resource = require('../Resource');
 var app = express();
 var _ = require('lodash');
 var async = require('async');
+var MongoClient = require('mongodb').MongoClient;
+var ObjectID = require('mongodb').ObjectID;
 
 // Use the body parser.
 app.use(bodyParser.urlencoded({extended: true}));
@@ -16,6 +18,9 @@ app.use(bodyParser.json());
 
 // An object to store handler events.
 var handlers = {};
+
+// The raw connection to mongo, for consistency checks with mongoose.
+var db = null;
 
 /**
  * Updates the reference for the handler invocation using the given sequence and method.
@@ -74,18 +79,38 @@ var wasInvoked = function(entity, sequence, method) {
 };
 
 describe('Connect to MongoDB', function() {
-  it('Connect to MongoDB', function (done) {
+  it('Connect to MongoDB', function(done) {
     mongoose.connect('mongodb://localhost/test', done);
   });
 
   it('Drop test database', function(done) {
     mongoose.connection.db.dropDatabase(done);
   });
+
+  it('Should connect MongoDB without mongoose', function(done) {
+    MongoClient.connect('mongodb://localhost/test', function(err, connection) {
+      if (err) {
+        return done(err);
+      }
+
+      db = connection;
+      done();
+    });
+  });
 });
 
 describe('Build Resources for following tests', function() {
   it('Build the /test/resource1 endpoints', function(done) {
     // Create the schema.
+    var R1SubdocumentSchema = new mongoose.Schema({
+      label: {
+        type: String
+      },
+      data: {
+        type: [Number]
+      }
+    }, {_id: false});
+
     var Resource1Schema = new mongoose.Schema({
       title: {
         type: String,
@@ -96,7 +121,8 @@ describe('Build Resources for following tests', function() {
       },
       description: {
         type: String
-      }
+      },
+      list: [R1SubdocumentSchema]
     });
 
     // Create the model.
@@ -381,6 +407,128 @@ describe('Test single resource CRUD capabilities', function() {
         done(err);
       });
   });
+
+  describe('Test single resource update list elements', function() {
+    var resource1 = null;
+    // Ensure that resource reference is empty.
+    resource = {};
+
+    // Create a resource with subdocuments for the following tests.
+    before(function(done) {
+      resource1 = db.collection('resource1');
+
+      var tmp = {
+        title: 'Test2',
+        description: '987654321',
+        list: [
+          {label: 'one', data:[1, 11, 111]},
+          {label: 'two', data:[2, 22, 222]}
+        ]
+      };
+
+      resource1.insertOne(tmp, function(err, result) {
+        if (err) {
+          return done(err);
+        }
+
+        resource = result.ops[0];
+        done();
+      });
+    });
+
+    it('/PUT to a resource with subdocuments should not mangle the subdocuments', function(done) {
+      var three = {label: 'three', data: [3, 33, 333]};
+
+      request(app)
+        .put('/test/resource1/' + resource._id)
+        .send({
+          list: resource.list.concat(three)
+        })
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert.equal(response.title, resource.title);
+          assert.equal(response.description, resource.description);
+          assert.equal(response._id, resource._id);
+          assert.deepEqual(response.list, resource.list.concat(three));
+          resource = response;
+          done();
+        });
+    });
+
+    it('Manual DB updates to a resource with subdocuments should not mangle the subdocuments', function(done) {
+      var four = {label: 'four', data: [4, 44, 444]};
+      var updates = resource.list.concat(four);
+
+      resource1.findOneAndUpdate(
+        {_id: ObjectID(resource._id)},
+        {$set: {list: updates}},
+        {returnOriginal: false},
+        function(err, doc) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = doc.value;
+          assert.equal(response.title, resource.title);
+          assert.equal(response.description, resource.description);
+          assert.equal(response._id, resource._id);
+          assert.deepEqual(response.list, updates);
+          resource = response;
+          done();
+        });
+    });
+
+    it('/PUT to a resource subdocument should not mangle the subdocuments', function(done) {
+      // Update a subdocument property.
+      var update = _.clone(resource.list);
+      var temp = update.shift();
+      temp.data = temp.data || [];
+      temp.data.push(123456789);
+      update.push(temp);
+
+      request(app)
+        .put('/test/resource1/' + resource._id)
+        .send({
+          list: update
+        })
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert.equal(response.title, resource.title);
+          assert.equal(response.description, resource.description);
+          assert.equal(response._id, resource._id);
+          assert.deepEqual(response.list, update);
+          resource = response;
+          done();
+        });
+    });
+
+    // Remove the test resource.
+    after(function(done) {
+      request(app)
+        .delete('/test/resource1/' + resource._id)
+        .expect(204)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert.deepEqual(res.body, {});
+          done();
+        });
+    });
+  });
 });
 
 describe('Test single resource search capabilities', function() {
@@ -418,7 +566,6 @@ describe('Test single resource search capabilities', function() {
     request(app)
       .get('/test/resource1')
       .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-9/25')
       .expect(206)
       .end(function(err, res) {
         if (err) {

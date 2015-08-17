@@ -2,17 +2,14 @@ var _ = require('lodash');
 var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
-var middleware = require( 'composable-middleware' );
-
+var middleware = require( 'composable-middleware');
 
 module.exports = function(app, route, modelName, model) {
-
   // Create the name of the resource.
   var name = modelName.toLowerCase();
 
   // Return the object that defines this resource.
   return {
-
     /**
      * The model for this resource.
      */
@@ -393,15 +390,28 @@ module.exports = function(app, route, modelName, model) {
     put: function(options) {
       this.methods.push('put');
       this.register(app, 'put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
-        if (req.skipResource) { return next(); }
+        if (req.skipResource) {
+          return next();
+        }
+
         var query = req.modelQuery || this.model;
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.setResponse(res, {status: 500, error: err}, next);
-          if (!item) return this.setResponse(res, {status: 404}, next);
-          if (req.body.hasOwnProperty('__v')) { delete req.body.__v; }
+          if (err) {
+            return this.setResponse(res, {status: 500, error: err}, next);
+          }
+          if (!item) {
+            return this.setResponse(res, {status: 404}, next);
+          }
+          if (req.body.hasOwnProperty('__v')) {
+            delete req.body.__v;
+          }
+
           item.set(req.body);
-          item.save(function (err, item) {
-            if (err) return this.setResponse(res, {status: 400, error: err}, next);
+          item.save(function(err, item) {
+            if (err) {
+              return this.setResponse(res, {status: 400, error: err}, next);
+            }
+
             return this.setResponse(res, {status: 200, item: item}, next);
           }.bind(this));
         }.bind(this));
