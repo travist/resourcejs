@@ -566,6 +566,29 @@ describe('Test single resource CRUD capabilities', function() {
             done();
           });
       });
+
+      it('/PUT to a top-level property should not mangle the other collection properties', function(done) {
+        var tempTitle = 'an update without docs';
+
+        request(app)
+          .put('/test/resource1/' + resource._id)
+          .send({title: tempTitle})
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+            assert.equal(response.title, tempTitle);
+            assert.equal(response.description, resource.description);
+            assert.equal(response._id, resource._id);
+            assert.deepEqual(response.list, resource.list);
+            resource = response;
+            done();
+          });
+      });
     });
 
     // Remove the test resource.

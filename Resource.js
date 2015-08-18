@@ -3,6 +3,10 @@ var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
 var middleware = require( 'composable-middleware');
+var debug = {
+  put: require('debug')('resourcejs:put'),
+  post: require('debug')('resourcejs:post')
+};
 
 module.exports = function(app, route, modelName, model) {
   // Create the name of the resource.
@@ -375,9 +379,18 @@ module.exports = function(app, route, modelName, model) {
     post: function(options) {
       this.methods.push('post');
       this.register(app, 'post', this.route, function(req, res, next) {
-        if (req.skipResource) { return next(); }
+        if (req.skipResource) {
+          debug.post('Skipping Resource');
+          return next();
+        }
+
         this.model.create(req.body, function(err, item) {
-          if (err) return this.setResponse(res, {status: 400, error: err}, next);
+          if (err) {
+            debug.post(err);
+            return this.setResponse(res, {status: 400, error: err}, next);
+          }
+
+          debug.post(item);
           return this.setResponse(res, {status: 201, item: item}, next);
         }.bind(this));
       }, this.respond.bind(this), options);
@@ -391,30 +404,35 @@ module.exports = function(app, route, modelName, model) {
       this.methods.push('put');
       this.register(app, 'put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         if (req.skipResource) {
+          debug.put('Skipping Resource');
           return next();
         }
 
-        var query = req.modelQuery || this.model;
-        query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
-          if (err) {
-            return this.setResponse(res, {status: 500, error: err}, next);
-          }
-          if (!item) {
-            return this.setResponse(res, {status: 404}, next);
-          }
-          if (req.body.hasOwnProperty('__v')) {
-            delete req.body.__v;
-          }
+        // Remove __v field
+        if (req.body.hasOwnProperty('__v')) {
+          delete req.body.__v;
+        }
 
-          item.set(req.body);
-          item.save(function(err, item) {
+        debug.put('Update: ' + JSON.stringify(req.body));
+        var query = req.modelQuery || this.model;
+        query.findOneAndUpdate(
+          {_id: req.params[this.name + 'Id']},
+          {$set: req.body},
+          {new: true},
+          function(err, item) {
             if (err) {
-              return this.setResponse(res, {status: 400, error: err}, next);
+              debug.put(err);
+              return this.setResponse(res, {status: 500, error: err}, next);
+            }
+            if (!item) {
+              debug.put('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
+              return this.setResponse(res, {status: 404}, next);
             }
 
+            debug.put(item);
             return this.setResponse(res, {status: 200, item: item}, next);
-          }.bind(this));
-        }.bind(this));
+          }.bind(this)
+        );
       }, this.respond.bind(this), options);
       return this;
     },
