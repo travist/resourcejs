@@ -289,7 +289,7 @@ module.exports = function(resource, bodyDefinition) {
       security: [],
       responses: {
         401: {
-          description: 'Unauthorized.'
+          description: 'Unauthorized.  Note that anonymous submissions are *enabled* by default.'
         },
         400: {
           description: 'An error has occured trying to create the resource.'
