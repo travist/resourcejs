@@ -1,6 +1,6 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
-module.exports = function(resource) {
+module.exports = function(resource, bodyDefinition) {
 
   /**
    * Converts a Mongoose property to a Swagger property.
@@ -11,14 +11,10 @@ module.exports = function(resource) {
   var getProperty = function(options) {
 
     // Convert to the proper format if needed.
-    if (!options.hasOwnProperty('type')) {
-      options = {type: options};
-    }
+    if (!options.hasOwnProperty('type')) options = {type: options};
 
     // If no type, then return null.
-    if (!options.type) {
-      return null;
-    }
+    if (!options.type) return null;
 
     // If this is an array, then return the array with items.
     if (Array.isArray(options.type)) {
@@ -26,66 +22,68 @@ module.exports = function(resource) {
         return {
           type: 'array',
           items: getModel(options.type[0])
-        }
+        };
       }
       return {
         type: 'array',
-        items: getProperty(options.type[0])
+        items: 'string', //getProperty(options.type[0])
       };
     }
 
-    // String.
-    if (options.type === String) return {
-      type: 'string'
-    };
-
-    // Number
-    if (options.type === Number) return {
-      type: 'integer',
-      format: 'int64'
-    };
-
-    // Date
-    if (options.type === Date) return {
-      type: 'string',
-      format: 'date'
-    };
-
-    // Boolean
-    if (options.type === Boolean) return {
-      type: 'boolean'
-    };
-
-    if (typeof options.type === 'function') {
-      var functionName = options.type.toString();
-      functionName = functionName.substr('function '.length);
-      functionName = functionName.substr(0, functionName.indexOf('('));
-
-      if (functionName == 'ObjectId') return {
-        '$ref': '#/definitions/' + options.ref
-      };
-
-      if (functionName == 'Oid') return {
-        '$ref': '#/definitions/' + options.ref
-      };
-
-      if (functionName == 'Array') return {
-        type: 'array',
-        items: {
+    switch(options.type) {
+      case String:
+        return {
           type: 'string'
+        };
+      case Number:
+        return {
+          type: 'integer',
+          format: 'int64'
+        };
+      case Date: 
+        return {
+          type: 'string',
+          format: 'date'
+        };
+      case Boolean: 
+        return {
+          type: 'boolean'
+        };
+      case Function: 
+        var functionName = options.type.toString();
+        functionName = functionName.substr('function '.length);
+        functionName = functionName.substr(0, functionName.indexOf('('));
+
+        switch (functionName) {
+          case 'ObjectId':
+            return {
+              '$ref': '#/definitions/' + options.ref
+            };
+          case 'Oid':
+            return {
+              '$ref': '#/definitions/' + options.ref
+            };
+          case 'Array':
+            return {
+              type: 'array',
+              items: {
+                type: 'string'
+              }
+            };
+          case 'Mixed':
+            return {
+              type: 'string'
+            };
+          case 'Buffer': 
+            return {
+              type: 'string'
+            };
         }
-      };
-
-      if (functionName = 'Mixed') return {
-        type: 'string'
-      };
-
-      if (functionName = 'Buffer') return {
-        type: 'string'
-      };
+        break;
+      case Object:
+        return null;
     }
 
-    if (options.type === Object) return null;
     if (options.type instanceof Object) return null;
     throw new Error('Unrecognized type: ' + options.type);
   };
@@ -164,7 +162,7 @@ module.exports = function(resource) {
         !resource.model.schema.paths[name].__readonly
       ) {
         property.name = name;
-        property.in = 'formData';
+        property.in = 'body';
         properties.push(property);
       }
     });
@@ -177,10 +175,16 @@ module.exports = function(resource) {
   };
 
   // Get the swagger model.
-  var swaggerModel = getModel(resource.model.schema);
+  var swaggerModel = bodyDefinition || getModel(resource.model.schema);
 
   // Add the model to the definitions.
   swagger.definitions[resource.modelName] = swaggerModel;
+  swagger.definitions[resource.modelName+'Array'] = { 
+    type: 'array',
+      items: {
+        $ref: '#/definitions/' + resource.modelName,
+      }
+  };
 
   // See if all the methods are defined.
   var hasIndex = (resource.methods.indexOf('index') !== -1);
@@ -195,8 +199,9 @@ module.exports = function(resource) {
   }
 
   // The resource path for this resource.
+  var resourcePath = '';
   if (hasGet || hasPut || hasDelete) {
-    var resourcePath = resource.route + '/{' + resource.name + 'Id}';
+    resourcePath = resource.route + '/{' + resource.name + 'Id}';
     swagger.paths[resourcePath] = {};
   }
 
@@ -204,13 +209,19 @@ module.exports = function(resource) {
   if (hasIndex) {
     swagger.paths[resource.route].get = {
       tags: [resource.name],
-      summary: 'Find ' + resource.modelName + ' resources.',
+      summary: 'List multiple ' + resource.modelName + ' resources.',
       description: 'This operation allows you to list and search for ' + resource.modelName + ' resources provided query arguments.',
       operationId: 'get' + resource.modelName + 's',
       produces: ['application/json'],
       responses: {
-        201: {
-          description: 'The resource list has been found.'
+        401: {
+          description: 'Unauthorized.'
+        },
+        200: {
+          description: 'Resource(s) found.  Returned as array.',
+          schema: {
+            $ref: "#/definitions/" + resource.modelName + "Array"
+          }
         }
       },
       parameters: [
@@ -277,6 +288,9 @@ module.exports = function(resource) {
       produces: ['application/json'],
       security: [],
       responses: {
+        401: {
+          description: 'Unauthorized.'
+        },
         400: {
           description: 'An error has occured trying to create the resource.'
         },
@@ -313,8 +327,14 @@ module.exports = function(resource) {
         404: {
           description: 'Resource not found'
         },
+        401: {
+          description: 'Unauthorized.'
+        },
         200: {
-          description: 'Resource found'
+          description: 'Resource found',
+          schema: {
+            $ref: "#/definitions/" + resource.modelName
+          }
         }
       },
       parameters: [
@@ -345,11 +365,17 @@ module.exports = function(resource) {
         404: {
           description: 'Resource not found'
         },
+        401: {
+          description: 'Unauthorized.'
+        },
         400: {
           description: 'Resource could not be updated.'
         },
         200: {
-          description: 'Resource updated'
+          description: 'Resource updated',
+          schema: {
+            $ref: "#/definitions/" + resource.modelName
+          }
         }
       },
       parameters: [
@@ -359,7 +385,17 @@ module.exports = function(resource) {
           description: 'The ID of the ' + resource.name + ' that will be updated.',
           required: true,
           type: 'string'
+        },
+        {
+          in: 'body',
+          name: 'body',
+          description: 'Data used to update ' + resource.modelName,
+          required: true,
+          schema: {
+            $ref: "#/definitions/" + resource.modelName
+          }
         }
+
       ].concat(getUpdateProperties(swaggerModel))
     };
   }
@@ -379,6 +415,9 @@ module.exports = function(resource) {
         },
         404: {
           description: 'Resource not found'
+        },
+        401: {
+          description: 'Unauthorized.'
         },
         400: {
           description: 'Resource could not be deleted.'
