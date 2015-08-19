@@ -9,6 +9,8 @@ var Resource = require('../Resource');
 var app = express();
 var _ = require('lodash');
 var async = require('async');
+var MongoClient = require('mongodb').MongoClient;
+var ObjectID = require('mongodb').ObjectID;
 
 // Use the body parser.
 app.use(bodyParser.urlencoded({extended: true}));
@@ -16,6 +18,9 @@ app.use(bodyParser.json());
 
 // An object to store handler events.
 var handlers = {};
+
+// The raw connection to mongo, for consistency checks with mongoose.
+var db = null;
 
 /**
  * Updates the reference for the handler invocation using the given sequence and method.
@@ -74,18 +79,53 @@ var wasInvoked = function(entity, sequence, method) {
 };
 
 describe('Connect to MongoDB', function() {
-  it('Connect to MongoDB', function (done) {
+  it('Connect to MongoDB', function(done) {
     mongoose.connect('mongodb://localhost/test', done);
   });
 
   it('Drop test database', function(done) {
     mongoose.connection.db.dropDatabase(done);
   });
+
+  it('Should connect MongoDB without mongoose', function(done) {
+    MongoClient.connect('mongodb://localhost/test', function(err, connection) {
+      if (err) {
+        return done(err);
+      }
+
+      db = connection;
+      done();
+    });
+  });
 });
 
 describe('Build Resources for following tests', function() {
+  it('Build the /test/ref endpoints', function(done) {
+    // Create the schema.
+    var RefSchema = new mongoose.Schema({
+      data: String
+    }, {collection: 'ref'});
+
+    // Create the model.
+    var RefModel = mongoose.model('ref', RefSchema);
+
+    // Create the REST resource and continue.
+    Resource(app, '/test', 'ref', RefModel).rest();
+    done();
+  });
+
   it('Build the /test/resource1 endpoints', function(done) {
     // Create the schema.
+    var R1SubdocumentSchema = new mongoose.Schema({
+      label: {
+        type: String
+      },
+      data: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'ref'
+      }
+    }, {_id: false});
+
     var Resource1Schema = new mongoose.Schema({
       title: {
         type: String,
@@ -96,7 +136,8 @@ describe('Build Resources for following tests', function() {
       },
       description: {
         type: String
-      }
+      },
+      list: [R1SubdocumentSchema]
     });
 
     // Create the model.
@@ -381,6 +422,191 @@ describe('Test single resource CRUD capabilities', function() {
         done(err);
       });
   });
+
+  describe('Test single resource subdocument updates', function() {
+    // Ensure that resource reference is empty.
+    resource = {};
+    var doc1 = null;
+    var doc2 = null;
+
+    describe('Bootstrap', function() {
+      it('Should create a reference doc with mongoose', function(done) {
+        var doc = {data: 'test1'};
+
+        request(app)
+          .post('/test/ref')
+          .send(doc)
+          .expect('Content-Type', /json/)
+          .expect(201)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = _.omit(res.body, '__v');
+            assert.equal(response.data, doc.data);
+            doc1 = response;
+            done();
+          });
+      });
+
+      it('Should be able to create a reference doc directly with mongo', function(done) {
+        var doc = {data: 'test2'};
+        var compare = _.clone(doc);
+
+        var ref = db.collection('ref');
+        ref.insertOne(doc, function(err, result) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = result.ops[0];
+          assert.deepEqual(_.omit(response, '_id'), compare);
+          response._id = response._id.toString();
+          doc2 = response;
+          done();
+        });
+      });
+
+      it('Should be able to directly create a resource with subdocuments using mongo', function(done) {
+        // Set the resource collection for direct mongo queries.
+        var resource1 = db.collection('resource1');
+
+        var tmp = {
+          title: 'Test2',
+          description: '987654321',
+          list: [
+            {label: 'one', data: [doc1._id]}
+          ]
+        };
+        var compare = _.clone(tmp);
+
+        resource1.insertOne(tmp, function(err, result) {
+          if (err) {
+            return done(err);
+          }
+
+          resource = result.ops[0];
+          assert.deepEqual(_.omit(resource, '_id'), compare);
+          done();
+        });
+      });
+    });
+
+    describe('Subdocument Tests', function() {
+      it('/PUT to a resource with subdocuments should not mangle the subdocuments', function(done) {
+        var two = {label: 'two', data: [doc2._id]};
+
+        request(app)
+          .put('/test/resource1/' + resource._id)
+          .send({list: resource.list.concat(two)})
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+            assert.equal(response.title, resource.title);
+            assert.equal(response.description, resource.description);
+            assert.equal(response._id, resource._id);
+            assert.deepEqual(response.list, resource.list.concat(two));
+            resource = response;
+            done();
+          });
+      });
+
+      it('Manual DB updates to a resource with subdocuments should not mangle the subdocuments', function(done) {
+        var updates = [
+          {label: '1', data: [doc1._id]},
+          {label: '2', data: [doc2._id]},
+          {label: '3', data: [doc1._id, doc2._id]}
+        ];
+
+        var resource1 = db.collection('resource1');
+        resource1.findOneAndUpdate(
+          {_id: ObjectID(resource._id)},
+          {$set: {list: updates}},
+          {returnOriginal: false},
+          function(err, doc) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = doc.value;
+            assert.equal(response.title, resource.title);
+            assert.equal(response.description, resource.description);
+            assert.equal(response._id, resource._id);
+            assert.deepEqual(response.list, updates);
+            resource = response;
+            done();
+          });
+      });
+
+      it('/PUT to a resource subdocument should not mangle the subdocuments', function(done) {
+        // Update a subdocument property.
+        var update = _.clone(resource.list);
+        request(app)
+          .put('/test/resource1/' + resource._id)
+          .send({list: update})
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+            assert.equal(response.title, resource.title);
+            assert.equal(response.description, resource.description);
+            assert.equal(response._id, resource._id);
+            assert.deepEqual(response.list, update);
+            resource = response;
+            done();
+          });
+      });
+
+      it('/PUT to a top-level property should not mangle the other collection properties', function(done) {
+        var tempTitle = 'an update without docs';
+
+        request(app)
+          .put('/test/resource1/' + resource._id)
+          .send({title: tempTitle})
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+            assert.equal(response.title, tempTitle);
+            assert.equal(response.description, resource.description);
+            assert.equal(response._id, resource._id);
+            assert.deepEqual(response.list, resource.list);
+            resource = response;
+            done();
+          });
+      });
+    });
+
+    // Remove the test resource.
+    describe('Subdocument cleanup', function() {
+      it('Should remove the test resource', function(done) {
+        var resource1 = db.collection('resource1');
+        resource1.findOneAndDelete({_id: ObjectID(resource._id)});
+        done();
+      });
+
+      it('Should remove the test ref resources', function(done) {
+        var ref = db.collection('ref');
+        ref.findOneAndDelete({_id: ObjectID(doc1._id)});
+        ref.findOneAndDelete({_id: ObjectID(doc2._id)});
+        done();
+      });
+    });
+  });
 });
 
 describe('Test single resource search capabilities', function() {
@@ -418,7 +644,6 @@ describe('Test single resource search capabilities', function() {
     request(app)
       .get('/test/resource1')
       .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-9/25')
       .expect(206)
       .end(function(err, res) {
         if (err) {
