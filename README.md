@@ -221,7 +221,7 @@ var maxStock = function(req, res, next) {
 };
 ```
 
-You can then setup the `product` resource via resource.js by passing in the `path` and the `before` function for each virtual resource, like this:
+You can then setup the `product` via resource.js by passing in the `path` and the `before` function for each virtual resource, like this:
 
 ```javascript
 //Create the virtual Product resources
