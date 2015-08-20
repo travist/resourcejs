@@ -193,10 +193,10 @@ var productSchema = new Schema({
 });
 
 //Create the model
-var productModel = mongoose.model('Product', productSchema);
+var productModel = mongoose.model('product', productSchema);
 
 ```
-You can define a couple of aggregate functions called `max-price` and `max-stock` using the mongoose model.
+You can then define a couple of aggregate functions called `max-price` and `max-stock` using the mongoose model.
 
 ```javascript
 //Define the virtual resource aggregate functions
