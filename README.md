@@ -197,17 +197,23 @@ product.virtual({name:'max-stock', before:maxStock})
 
 ```
 
-You can then retrieve the virtual resources using the following urls:
+You can then retrieve the virtual resources using the generated urls:
 
-*max-price*
-https://mydomain.com/product/virtual/max-price
+####max-price
+* mydomain.com/product/virtual/max-price
 
-returns the `max-price` virtual resource as a JSON blob: `{_id:null, maxPrice:123}`
+returns the `max-price` virtual resource as a JSON:
+```javascript
+{_id:null, maxPrice:123}
+```
 
-*max-stock*
-https://mydomain.com/product/virtual/max-stock
+####max-stock
+* mydomain.com/product/virtual/max-stock
 
-returns the `max-stock` virtual resource as a JSON blob: `{_id:null, maxStock:321}`
+returns the `max-stock` virtual resource as a JSON:
+```javascript
+{_id:null, maxStock:321}
+```
 
 
 Calling the PATCH method
