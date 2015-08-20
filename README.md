@@ -157,7 +157,7 @@ Virtual resources are not represented by mongodb documents. Instead they are gen
 
 Resource.js supports this feature by passing `options` to the `resource.virtual` method. The `virtual` method expects at least the `path` and the `before` option params to be set:
 
-* path  : set to the name of the virtual resource that will be used in the generated url.
+* path  : set to the name of the virtual resource. This will be used in the generated url.
 * before: set to a function that will be used to generate the virtual resource.
 
 This will result in a virtual resource API end-point according to the following pattern:
