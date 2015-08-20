@@ -162,7 +162,11 @@ Resource.js supports this feature through a resource method called `virtual`. Gi
 
 This will result in a virtual-resource API end-point according to the following pattern:
 
-* /[resource]/virtual/[virtual-resource]
+* /[resource-name]/virtual/[virtual-resource-name]
+
+for example, defining a virtual resource called `avg-weight` for a resource called `elephant` will give a url of:
+
+* /elephant/virtual/avg-weight
 
 The shape of json data returned is determined by a `before` function. This function will act on a concrete resource to return a virtual-resource of arbitrary shape. Typically a mongodb `aggregate` function will be used here although any process supported by the mongoose model can be used.
 
