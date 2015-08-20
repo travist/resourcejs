@@ -162,7 +162,7 @@ Resource.js supports this feature through a resource method called `virtual`. Gi
 
 This will result in a virtual resource API end-point according to the following pattern:
 
-* /[resource-name]/virtual/[virtual-resource-path]
+* /[resource-name]/virtual/[virtual-resource-name]
 
 For example, defining a virtual resource called `avg-weight` for a resource called `elephant` will give a url of:
 
