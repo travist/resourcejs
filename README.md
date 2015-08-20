@@ -263,7 +263,7 @@ returns the `max-stock` virtual resource as json:
 
 Calling the PATCH method
 ------------------------
-ResourceJS fully implements the JSON-Patch spec [RFC-6902](https://tools.ietf.org/html/rfc6902). This allows for partial updates to be made directly to a resource and is therefore a very efficient way of updating a resource.
+Resource.js fully implements the JSON-Patch spec [RFC-6902](https://tools.ietf.org/html/rfc6902). This allows for partial updates to be made directly to a resource and is therefore a very efficient way of updating a resource.
 
 With JSON-Patch you can also test whether a resource is suitable for a updating and if it is then only update the fields you actually need to update. You can apply an arbitrary sequence of tests and actions (see the spec [RFC-6902](https://tools.ietf.org/html/rfc6902) for more details) and if any one should fail all the changes are rolled back and the resource is left untouched.
 
