@@ -160,7 +160,7 @@ Resource.js supports this feature by passing `options` to the `resource.virtual`
 * `path`  : Set to the name of the virtual resource. This will be used in the generated url.
 * `before`: Set to a function that will be used to generate the virtual resource.
 
-This will result in a virtual resource API end-point according to the following pattern:
+This will result in a generated REST end-point with the following pattern:
 
 * /[resource-name]/virtual/[virtual-resource-name]
 
