@@ -168,7 +168,6 @@ For example, given a resource called 'product' with the following schema
 ```javascript
 var mongoose = require('mongoose');
 var resource = require('resourcejs');
-var productSchema;
 
 // Create the app.
 var app = express();
@@ -178,7 +177,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
 //Create the Schema
-productSchema = new Schema({
+var productSchema = new Schema({
   name: String,
   price: Number,
   stock: Number
@@ -191,9 +190,8 @@ var productModel = mongoose.model('Product', productSchema);
 You can define a couple of aggregate functions called `max-price` and `max-stock` using the mongoose model.
 
 ```javascript
-var maxPrice, maxStock;
-
-maxPrice = function(req, res, next) {
+//Define the virtual resource aggregate functions
+var maxPrice = function(req, res, next) {
   req.modelQuery = this.model.aggregate().group({
     _id: null,
     maxPrice: {
@@ -203,7 +201,7 @@ maxPrice = function(req, res, next) {
   return next();
 };
 
-maxStock = function(req, res, next) {
+var maxStock = function(req, res, next) {
   req.modelQuery = this.model.aggregate().group({
     _id: null,
     maxStock: {
@@ -217,6 +215,7 @@ maxStock = function(req, res, next) {
 You can then setup the product resource via resourcejs passing in the name of the virtual resource and the aggregate functions, like this:
 
 ```javascript
+//Create the virtual Product resources
 resource(app, '', 'product', productModel)
   .virtual({
     name: 'max-price',
