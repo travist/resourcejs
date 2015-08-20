@@ -233,8 +233,7 @@ resource(app, '', 'product', productModel)
   .virtual({
     path: 'max-stock',
     before: maxStock
-  })
-
+  });
 ```
 
 Finally you can retrieve the virtual resources using their generated urls:
@@ -244,7 +243,10 @@ Finally you can retrieve the virtual resources using their generated urls:
 
 returns the `max-price` virtual resource as json:
 ```javascript
-{_id:null, maxPrice:123}
+{
+  _id:null,
+  maxPrice:123
+}
 ```
 
 #####max-stock
@@ -252,7 +254,10 @@ returns the `max-price` virtual resource as json:
 
 returns the `max-stock` virtual resource as json:
 ```javascript
-{_id:null, maxStock:321}
+{
+  _id:null,
+  maxStock:321
+}
 ```
 
 
