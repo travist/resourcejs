@@ -162,7 +162,7 @@ Resource.js supports this feature through a resource method called `virtual`. Gi
 
 This will result in a virtual-resource API end-point according to the following pattern:
 
-* /[resource-name]/virtual/[virtual-resource-name]
+* /[resource-name]/virtual/[virtual-resource-path]
 
 For example, defining a virtual resource called `avg-weight` for a resource called `elephant` will give a url of:
 
@@ -221,7 +221,7 @@ var maxStock = function(req, res, next) {
 };
 ```
 
-You can then setup the `product` resource via resource.js passing in the name of the virtual resource and the aggregate functions, like this:
+You can then setup the `product` resource via resource.js by passing in the `path` and the `before` function for each virtual resource, like this:
 
 ```javascript
 //Create the virtual Product resources
@@ -237,7 +237,7 @@ resource(app, '', 'product', productModel)
 
 ```
 
-Finally you retrieve the virtual resources using the generated urls:
+Finally you can retrieve the virtual resources using their generated urls:
 
 #####max-price
 * [domain]/product/virtual/max-price
