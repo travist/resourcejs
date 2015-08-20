@@ -166,38 +166,70 @@ The shape of json data returned is determined by a `before` function. This funct
 For example, given a resource called 'product' with the following schema
 
 ```javascript
-{Schema} = require 'mongoose'
-schema: new Schema
-    name        : String
-    price       : Number
-    stock       : Number
+var mongoose = require('mongoose');
+var resource = require('resourcejs');
+var productSchema;
+
+// Create the app.
+var app = express();
+
+// Use the body parser.
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
+
+//Create the Schema
+productSchema = new Schema({
+  name: String,
+  price: Number,
+  stock: Number
+});
+
+//Create the model
+var productModel = mongoose.model('Product', productSchema);
+
 ```
-You can define a couple of aggregate functions called `max-price` and `max-stock`
+You can define a couple of aggregate functions called `max-price` and `max-stock` using the mongoose model.
 
 ```javascript
-maxPrice = (req, res, next)->
-    req.modelQuery = @model
-    .aggregate()
-    .group _id:null, maxPrice:$max:'$price'
-    next()
+var maxPrice, maxStock;
 
-maxStock = (req, res, next)->
-    req.modelQuery = @model
-    .aggregate()
-    .group _id:null, maxStock: $max:'$stock'
-    .select
-    next()
+maxPrice = function(req, res, next) {
+  req.modelQuery = this.model.aggregate().group({
+    _id: null,
+    maxPrice: {
+      $max: '$price'
+    }
+  });
+  return next();
+};
+
+maxStock = function(req, res, next) {
+  req.modelQuery = this.model.aggregate().group({
+    _id: null,
+    maxStock: {
+      $max: '$stock'
+    }
+  }).select;
+  return next();
+};
 ```
 
-You can then setup the product resource via resourcejs passing in the name and the aggregate functions in the options, like this:
+You can then setup the product resource via resourcejs passing in the name of the virtual resource and the aggregate functions, like this:
 
 ```javascript
-product.virtual({name:'max-price', before:maxPrice})
-product.virtual({name:'max-stock', before:maxStock})
+resource(app, '', 'product', productModel)
+  .virtual({
+    name: 'max-price',
+    before: maxPrice
+  })
+  .virtual({
+    name: 'max-stock',
+    before: maxStock
+  })
 
 ```
 
-You can then retrieve the virtual resources using the generated urls:
+Finally you retrieve the virtual resources using the generated urls:
 
 #####max-price
 * [domain]/product/virtual/max-price
@@ -208,7 +240,7 @@ returns the `max-price` virtual resource as a JSON:
 ```
 
 #####max-stock
-* [mydomain]/product/virtual/max-stock
+* [domain]/product/virtual/max-stock
 
 returns the `max-stock` virtual resource as a JSON:
 ```javascript
