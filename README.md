@@ -192,7 +192,7 @@ You can define a couple of aggregate functions called `max-price` and `max-stock
 ```javascript
 //Define the virtual resource aggregate functions
 var maxPrice = function(req, res, next) {
-  req.modelQuery = this.model.aggregate().group({
+  req.modelQuery = productModel.aggregate().group({
     _id: null,
     maxPrice: {
       $max: '$price'
@@ -202,7 +202,7 @@ var maxPrice = function(req, res, next) {
 };
 
 var maxStock = function(req, res, next) {
-  req.modelQuery = this.model.aggregate().group({
+  req.modelQuery = productModel.aggregate().group({
     _id: null,
     maxStock: {
       $max: '$stock'
