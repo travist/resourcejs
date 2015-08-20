@@ -164,13 +164,13 @@ This will result in a virtual-resource API end-point according to the following 
 
 * /[resource-name]/virtual/[virtual-resource-name]
 
-for example, defining a virtual resource called `avg-weight` for a resource called `elephant` will give a url of:
+For example, defining a virtual resource called `avg-weight` for a resource called `elephant` will give a url of:
 
 * /elephant/virtual/avg-weight
 
 The shape of json data returned is determined by a `before` function. This function will act on a concrete resource to return a virtual-resource of arbitrary shape. Typically a mongodb `aggregate` function will be used here although any process supported by the mongoose model can be used.
 
-For example, given a resource called 'product' with the following schema
+For example, to set up two virtual resources, `max-price` and `max-stock` given a resource called `product` you would write code similar to the following:
 
 ```javascript
 var express = require('express');
