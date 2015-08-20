@@ -199,16 +199,16 @@ product.virtual({name:'max-stock', before:maxStock})
 
 You can then retrieve the virtual resources using the generated urls:
 
-####max-price
-* mydomain.com/product/virtual/max-price
+#####max-price
+* [domain]/product/virtual/max-price
 
 returns the `max-price` virtual resource as a JSON:
 ```javascript
 {_id:null, maxPrice:123}
 ```
 
-####max-stock
-* mydomain.com/product/virtual/max-stock
+#####max-stock
+* [mydomain]/product/virtual/max-stock
 
 returns the `max-stock` virtual resource as a JSON:
 ```javascript
