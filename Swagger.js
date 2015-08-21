@@ -26,7 +26,9 @@ module.exports = function(resource, bodyDefinition) {
       }
       return {
         type: 'array',
-        items: 'string', //getProperty(options.type[0])
+        items: {
+          type: 'string',
+        }
       };
     }
 
@@ -91,7 +93,7 @@ module.exports = function(resource, bodyDefinition) {
   var getModel = function(schema) {
     // Define the definition structure.
     var definition = {
-      required: [],
+//      required: [],
       properties: {}
     };
 
@@ -114,7 +116,7 @@ module.exports = function(resource, bodyDefinition) {
 
         // Add the required params if needed.
         if (path.options.required) {
-          definition.required.push(name);
+//          definition.required.push(name);
         }
 
         // Set enum values if applicable
@@ -161,8 +163,6 @@ module.exports = function(resource, bodyDefinition) {
         !resource.model.schema.paths[name].hasOwnProperty('__readonly') ||
         !resource.model.schema.paths[name].__readonly
       ) {
-        property.name = name;
-        property.in = 'body';
         properties.push(property);
       }
     });
@@ -179,7 +179,7 @@ module.exports = function(resource, bodyDefinition) {
 
   // Add the model to the definitions.
   swagger.definitions[resource.modelName] = swaggerModel;
-  swagger.definitions[resource.modelName+'Array'] = { 
+  swagger.definitions[resource.modelName+'List'] = { 
     type: 'array',
       items: {
         $ref: '#/definitions/' + resource.modelName,
@@ -220,7 +220,7 @@ module.exports = function(resource, bodyDefinition) {
         200: {
           description: 'Resource(s) found.  Returned as array.',
           schema: {
-            $ref: "#/definitions/" + resource.modelName + "Array"
+            $ref: "#/definitions/" + resource.modelName + "List"
           }
         }
       },
@@ -395,8 +395,7 @@ module.exports = function(resource, bodyDefinition) {
             $ref: "#/definitions/" + resource.modelName
           }
         }
-
-      ].concat(getUpdateProperties(swaggerModel))
+      ]
     };
   }
 
