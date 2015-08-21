@@ -502,9 +502,9 @@ module.exports = function(app, route, modelName, model) {
     /**
      * Returns the swagger definition for this resource.
      */
-    swagger: function(bodyDefinition) {
+    swagger: function(resourceUrl, bodyDefinition) {
       if (!this.__swagger) {
-        this.__swagger = require('./Swagger')(this, bodyDefinition);
+        this.__swagger = require('./Swagger')(this, resourceUrl, bodyDefinition);
       }
       return this.__swagger;
     }

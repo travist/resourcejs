@@ -1,6 +1,6 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
-module.exports = function(resource, bodyDefinition) {
+module.exports = function(resource, resourceUrl, bodyDefinition) {
 
   /**
    * Converts a Mongoose property to a Swagger property.
@@ -152,33 +152,20 @@ module.exports = function(resource, bodyDefinition) {
     return definition;
   };
 
-  /**
-   * Get the properties for an API.
-   * @param model
-   */
-  var getUpdateProperties = function(model) {
-    var properties = [];
-    _.each(model.properties, function(property, name) {
-      if (
-        !resource.model.schema.paths[name].hasOwnProperty('__readonly') ||
-        !resource.model.schema.paths[name].__readonly
-      ) {
-        properties.push(property);
-      }
-    });
-    return properties;
-  };
+
+  // Build and return a Swagger definition for this model.
+
+  var listPath = resourceUrl || resource.route;
+  var itemPath = listPath + '/{' + resource.name + 'Id}';
+  bodyDefinition = bodyDefinition || getModel(resource.model.schema);
 
   var swagger = {
     definitions: {},
     paths: {}
   };
 
-  // Get the swagger model.
-  var swaggerModel = bodyDefinition || getModel(resource.model.schema);
-
-  // Add the model to the definitions.
-  swagger.definitions[resource.modelName] = swaggerModel;
+  // Build Swagger definitions.
+  swagger.definitions[resource.modelName] = bodyDefinition;
   swagger.definitions[resource.modelName+'List'] = { 
     type: 'array',
       items: {
@@ -186,33 +173,20 @@ module.exports = function(resource, bodyDefinition) {
       }
   };
 
-  // See if all the methods are defined.
-  var hasIndex = (resource.methods.indexOf('index') !== -1);
-  var hasPost = (resource.methods.indexOf('post') !== -1);
-  var hasGet = (resource.methods.indexOf('get') !== -1);
-  var hasPut = (resource.methods.indexOf('put') !== -1);
-  var hasDelete = (resource.methods.indexOf('delete') !== -1);
+  // Build Swagger paths
+  var methods = resource.methods;
 
-  // Establish the paths.
-  if (hasIndex || hasPost) {
-    swagger.paths[resource.route] = {};
-  }
 
-  // The resource path for this resource.
-  var resourcePath = '';
-  if (hasGet || hasPut || hasDelete) {
-    resourcePath = resource.route + '/{' + resource.name + 'Id}';
-    swagger.paths[resourcePath] = {};
-  }
+  // INDEX and POST listPath
+  if (methods.indexOf('index')>-1 || methods.indexOf('post')>-1) swagger.paths[listPath] = {};
 
-  // INDEX of resources.
-  if (hasIndex) {
-    swagger.paths[resource.route].get = {
+  // INDEX of listPath
+  if (methods.indexOf('index')>-1) {
+    swagger.paths[listPath].get = {
       tags: [resource.name],
       summary: 'List multiple ' + resource.modelName + ' resources.',
       description: 'This operation allows you to list and search for ' + resource.modelName + ' resources provided query arguments.',
       operationId: 'get' + resource.modelName + 's',
-      produces: ['application/json'],
       responses: {
         401: {
           description: 'Unauthorized.'
@@ -277,16 +251,13 @@ module.exports = function(resource, bodyDefinition) {
     };
   }
 
-  // POST resource.
-  if (hasPost) {
-    swagger.paths[resource.route].post = {
+  // POST listPath.
+  if (methods.indexOf('post')>-1) {
+    swagger.paths[listPath].post = {
       tags: [resource.name],
       summary: 'Create a new ' + resource.modelName,
       description: 'Create a new ' + resource.modelName,
       operationId: 'create' + resource.modelName,
-      consumes: ['application/json'],
-      produces: ['application/json'],
-      security: [],
       responses: {
         401: {
           description: 'Unauthorized.  Note that anonymous submissions are *enabled* by default.'
@@ -312,14 +283,18 @@ module.exports = function(resource, bodyDefinition) {
     };
   }
 
-  // GET method.
-  if (hasGet) {
-    swagger.paths[resourcePath].get = {
+  // The resource path for this resource.
+  if (methods.indexOf('get')>-1 || 
+    methods.indexOf('put')>-1 ||
+    methods.indexOf('delete')>-1) swagger.paths[itemPath] = {};
+
+  // GET itemPath.
+  if (methods.indexOf('get')>-1) {
+    swagger.paths[itemPath].get = {
       tags: [resource.name],
       summary: 'Return a specific ' + resource.name + ' instance.',
       description: 'Return a specific ' + resource.name + ' instance.',
       operationId: 'get' + resource.modelName,
-      produces: ['application/json'],
       responses: {
         500: {
           description: 'An error has occurred.'
@@ -349,15 +324,13 @@ module.exports = function(resource, bodyDefinition) {
     };
   }
 
-  // PUT method
-  if (hasPut) {
-    swagger.paths[resourcePath].put = {
+  // PUT itemPath
+  if (methods.indexOf('put')>-1) {
+    swagger.paths[itemPath].put = {
       tags: [resource.name],
       summary: 'Update a specific ' + resource.name + ' instance.',
       description: 'Update a specific ' + resource.name + ' instance.',
       operationId: 'update' + resource.modelName,
-      consumes: ['application/json'],
-      produces: ['application/json'],
       responses: {
         500: {
           description: 'An error has occurred.'
@@ -399,15 +372,13 @@ module.exports = function(resource, bodyDefinition) {
     };
   }
 
-  // DELETE method
-  if (hasDelete) {
-    swagger.paths[resourcePath].delete = {
+  // DELETE itemPath
+  if (methods.indexOf('delete')>-1) {
+    swagger.paths[itemPath].delete = {
       tags: [resource.name],
       summary: 'Delete a specific ' + resource.name,
       description: 'Delete a specific ' + resource.name,
       operationId: 'delete' + resource.modelName,
-      consumes: ['application/json'],
-      produces: ['application/json'],
       responses: {
         500: {
           description: 'An error has occurred.'
