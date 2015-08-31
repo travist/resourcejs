@@ -1,5 +1,4 @@
 var _ = require('lodash');
-var mongoose = require('mongoose');
 var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
 var middleware = require( 'composable-middleware');
@@ -409,30 +408,31 @@ module.exports = function(app, route, modelName, model) {
         }
 
         // Remove __v field
-        if (req.body.hasOwnProperty('__v')) {
-          delete req.body.__v;
-        }
+        var update = _.omit(req.body, '__v');
 
-        debug.put('Update: ' + JSON.stringify(req.body));
         var query = req.modelQuery || this.model;
-        query.findOneAndUpdate(
-          {_id: req.params[this.name + 'Id']},
-          {$set: req.body},
-          {new: true},
-          function(err, item) {
+        query.findOne({_id: req.params[this.name + 'Id']}, function(err, item) {
+          if (err) {
+            debug.put(err);
+            return this.setResponse(res, {status: 500, error: err}, next);
+          }
+          if (!item) {
+            debug.put('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
+            return this.setResponse(res, {status: 404}, next);
+          }
+
+          // Force strict to fix issues with nested arrays.
+          item.set(update);
+          item.save(function(err, item) {
             if (err) {
               debug.put(err);
               return this.setResponse(res, {status: 500, error: err}, next);
             }
-            if (!item) {
-              debug.put('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
-              return this.setResponse(res, {status: 404}, next);
-            }
 
-            debug.put(item);
+            debug.put(JSON.stringify(item));
             return this.setResponse(res, {status: 200, item: item}, next);
-          }.bind(this)
-        );
+          }.bind(this));
+        }.bind(this));
       }, this.respond.bind(this), options);
       return this;
     },
@@ -448,7 +448,7 @@ module.exports = function(app, route, modelName, model) {
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404, error: err}, next);
-          var patches = req.body
+          var patches = req.body;
           try {
             for (var len = patches.length, i=0; i<len; ++i) {
               var patch = patches[i];
@@ -459,8 +459,8 @@ module.exports = function(app, route, modelName, model) {
                     status: 412,
                     name: 'Precondition Failed',
                     message: 'A json-patch test op has failed. No changes have been applied to the document',
-                    item:item,
-                    patch:patch,
+                    item: item,
+                    patch: patch
                   }, next);
                 }
               }
