@@ -4,7 +4,8 @@ var jsonpatch = require('fast-json-patch');
 var middleware = require( 'composable-middleware');
 var debug = {
   put: require('debug')('resourcejs:put'),
-  post: require('debug')('resourcejs:post')
+  post: require('debug')('resourcejs:post'),
+  delete: require('debug')('resourcejs:delete')
 };
 
 module.exports = function(app, route, modelName, model) {
@@ -421,7 +422,6 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 404}, next);
           }
 
-          // Force strict to fix issues with nested arrays.
           item.set(update);
           item.save(function(err, item) {
             if (err) {
@@ -484,13 +484,29 @@ module.exports = function(app, route, modelName, model) {
     delete: function(options) {
       this.methods.push('delete');
       this.register(app, 'delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
-        if (req.skipResource) { return next(); }
+        if (req.skipResource) {
+          debug.delete('SKipping Resource');
+          return next();
+        }
+
         var query = req.modelQuery || this.model;
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.setResponse(res, {status: 500, error: err}, next);
-          if (!item) return this.setResponse(res, {status: 404, error: err}, next);
-          item.remove(function (err, item) {
-            if (err) return this.setResponse(res, {status: 400, error: err}, next);
+          if (err) {
+            debug.delete(err);
+            return this.setResponse(res, {status: 500, error: err}, next);
+          }
+          if (!item) {
+            debug.delete('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
+            return this.setResponse(res, {status: 404, error: err}, next);
+          }
+
+          query.remove({_id: item._id}, function(err, item) {
+            if (err) {
+              debug.delete(err);
+              return this.setResponse(res, {status: 400, error: err}, next);
+            }
+
+            debug.delete(item);
             return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
           }.bind(this));
         }.bind(this));
