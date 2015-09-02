@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/travist/resourcejs.svg?branch=master)](https://travis-ci.org/travist/resourcejs)
+
 Resource.js - A simple Express library to reflect Mongoose models to a REST interface with a splash of Swagger.io love.
 ==============================================================
 
