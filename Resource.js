@@ -500,7 +500,7 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 404, error: err}, next);
           }
 
-          query.remove({_id: item._id}, function(err, item) {
+          query.remove({_id: item._id}, function(err) {
             if (err) {
               debug.delete(err);
               return this.setResponse(res, {status: 400, error: err}, next);
