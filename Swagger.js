@@ -16,13 +16,23 @@ module.exports = function(resource) {
     }
 
     // If no type, then return null.
-    if (!options.type) return null;
+    if (!options.type) {
+      return null;
+    }
 
     // If this is an array, then return the array with items.
-    if (Array.isArray(options.type)) return {
-      type: 'array',
-      items: getProperty(options.type[0])
-    };
+    if (Array.isArray(options.type)) {
+      if (options.type[0].hasOwnProperty('paths')) {
+        return {
+          type: 'array',
+          items: getModel(options.type[0])
+        }
+      }
+      return {
+        type: 'array',
+        items: getProperty(options.type[0])
+      };
+    }
 
     // String.
     if (options.type === String) return {
@@ -77,10 +87,10 @@ module.exports = function(resource) {
 
     if (options.type === Object) return null;
     if (options.type instanceof Object) return null;
-    throw new Error('Unrecognized type: ' + type);
+    throw new Error('Unrecognized type: ' + options.type);
   };
 
-  var getModel = function() {
+  var getModel = function(schema) {
     // Define the definition structure.
     var definition = {
       required: [],
@@ -88,7 +98,7 @@ module.exports = function(resource) {
     };
 
     // Iterate through each model schema path.
-    _.each(resource.model.schema.paths, function(path, name) {
+    _.each(schema.paths, function(path, name) {
 
       // Set the property for the swagger model.
       var property = getProperty(path.options);
@@ -167,7 +177,7 @@ module.exports = function(resource) {
   };
 
   // Get the swagger model.
-  var swaggerModel = getModel();
+  var swaggerModel = getModel(resource.model.schema);
 
   // Add the model to the definitions.
   swagger.definitions[resource.modelName] = swaggerModel;
