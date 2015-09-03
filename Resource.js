@@ -56,11 +56,12 @@ module.exports = function(app, route, modelName, model) {
      */
     register: function(app, method, path, callback, last, options) {
       var mw = middleware();
+      var len, i;
 
       // The before middleware.
       if (options && options.before) {
         var before = [].concat(options.before);
-        for (var len = before.length, i=0; i<len; ++i) {
+        for (len = before.length, i=0; i<len; ++i) {
           mw.use(before[i].bind(this));
         }
       }
@@ -69,7 +70,7 @@ module.exports = function(app, route, modelName, model) {
       // The after middleware.
       if (options && options.after) {
         var after = [].concat(options.after);
-        for (var len = after.length, i=0; i<len; ++i) {
+        for (len = after.length, i=0; i<len; ++i) {
           mw.use(after[i].bind(this));
         }
       }
@@ -465,7 +466,7 @@ module.exports = function(app, route, modelName, model) {
                 }
               }
             }
-            jsonpatch.apply(item, patches, true)
+            jsonpatch.apply(item, patches, true);
           } catch(err) {
             if (err) return this.setResponse(res, {status: 500, item: item, error: err}, next);
           }
@@ -517,9 +518,9 @@ module.exports = function(app, route, modelName, model) {
     /**
      * Returns the swagger definition for this resource.
      */
-    swagger: function() {
+    swagger: function(resourceUrl, bodyDefinition) {
       if (!this.__swagger) {
-        this.__swagger = require('./Swagger')(this);
+        this.__swagger = require('./Swagger')(this, resourceUrl, bodyDefinition);
       }
       return this.__swagger;
     }
