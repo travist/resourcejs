@@ -233,7 +233,7 @@ module.exports = function(app, route, modelName, model) {
         var filter = _.zipObject(['name', 'selector'], _.words(name, /[^,_ ]+/g));
 
         // See if this parameter is defined in our model.
-        var param = this.model.schema.paths[filter.name];
+        var param = this.model.schema.paths[filter.name.split('.')[0]];
         if (param) {
 
           // See if there is a selector.
