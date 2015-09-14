@@ -1,6 +1,6 @@
 {
   "name": "resourcejs",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
