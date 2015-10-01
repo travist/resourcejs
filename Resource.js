@@ -500,6 +500,9 @@ module.exports = function(app, route, modelName, model) {
             debug.delete('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
             return this.setResponse(res, {status: 404, error: err}, next);
           }
+          if (req.skipDelete) {
+            return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
+          }
 
           query.remove({_id: item._id}, function(err) {
             if (err) {
