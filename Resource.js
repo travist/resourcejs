@@ -3,9 +3,11 @@ var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
 var middleware = require( 'composable-middleware');
 var debug = {
+  index: require('debug')('resourcejs:index'),
   put: require('debug')('resourcejs:put'),
   post: require('debug')('resourcejs:post'),
-  delete: require('debug')('resourcejs:delete')
+  delete: require('debug')('resourcejs:delete'),
+  respond: require('debug')('resourcejs:respond')
 };
 
 module.exports = function(app, route, modelName, model) {
@@ -102,7 +104,11 @@ module.exports = function(app, route, modelName, model) {
      *   The next middleware
      */
     respond: function(req, res, next) {
-      if (req.noResponse || res.headerSent || res.headersSent) { return next(); }
+      if (req.noResponse || res.headerSent || res.headersSent) {
+        debug.respond('Skipping');
+        return next();
+      }
+
       if (res.resource) {
         switch (res.resource.status) {
           case 400:
@@ -129,12 +135,20 @@ module.exports = function(app, route, modelName, model) {
               })
             });
             break;
+          case 204:
+            // Convert 204 into 200, to preserve the empty result set.
+            if (req.method !== 'DELETE') {
+              debug.respond('Changing 204 to 200, method=' + req.method);
+              res.resource.status = 200;
+              res.resource.item = [];
+            }
           default:
             res.status(res.resource.status).json(res.resource.item);
             break;
         }
       }
 
+      debug.respond(res.resource.status + ': ' + JSON.stringify(res.resource.item));
       next();
     },
 
@@ -285,7 +299,6 @@ module.exports = function(app, route, modelName, model) {
     index: function(options) {
       this.methods.push('index');
       this.register(app, 'get', this.route, function(req, res, next) {
-
         // Allow before handlers the ability to disable resource CRUD.
         if (req.skipResource) { return next(); }
 
@@ -298,7 +311,10 @@ module.exports = function(app, route, modelName, model) {
 
         // First get the total count.
         countQuery.find(findQuery).count(function(err, count) {
-          if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          if (err) {
+            debug.index(err);
+            return this.setResponse(res, {status: 500, error: err}, next);
+          }
 
           // Get the default limit.
           var defaultLimit = req.query.limit || 10;
@@ -325,7 +341,12 @@ module.exports = function(app, route, modelName, model) {
             .select(this.getParamQuery(req, 'select'))
             .sort(this.getParamQuery(req, 'sort'))
             .exec(function(err, items) {
-              if (err) return this.setResponse(res, {status: 500, error: err}, next);
+              if (err) {
+                debug.index(err);
+                return this.setResponse(res, {status: 500, error: err}, next);
+              }
+
+              debug.index(items);
               return this.setResponse(res, {status: res.statusCode, item: items}, next);
             }.bind(this));
         }.bind(this));
