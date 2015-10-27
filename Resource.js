@@ -137,10 +137,17 @@ module.exports = function(app, route, modelName, model) {
             break;
           case 204:
             // Convert 204 into 200, to preserve the empty result set.
-            if (req.method !== 'DELETE') {
-              debug.respond('Changing 204 to 200, method=' + req.method);
-              res.resource.status = 200;
-              res.resource.item = [];
+            res.resource.status = 200;
+
+            // Update the empty response body based on request method type.
+            debug.respond('204 -> ' + req.__rMethod);
+            switch (req.__rMethod) {
+              case 'index':
+                res.resource.item = [];
+                break;
+              default:
+                res.resource.item = {};
+                break;
             }
           default:
             res.status(res.resource.status).json(res.resource.item);
@@ -299,6 +306,9 @@ module.exports = function(app, route, modelName, model) {
     index: function(options) {
       this.methods.push('index');
       this.register(app, 'get', this.route, function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'index';
+
         // Allow before handlers the ability to disable resource CRUD.
         if (req.skipResource) { return next(); }
 
@@ -360,6 +370,9 @@ module.exports = function(app, route, modelName, model) {
     get: function(options) {
       this.methods.push('get');
       this.register(app, 'get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'get';
+
         if (req.skipResource) {
           return next();
         }
@@ -384,6 +397,9 @@ module.exports = function(app, route, modelName, model) {
       this.methods.push('virtual');
       var path = (options.path === undefined) ? this.path : options.path;
       this.register(app, 'get', this.route + '/virtual/' + path, function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'virtual';
+
         if (req.skipResource) { return next(); }
         var query = req.modelQuery;
         query.exec(function(err, item) {
@@ -401,6 +417,9 @@ module.exports = function(app, route, modelName, model) {
     post: function(options) {
       this.methods.push('post');
       this.register(app, 'post', this.route, function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'post';
+
         if (req.skipResource) {
           debug.post('Skipping Resource');
           return next();
@@ -425,6 +444,9 @@ module.exports = function(app, route, modelName, model) {
     put: function(options) {
       this.methods.push('put');
       this.register(app, 'put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'put';
+
         if (req.skipResource) {
           debug.put('Skipping Resource');
           return next();
@@ -465,6 +487,9 @@ module.exports = function(app, route, modelName, model) {
     patch: function(options) {
       this.methods.push('patch');
       this.register(app, 'patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'patch';
+
         if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
@@ -506,6 +531,9 @@ module.exports = function(app, route, modelName, model) {
     delete: function(options) {
       this.methods.push('delete');
       this.register(app, 'delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'delete';
+
         if (req.skipResource) {
           debug.delete('SKipping Resource');
           return next();

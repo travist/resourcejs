@@ -407,7 +407,7 @@ describe('Test single resource CRUD capabilities', function() {
   it('/DELETE the resource', function(done) {
     request(app)
       .delete('/test/resource1/' + resource._id)
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
         assert.deepEqual(res.body, {});
         done(err);
@@ -1014,7 +1014,7 @@ describe('Test single resource handlers capabilities', function() {
   it('A DELETE request should invoke the global handlers', function(done) {
     request(app)
       .delete('/test/resource2/' + resource._id)
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -1256,7 +1256,7 @@ describe('Test nested resource CRUD capabilities', function() {
   it('/DELETE the nested resource', function(done) {
     request(app)
       .delete('/test/resource1/' + resource._id + '/nested1/' + nested._id)
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -1431,7 +1431,7 @@ describe('Test nested resource handlers capabilities', function() {
   it('A DELETE request to a child resource should invoke the global handlers', function(done) {
     request(app)
       .delete('/test/resource2/' + resource._id + '/nested2/' + nested._id)
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
