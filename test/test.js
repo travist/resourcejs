@@ -272,10 +272,12 @@ describe('Test single resource CRUD capabilities', function() {
   it('/GET empty list', function(done) {
     request(app)
       .get('/test/resource1')
+      .expect('Content-Type', /json/)
       .expect('Content-Range', '*/0')
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
-        assert.deepEqual(res.body, {});
+        assert.equal(res.hasOwnProperty('body'), true);
+        assert.deepEqual(res.body, []);
         done(err);
       });
   });
@@ -405,7 +407,7 @@ describe('Test single resource CRUD capabilities', function() {
   it('/DELETE the resource', function(done) {
     request(app)
       .delete('/test/resource1/' + resource._id)
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
         assert.deepEqual(res.body, {});
         done(err);
@@ -415,10 +417,12 @@ describe('Test single resource CRUD capabilities', function() {
   it('/GET empty list', function(done) {
     request(app)
       .get('/test/resource1')
+      .expect('Content-Type', /json/)
       .expect('Content-Range', '*/0')
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
-        assert.deepEqual(res.body, {});
+        assert.equal(res.hasOwnProperty('body'), true);
+        assert.deepEqual(res.body, []);
         done(err);
       });
   });
@@ -1010,7 +1014,7 @@ describe('Test single resource handlers capabilities', function() {
   it('A DELETE request should invoke the global handlers', function(done) {
     request(app)
       .delete('/test/resource2/' + resource._id)
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -1060,14 +1064,12 @@ describe('Test nested resource CRUD capabilities', function() {
   it('/GET an empty list of nested resources', function(done) {
     request(app)
       .get('/test/resource1/' + resource._id + '/nested1')
-      .expect(204)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '*/0')
+      .expect(200)
       .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.deepEqual(response, {});
+        assert.equal(res.hasOwnProperty('body'), true);
+        assert.deepEqual(res.body, []);
         done();
       });
   });
@@ -1254,7 +1256,7 @@ describe('Test nested resource CRUD capabilities', function() {
   it('/DELETE the nested resource', function(done) {
     request(app)
       .delete('/test/resource1/' + resource._id + '/nested1/' + nested._id)
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -1269,14 +1271,12 @@ describe('Test nested resource CRUD capabilities', function() {
   it('/GET an empty list of nested resources', function(done) {
     request(app)
       .get('/test/resource1/' + resource._id + '/nested1/')
-      .expect(204)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '*/0')
+      .expect(200)
       .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.deepEqual(response, {});
+        assert.equal(res.hasOwnProperty('body'), true);
+        assert.deepEqual(res.body, []);
         done();
       });
   });
@@ -1431,7 +1431,7 @@ describe('Test nested resource handlers capabilities', function() {
   it('A DELETE request to a child resource should invoke the global handlers', function(done) {
     request(app)
       .delete('/test/resource2/' + resource._id + '/nested2/' + nested._id)
-      .expect(204)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
