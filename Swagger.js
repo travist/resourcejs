@@ -1,11 +1,26 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
 module.exports = function(resource, resourceUrl, bodyDefinition) {
+
+  var fixNestedRoutes = function(resource) {
+    routeParts = resource.route.split('/');
+    for (i=0;i<routeParts.length;i++) {
+      if (routeParts[i].charAt(0) == ':') {
+        routeParts[i] = '{' + routeParts[i].slice(1) + '}'
+      }
+    }
+    resource.routeFixed = routeParts.join('/');
+    return resource
+  };
+  resource = fixNestedRoutes(resource);
+
   var addNestedIdParameter = function(resource, parameters) {
     if (resource.route.includes("/:")) {
-      if (resource.route.match(/:(.+)\//).length >= 1 && resource.route.match(/^\/(.+)\/:/).length >= 1) {
-        idName = resource.route.match(/:(.+)\//)[1]
-        primaryModel = resource.route.match(/^\/(.+)\/:/)[1]
+      if (resource.route.match(/:(.+)\//).length >= 1 && resource.route.match(/^\/(.+)\/\:/).length >= 1) {
+
+        idName = resource.route.match(/:(.+)\//)[1];
+        primaryModel = resource.route.match(/^\/(.+)\/\:/)[1];
+
         parameters.push({
           in: 'path',
           name: idName,
@@ -15,7 +30,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
         })
       }
     }
-  }
+  };
   /**
    * Converts a Mongoose property to a Swagger property.
    *
@@ -169,7 +184,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
 
   // Build and return a Swagger definition for this model.
 
-  var listPath = resourceUrl || resource.route;
+  var listPath = resourceUrl || resource.routeFixed;
   var itemPath = listPath + '/{' + resource.name + 'Id}';
   bodyDefinition = bodyDefinition || getModel(resource.model.schema);
 
