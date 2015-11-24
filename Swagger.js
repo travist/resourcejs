@@ -2,6 +2,35 @@ var _ = require('lodash');
 var mongoose = require('mongoose');
 module.exports = function(resource, resourceUrl, bodyDefinition) {
 
+  var fixNestedRoutes = function(resource) {
+    routeParts = resource.route.split('/');
+    for (i=0;i<routeParts.length;i++) {
+      if (routeParts[i].charAt(0) == ':') {
+        routeParts[i] = '{' + routeParts[i].slice(1) + '}'
+      }
+    }
+    resource.routeFixed = routeParts.join('/');
+    return resource
+  };
+  resource = fixNestedRoutes(resource);
+
+  var addNestedIdParameter = function(resource, parameters) {
+    if (resource.route.includes("/:")) {
+      if (resource.route.match(/:(.+)\//).length >= 1 && resource.route.match(/^\/(.+)\/\:/).length >= 1) {
+
+        idName = resource.route.match(/:(.+)\//)[1];
+        primaryModel = resource.route.match(/^\/(.+)\/\:/)[1];
+
+        parameters.push({
+          in: 'path',
+          name: idName,
+          description: 'The parent model of ' + resource.modelName + ': ' + primaryModel,
+          required: true,
+          type: 'string'
+        })
+      }
+    }
+  };
   /**
    * Converts a Mongoose property to a Swagger property.
    *
@@ -155,7 +184,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
 
   // Build and return a Swagger definition for this model.
 
-  var listPath = resourceUrl || resource.route;
+  var listPath = resourceUrl || resource.routeFixed;
   var itemPath = listPath + '/{' + resource.name + 'Id}';
   bodyDefinition = bodyDefinition || getModel(resource.model.schema);
 
@@ -215,14 +244,14 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
           type: 'integer',
           default: 10
         },
-        {
-          name: 'count',
-          in: 'query',
-          description: 'Set to true to return the number of records instead of the documents.',
-          type: 'boolean',
-          required: false,
-          default: false
-        },
+        //{
+        //  name: 'count',
+        //  in: 'query',
+        //  description: 'Set to true to return the number of records instead of the documents.',
+        //  type: 'boolean',
+        //  required: false,
+        //  default: false
+        //},
         {
           name: 'sort',
           in: 'query',
@@ -248,7 +277,10 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
           default: ''
         }
       ]
+
     };
+    addNestedIdParameter(resource, swagger.paths[listPath].get.parameters)
+
   }
 
   // POST listPath.
@@ -281,6 +313,8 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
         }
       ]
     };
+    addNestedIdParameter(resource, swagger.paths[listPath].post.parameters)
+
   }
 
   // The resource path for this resource.
@@ -322,6 +356,8 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
         }
       ]
     };
+    addNestedIdParameter(resource, swagger.paths[itemPath].get.parameters)
+
   }
 
   // PUT itemPath
@@ -370,6 +406,8 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
         }
       ]
     };
+    addNestedIdParameter(resource, swagger.paths[itemPath].put.parameters)
+
   }
 
   // DELETE itemPath
@@ -406,6 +444,8 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
         }
       ]
     };
+    addNestedIdParameter(resource, swagger.paths[itemPath].delete.parameters)
+
   }
 
   // Return the swagger definition for this resource.
