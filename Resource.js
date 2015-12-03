@@ -251,7 +251,7 @@ module.exports = function(app, route, modelName, model) {
       _.each(filters, function(value, name) {
 
         // Get the filter object.
-        var filter = _.zipObject(['name', 'selector'], _.words(name, /[^,_ ]+/g));
+        var filter = _.zipObject(['name', 'selector'], name.split('__'));
 
         // See if this parameter is defined in our model.
         var param = this.model.schema.paths[filter.name.split('.')[0]];
