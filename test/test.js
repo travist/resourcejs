@@ -144,7 +144,16 @@ describe('Build Resources for following tests', function() {
     var Resource1Model = mongoose.model('resource1', Resource1Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'resource1', Resource1Model).rest();
+    Resource(app, '/test', 'resource1', Resource1Model).rest({
+      afterDelete: function(req, res, next) {
+        // Check that the delete item is still being returned via resourcejs.
+        assert.notEqual(res.resource.item, {});
+        assert.notEqual(res.resource.item, []);
+        assert.equal(res.resource.status, 204);
+        assert.equal(res.statusCode, 200);
+        next();
+      }
+    });
     done();
   });
 
