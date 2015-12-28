@@ -137,18 +137,17 @@ module.exports = function(app, route, modelName, model) {
             break;
           case 204:
             // Convert 204 into 200, to preserve the empty result set.
-            res.resource.status = 200;
-
             // Update the empty response body based on request method type.
             debug.respond('204 -> ' + req.__rMethod);
             switch (req.__rMethod) {
               case 'index':
-                res.resource.item = [];
+                res.status(200).json([]);
                 break;
               default:
-                res.resource.item = {};
+                res.status(200).json({});
                 break;
             }
+            break;
           default:
             res.status(res.resource.status).json(res.resource.item);
             break;
