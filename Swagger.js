@@ -37,7 +37,9 @@ module.exports = function(resource) {
    * @param options
    * @returns {*}
    */
-  var getProperty = function(options) {
+  var getProperty = function(path, name) {
+
+    var options = path.options;
 
     // Convert to the proper format if needed.
     if (!options.hasOwnProperty('type')) options = {type: options};
@@ -52,7 +54,11 @@ module.exports = function(resource) {
       if (options.type[0].hasOwnProperty('paths')) {
         return {
           type: 'array',
-          items: getModel(options.type[0])
+          title: name,
+          items: {
+            $ref: '#/definitions/' + name
+          },
+          definitions: getModel(options.type[0], name)
         };
       }
       return {
@@ -67,16 +73,17 @@ module.exports = function(resource) {
       var functionName = options.type.toString();
       functionName = functionName.substr('function '.length);
       functionName = functionName.substr(0, functionName.indexOf('('));
-      console.log(functionName);
 
       switch (functionName) {
         case 'ObjectId':
           return {
-            'type': 'string'
+            'type': 'string',
+            'description': 'ObjectId'
           };
         case 'Oid':
           return {
-            'type': 'string'
+            'type': 'string',
+            'description': 'Oid'
           };
         case 'Array':
           return {
@@ -87,7 +94,7 @@ module.exports = function(resource) {
           };
         case 'Mixed':
           return {
-            type: 'string'
+            type: 'object'
           };
         case 'Buffer':
           return {
@@ -106,16 +113,16 @@ module.exports = function(resource) {
           type: 'integer',
           format: 'int64'
         };
-      case Date: 
+      case Date:
         return {
           type: 'string',
           format: 'date'
         };
-      case Boolean: 
+      case Boolean:
         return {
           type: 'boolean'
         };
-      case Function: 
+      case Function:
         break;
       case Object:
         return null;
@@ -125,18 +132,21 @@ module.exports = function(resource) {
     throw new Error('Unrecognized type: ' + options.type);
   };
 
-  var getModel = function(schema) {
+  var getModel = function(schema, modelName) {
     // Define the definition structure.
-    var definition = {
+    var definitions = {};
+
+    definitions[modelName] = {
 //      required: [],
-      properties: {}
+      title: modelName,
+      properties: {},
     };
 
     // Iterate through each model schema path.
     _.each(schema.paths, function(path, name) {
 
       // Set the property for the swagger model.
-      var property = getProperty(path.options);
+      var property = getProperty(path, name);
       if (name.substr(0, 2) !== '__' && property) {
 
         // Add the description if they provided it.
@@ -172,19 +182,25 @@ module.exports = function(resource) {
           property.allowableValues.max = path.options.max;
         }
 
-        if (!property.type) {
+        if (!property.type && !property.$ref) {
           console.log('Warning: That field type is not yet supported in Swagger definitions, using "string"');
           console.log('Path name: %s.%s', definition.id, name);
           console.log('Mongoose type: %s', path.options.type);
           property.type = 'string';
         }
 
+        // Allow properties to pass back additional definitions.
+        if (property.definitions) {
+          definitions = _.merge(definitions, property.definitions);
+          delete property.definitions;
+        }
+
         // Add this property to the definition.
-        definition.properties[name] = property;
+        definitions[modelName].properties[name] = property;
       }
     });
 
-    return definition;
+    return definitions;
   };
 
 
@@ -192,7 +208,7 @@ module.exports = function(resource) {
 
   var listPath = resource.routeFixed;
   var itemPath = listPath + '/{' + resource.modelName + 'Id}';
-  bodyDefinition = getModel(resource.model.schema);
+  bodyDefinitions = getModel(resource.model.schema, resource.modelName);
 
   var swagger = {
     definitions: {},
@@ -200,7 +216,7 @@ module.exports = function(resource) {
   };
 
   // Build Swagger definitions.
-  swagger.definitions[resource.modelName] = bodyDefinition;
+  swagger.definitions = _.merge(swagger.definitions, bodyDefinitions);
   swagger.definitions[resource.modelName + 'List'] = {
     type: 'array',
       items: {
