@@ -43,7 +43,9 @@ module.exports = function(resource) {
     if (!options.hasOwnProperty('type')) options = {type: options};
 
     // If no type, then return null.
-    if (!options.type) return null;
+    if (!options.type) {
+      return null;
+    }
 
     // If this is an array, then return the array with items.
     if (Array.isArray(options.type)) {
@@ -59,6 +61,39 @@ module.exports = function(resource) {
           type: 'string',
         }
       };
+    }
+
+    if (typeof options.type === 'function') {
+      var functionName = options.type.toString();
+      functionName = functionName.substr('function '.length);
+      functionName = functionName.substr(0, functionName.indexOf('('));
+      console.log(functionName);
+
+      switch (functionName) {
+        case 'ObjectId':
+          return {
+            'type': 'string'
+          };
+        case 'Oid':
+          return {
+            'type': 'string'
+          };
+        case 'Array':
+          return {
+            type: 'array',
+            items: {
+              type: 'string'
+            }
+          };
+        case 'Mixed':
+          return {
+            type: 'string'
+          };
+        case 'Buffer':
+          return {
+            type: 'string'
+          };
+      }
     }
 
     switch(options.type) {
@@ -81,35 +116,6 @@ module.exports = function(resource) {
           type: 'boolean'
         };
       case Function: 
-        var functionName = options.type.toString();
-        functionName = functionName.substr('function '.length);
-        functionName = functionName.substr(0, functionName.indexOf('('));
-
-        switch (functionName) {
-          case 'ObjectId':
-            return {
-              '$ref': '#/definitions/' + options.ref
-            };
-          case 'Oid':
-            return {
-              '$ref': '#/definitions/' + options.ref
-            };
-          case 'Array':
-            return {
-              type: 'array',
-              items: {
-                type: 'string'
-              }
-            };
-          case 'Mixed':
-            return {
-              type: 'string'
-            };
-          case 'Buffer': 
-            return {
-              type: 'string'
-            };
-        }
         break;
       case Object:
         return null;
