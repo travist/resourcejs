@@ -1,6 +1,6 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
-module.exports = function(resource, resourceUrl, bodyDefinition) {
+module.exports = function(resource) {
 
   /**
    * Converts a Mongoose property to a Swagger property.
@@ -155,9 +155,9 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
 
   // Build and return a Swagger definition for this model.
 
-  var listPath = resourceUrl || resource.route;
-  var itemPath = listPath + '/{' + resource.name + 'Id}';
-  bodyDefinition = bodyDefinition || getModel(resource.model.schema);
+  var listPath = resource.route;
+  var itemPath = listPath + '/{' + resource.modelName + 'Id}';
+  var bodyDefinition = getModel(resource.model.schema);
 
   var swagger = {
     definitions: {},
@@ -166,7 +166,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
 
   // Build Swagger definitions.
   swagger.definitions[resource.modelName] = bodyDefinition;
-  swagger.definitions[resource.modelName+'List'] = { 
+  swagger.definitions[resource.modelName + 'List'] = {
     type: 'array',
       items: {
         $ref: '#/definitions/' + resource.modelName,
@@ -178,10 +178,10 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
 
 
   // INDEX and POST listPath
-  if (methods.indexOf('index')>-1 || methods.indexOf('post')>-1) swagger.paths[listPath] = {};
+  if (methods.indexOf('index') > -1 || methods.indexOf('post') > -1) swagger.paths[listPath] = {};
 
   // INDEX of listPath
-  if (methods.indexOf('index')>-1) {
+  if (methods.indexOf('index') > -1) {
     swagger.paths[listPath].get = {
       tags: [resource.name],
       summary: 'List multiple ' + resource.modelName + ' resources.',
@@ -252,7 +252,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   }
 
   // POST listPath.
-  if (methods.indexOf('post')>-1) {
+  if (methods.indexOf('post') > -1) {
     swagger.paths[listPath].post = {
       tags: [resource.name],
       summary: 'Create a new ' + resource.modelName,
@@ -284,12 +284,12 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   }
 
   // The resource path for this resource.
-  if (methods.indexOf('get')>-1 || 
-    methods.indexOf('put')>-1 ||
-    methods.indexOf('delete')>-1) swagger.paths[itemPath] = {};
+  if (methods.indexOf('get') > -1 ||
+    methods.indexOf('put') > -1 ||
+    methods.indexOf('delete') > -1) swagger.paths[itemPath] = {};
 
   // GET itemPath.
-  if (methods.indexOf('get')>-1) {
+  if (methods.indexOf('get') > -1) {
     swagger.paths[itemPath].get = {
       tags: [resource.name],
       summary: 'Return a specific ' + resource.name + ' instance.',
@@ -314,7 +314,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
       },
       parameters: [
         {
-          name: resource.name + 'Id',
+          name: resource.modelName + 'Id',
           in: 'path',
           description: 'The ID of the ' + resource.name + ' that will be retrieved.',
           required: true,
@@ -325,7 +325,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   }
 
   // PUT itemPath
-  if (methods.indexOf('put')>-1) {
+  if (methods.indexOf('put') > -1) {
     swagger.paths[itemPath].put = {
       tags: [resource.name],
       summary: 'Update a specific ' + resource.name + ' instance.',
@@ -353,7 +353,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
       },
       parameters: [
         {
-          name: resource.name + 'Id',
+          name: resource.modelName + 'Id',
           in: 'path',
           description: 'The ID of the ' + resource.name + ' that will be updated.',
           required: true,
@@ -373,7 +373,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   }
 
   // DELETE itemPath
-  if (methods.indexOf('delete')>-1) {
+  if (methods.indexOf('delete') > -1) {
     swagger.paths[itemPath].delete = {
       tags: [resource.name],
       summary: 'Delete a specific ' + resource.name,
@@ -398,7 +398,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
       },
       parameters: [
         {
-          name: resource.name + 'Id',
+          name: resource.modelName + 'Id',
           in: 'path',
           description: 'The ID of the ' + resource.name + ' that will be deleted.',
           required: true,
