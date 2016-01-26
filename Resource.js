@@ -3,9 +3,11 @@ var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
 var middleware = require( 'composable-middleware');
 var debug = {
+  index: require('debug')('resourcejs:index'),
   put: require('debug')('resourcejs:put'),
   post: require('debug')('resourcejs:post'),
-  delete: require('debug')('resourcejs:delete')
+  delete: require('debug')('resourcejs:delete'),
+  respond: require('debug')('resourcejs:respond')
 };
 
 module.exports = function(app, route, modelName, model) {
@@ -102,7 +104,11 @@ module.exports = function(app, route, modelName, model) {
      *   The next middleware
      */
     respond: function(req, res, next) {
-      if (req.noResponse || res.headerSent || res.headersSent) { return next(); }
+      if (req.noResponse || res.headerSent || res.headersSent) {
+        debug.respond('Skipping');
+        return next();
+      }
+
       if (res.resource) {
         switch (res.resource.status) {
           case 400:
@@ -129,12 +135,26 @@ module.exports = function(app, route, modelName, model) {
               })
             });
             break;
+          case 204:
+            // Convert 204 into 200, to preserve the empty result set.
+            // Update the empty response body based on request method type.
+            debug.respond('204 -> ' + req.__rMethod);
+            switch (req.__rMethod) {
+              case 'index':
+                res.status(200).json([]);
+                break;
+              default:
+                res.status(200).json({});
+                break;
+            }
+            break;
           default:
             res.status(res.resource.status).json(res.resource.item);
             break;
         }
       }
 
+      debug.respond(res.resource.status + ': ' + JSON.stringify(res.resource.item));
       next();
     },
 
@@ -230,7 +250,7 @@ module.exports = function(app, route, modelName, model) {
       _.each(filters, function(value, name) {
 
         // Get the filter object.
-        var filter = _.zipObject(['name', 'selector'], _.words(name, /[^,_ ]+/g));
+        var filter = _.zipObject(['name', 'selector'], name.split('__'));
 
         // See if this parameter is defined in our model.
         var param = this.model.schema.paths[filter.name.split('.')[0]];
@@ -285,6 +305,8 @@ module.exports = function(app, route, modelName, model) {
     index: function(options) {
       this.methods.push('index');
       this.register(app, 'get', this.route, function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'index';
 
         // Allow before handlers the ability to disable resource CRUD.
         if (req.skipResource) { return next(); }
@@ -298,7 +320,10 @@ module.exports = function(app, route, modelName, model) {
 
         // First get the total count.
         countQuery.find(findQuery).count(function(err, count) {
-          if (err) return this.setResponse(res, {status: 500, error: err}, next);
+          if (err) {
+            debug.index(err);
+            return this.setResponse(res, {status: 500, error: err}, next);
+          }
 
           // Get the default limit.
           var defaultLimit = req.query.limit || 10;
@@ -325,7 +350,12 @@ module.exports = function(app, route, modelName, model) {
             .select(this.getParamQuery(req, 'select'))
             .sort(this.getParamQuery(req, 'sort'))
             .exec(function(err, items) {
-              if (err) return this.setResponse(res, {status: 500, error: err}, next);
+              if (err) {
+                debug.index(err);
+                return this.setResponse(res, {status: 500, error: err}, next);
+              }
+
+              debug.index(items);
               return this.setResponse(res, {status: res.statusCode, item: items}, next);
             }.bind(this));
         }.bind(this));
@@ -339,6 +369,9 @@ module.exports = function(app, route, modelName, model) {
     get: function(options) {
       this.methods.push('get');
       this.register(app, 'get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'get';
+
         if (req.skipResource) {
           return next();
         }
@@ -363,6 +396,9 @@ module.exports = function(app, route, modelName, model) {
       this.methods.push('virtual');
       var path = (options.path === undefined) ? this.path : options.path;
       this.register(app, 'get', this.route + '/virtual/' + path, function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'virtual';
+
         if (req.skipResource) { return next(); }
         var query = req.modelQuery;
         query.exec(function(err, item) {
@@ -380,6 +416,9 @@ module.exports = function(app, route, modelName, model) {
     post: function(options) {
       this.methods.push('post');
       this.register(app, 'post', this.route, function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'post';
+
         if (req.skipResource) {
           debug.post('Skipping Resource');
           return next();
@@ -404,6 +443,9 @@ module.exports = function(app, route, modelName, model) {
     put: function(options) {
       this.methods.push('put');
       this.register(app, 'put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'put';
+
         if (req.skipResource) {
           debug.put('Skipping Resource');
           return next();
@@ -444,6 +486,9 @@ module.exports = function(app, route, modelName, model) {
     patch: function(options) {
       this.methods.push('patch');
       this.register(app, 'patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'patch';
+
         if (req.skipResource) { return next(); }
         var query = req.modelQuery || this.model;
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
@@ -485,6 +530,9 @@ module.exports = function(app, route, modelName, model) {
     delete: function(options) {
       this.methods.push('delete');
       this.register(app, 'delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+        // Store the internal method for response manipulation.
+        req.__rMethod = 'delete';
+
         if (req.skipResource) {
           debug.delete('SKipping Resource');
           return next();
@@ -499,6 +547,9 @@ module.exports = function(app, route, modelName, model) {
           if (!item) {
             debug.delete('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
             return this.setResponse(res, {status: 404, error: err}, next);
+          }
+          if (req.skipDelete) {
+            return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
           }
 
           query.remove({_id: item._id}, function(err) {
