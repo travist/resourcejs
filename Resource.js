@@ -569,10 +569,10 @@ module.exports = function(app, route, modelName, model) {
     /**
      * Returns the swagger definition for this resource.
      */
-    swagger: function(resourceUrl, bodyDefinition, resetCache) {
+    swagger: function(resetCache) {
       resetCache = resetCache || false;
       if (!this.__swagger || resetCache) {
-        this.__swagger = require('./Swagger')(this, resourceUrl, bodyDefinition);
+        this.__swagger = require('./Swagger')(this);
       }
       return this.__swagger;
     }

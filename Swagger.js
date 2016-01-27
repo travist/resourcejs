@@ -1,6 +1,6 @@
 var _ = require('lodash');
 var mongoose = require('mongoose');
-module.exports = function(resource, resourceUrl, bodyDefinition) {
+module.exports = function(resource) {
 
   var fixNestedRoutes = function(resource) {
     routeParts = resource.route.split('/');
@@ -37,20 +37,28 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
    * @param options
    * @returns {*}
    */
-  var getProperty = function(options) {
+  var getProperty = function(path, name) {
+
+    var options = path.options;
 
     // Convert to the proper format if needed.
     if (!options.hasOwnProperty('type')) options = {type: options};
 
     // If no type, then return null.
-    if (!options.type) return null;
+    if (!options.type) {
+      return null;
+    }
 
     // If this is an array, then return the array with items.
     if (Array.isArray(options.type)) {
       if (options.type[0].hasOwnProperty('paths')) {
         return {
           type: 'array',
-          items: getModel(options.type[0])
+          title: name,
+          items: {
+            $ref: '#/definitions/' + name
+          },
+          definitions: getModel(options.type[0], name)
         };
       }
       return {
@@ -59,6 +67,40 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
           type: 'string',
         }
       };
+    }
+
+    if (typeof options.type === 'function') {
+      var functionName = options.type.toString();
+      functionName = functionName.substr('function '.length);
+      functionName = functionName.substr(0, functionName.indexOf('('));
+
+      switch (functionName) {
+        case 'ObjectId':
+          return {
+            'type': 'string',
+            'description': 'ObjectId'
+          };
+        case 'Oid':
+          return {
+            'type': 'string',
+            'description': 'Oid'
+          };
+        case 'Array':
+          return {
+            type: 'array',
+            items: {
+              type: 'string'
+            }
+          };
+        case 'Mixed':
+          return {
+            type: 'object'
+          };
+        case 'Buffer':
+          return {
+            type: 'string'
+          };
+      }
     }
 
     switch(options.type) {
@@ -71,45 +113,16 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
           type: 'integer',
           format: 'int64'
         };
-      case Date: 
+      case Date:
         return {
           type: 'string',
           format: 'date'
         };
-      case Boolean: 
+      case Boolean:
         return {
           type: 'boolean'
         };
-      case Function: 
-        var functionName = options.type.toString();
-        functionName = functionName.substr('function '.length);
-        functionName = functionName.substr(0, functionName.indexOf('('));
-
-        switch (functionName) {
-          case 'ObjectId':
-            return {
-              '$ref': '#/definitions/' + options.ref
-            };
-          case 'Oid':
-            return {
-              '$ref': '#/definitions/' + options.ref
-            };
-          case 'Array':
-            return {
-              type: 'array',
-              items: {
-                type: 'string'
-              }
-            };
-          case 'Mixed':
-            return {
-              type: 'string'
-            };
-          case 'Buffer': 
-            return {
-              type: 'string'
-            };
-        }
+      case Function:
         break;
       case Object:
         return null;
@@ -119,18 +132,21 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
     throw new Error('Unrecognized type: ' + options.type);
   };
 
-  var getModel = function(schema) {
+  var getModel = function(schema, modelName) {
     // Define the definition structure.
-    var definition = {
+    var definitions = {};
+
+    definitions[modelName] = {
 //      required: [],
-      properties: {}
+      title: modelName,
+      properties: {},
     };
 
     // Iterate through each model schema path.
     _.each(schema.paths, function(path, name) {
 
       // Set the property for the swagger model.
-      var property = getProperty(path.options);
+      var property = getProperty(path, name);
       if (name.substr(0, 2) !== '__' && property) {
 
         // Add the description if they provided it.
@@ -166,27 +182,33 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
           property.allowableValues.max = path.options.max;
         }
 
-        if (!property.type) {
+        if (!property.type && !property.$ref) {
           console.log('Warning: That field type is not yet supported in Swagger definitions, using "string"');
           console.log('Path name: %s.%s', definition.id, name);
           console.log('Mongoose type: %s', path.options.type);
           property.type = 'string';
         }
 
+        // Allow properties to pass back additional definitions.
+        if (property.definitions) {
+          definitions = _.merge(definitions, property.definitions);
+          delete property.definitions;
+        }
+
         // Add this property to the definition.
-        definition.properties[name] = property;
+        definitions[modelName].properties[name] = property;
       }
     });
 
-    return definition;
+    return definitions;
   };
 
 
   // Build and return a Swagger definition for this model.
 
-  var listPath = resourceUrl || resource.routeFixed;
-  var itemPath = listPath + '/{' + resource.name + 'Id}';
-  bodyDefinition = bodyDefinition || getModel(resource.model.schema);
+  var listPath = resource.routeFixed;
+  var itemPath = listPath + '/{' + resource.modelName + 'Id}';
+  bodyDefinitions = getModel(resource.model.schema, resource.modelName);
 
   var swagger = {
     definitions: {},
@@ -194,8 +216,8 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   };
 
   // Build Swagger definitions.
-  swagger.definitions[resource.modelName] = bodyDefinition;
-  swagger.definitions[resource.modelName+'List'] = { 
+  swagger.definitions = _.merge(swagger.definitions, bodyDefinitions);
+  swagger.definitions[resource.modelName + 'List'] = {
     type: 'array',
       items: {
         $ref: '#/definitions/' + resource.modelName,
@@ -207,10 +229,10 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
 
 
   // INDEX and POST listPath
-  if (methods.indexOf('index')>-1 || methods.indexOf('post')>-1) swagger.paths[listPath] = {};
+  if (methods.indexOf('index') > -1 || methods.indexOf('post') > -1) swagger.paths[listPath] = {};
 
   // INDEX of listPath
-  if (methods.indexOf('index')>-1) {
+  if (methods.indexOf('index') > -1) {
     swagger.paths[listPath].get = {
       tags: [resource.name],
       summary: 'List multiple ' + resource.modelName + ' resources.',
@@ -284,7 +306,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   }
 
   // POST listPath.
-  if (methods.indexOf('post')>-1) {
+  if (methods.indexOf('post') > -1) {
     swagger.paths[listPath].post = {
       tags: [resource.name],
       summary: 'Create a new ' + resource.modelName,
@@ -318,12 +340,12 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   }
 
   // The resource path for this resource.
-  if (methods.indexOf('get')>-1 || 
-    methods.indexOf('put')>-1 ||
-    methods.indexOf('delete')>-1) swagger.paths[itemPath] = {};
+  if (methods.indexOf('get') > -1 ||
+    methods.indexOf('put') > -1 ||
+    methods.indexOf('delete') > -1) swagger.paths[itemPath] = {};
 
   // GET itemPath.
-  if (methods.indexOf('get')>-1) {
+  if (methods.indexOf('get') > -1) {
     swagger.paths[itemPath].get = {
       tags: [resource.name],
       summary: 'Return a specific ' + resource.name + ' instance.',
@@ -348,7 +370,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
       },
       parameters: [
         {
-          name: resource.name + 'Id',
+          name: resource.modelName + 'Id',
           in: 'path',
           description: 'The ID of the ' + resource.name + ' that will be retrieved.',
           required: true,
@@ -361,7 +383,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   }
 
   // PUT itemPath
-  if (methods.indexOf('put')>-1) {
+  if (methods.indexOf('put') > -1) {
     swagger.paths[itemPath].put = {
       tags: [resource.name],
       summary: 'Update a specific ' + resource.name + ' instance.',
@@ -389,7 +411,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
       },
       parameters: [
         {
-          name: resource.name + 'Id',
+          name: resource.modelName + 'Id',
           in: 'path',
           description: 'The ID of the ' + resource.name + ' that will be updated.',
           required: true,
@@ -411,7 +433,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
   }
 
   // DELETE itemPath
-  if (methods.indexOf('delete')>-1) {
+  if (methods.indexOf('delete') > -1) {
     swagger.paths[itemPath].delete = {
       tags: [resource.name],
       summary: 'Delete a specific ' + resource.name,
@@ -436,7 +458,7 @@ module.exports = function(resource, resourceUrl, bodyDefinition) {
       },
       parameters: [
         {
-          name: resource.name + 'Id',
+          name: resource.modelName + 'Id',
           in: 'path',
           description: 'The ID of the ' + resource.name + ' that will be deleted.',
           required: true,
