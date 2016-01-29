@@ -873,14 +873,13 @@ describe('Test single resource search capabilities', function() {
   it('in search selector', function(done) {
     request(app)
       .get('/test/resource1?age__in=1,5,9,20')
-      //.expect('Content-Range', '0-3/4')
+      .expect('Content-Range', '0-3/4')
       .end(function(err, res) {
         if (err) {
           return done(err);
         }
 
         var response = res.body;
-        console.log(response)
         assert.equal(response.length, 4);
         _.each(response, function(resource) {
           var found = false;
