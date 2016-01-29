@@ -268,22 +268,24 @@ module.exports = function(app, route, modelName, model) {
               return;
             }
             else {
-
               // Init the filter.
               if (!findQuery.hasOwnProperty(filter.name)) {
                 findQuery[filter.name] = {};
               }
 
               // Set the selector for this filter name.
-              value = (param.instance === 'Number') ? parseInt(value, 10) : value;
+              value = (param.instance === 'Number')
+                ? parseInt(value, 10)
+                : value;
               findQuery[filter.name]['$' + filter.selector] = value;
               return;
             }
           }
           else {
-
             // Set the find query to this value.
-            value = (param.instance === 'Number') ? parseInt(value, 10) : value;
+            value = (param.instance === 'Number')
+              ? parseInt(value, 10)
+              : value;
             findQuery[filter.name] = value;
             return;
           }
