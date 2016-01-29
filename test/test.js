@@ -819,7 +819,8 @@ describe('Test single resource search capabilities', function() {
   it('eq search selector', function(done) {
     request(app)
       .get('/test/resource1?age__eq=5')
-      .expect('Content-Range', '0-0/1')
+      .expect('Content-Type', /json/)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -837,7 +838,8 @@ describe('Test single resource search capabilities', function() {
   it('equals (alternative) search selector', function(done) {
     request(app)
       .get('/test/resource1?age=5')
-      .expect('Content-Range', '0-0/1')
+      .expect('Content-Type', /json/)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -855,7 +857,8 @@ describe('Test single resource search capabilities', function() {
   it('ne search selector', function(done) {
     request(app)
       .get('/test/resource1?age__ne=5&limit=100')
-      .expect('Content-Range', '0-23/24')
+      .expect('Content-Type', /json/)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -873,7 +876,8 @@ describe('Test single resource search capabilities', function() {
   it('in search selector', function(done) {
     request(app)
       .get('/test/resource1?age__in=1,5,9,20')
-      .expect('Content-Range', '0-3/4')
+      .expect('Content-Type', /json/)
+      .expect(200)
       .end(function(err, res) {
         if (err) {
           return done(err);
