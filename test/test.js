@@ -816,7 +816,91 @@ describe('Test single resource search capabilities', function() {
       });
   });
 
-  it('$lt selector', function(done) {
+  it('eq search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age__eq=5')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        _.each(response, function(resource) {
+          assert.equal(resource.age, 5);
+        });
+        done();
+      });
+  });
+
+  it('equals (alternative) search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age=5')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        _.each(response, function(resource) {
+          assert.equal(resource.age, 5);
+        });
+        done();
+      });
+  });
+
+  it('ne search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age__ne=5&limit=100')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 24);
+        _.each(response, function(resource) {
+          assert.notEqual(resource.age, 5);
+        });
+        done();
+      });
+  });
+
+  it('in search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age__in=1,5,9,20')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 4);
+        _.each(response, function(resource) {
+          var found = false;
+
+          [1,5,9,20].forEach(function(a) {
+            if (resource.age && resource.age === a) {
+              found = true;
+            }
+          });
+
+          assert(found);
+        });
+        done();
+      });
+  });
+
+  it('lt search selector', function(done) {
     request(app)
       .get('/test/resource1?age__lt=5')
       .expect('Content-Range', '0-4/5')
@@ -834,7 +918,7 @@ describe('Test single resource search capabilities', function() {
       });
   });
 
-  it('$lte selector', function(done) {
+  it('lte search selector', function(done) {
     request(app)
       .get('/test/resource1?age__lte=5')
       .expect('Content-Range', '0-5/6')
@@ -852,7 +936,7 @@ describe('Test single resource search capabilities', function() {
       });
   });
 
-  it('$gt selector', function(done) {
+  it('gt search selector', function(done) {
     request(app)
       .get('/test/resource1?age__gt=5')
       .expect('Content-Range', '0-9/19')
@@ -870,7 +954,7 @@ describe('Test single resource search capabilities', function() {
       });
   });
 
-  it('$gte selector', function(done) {
+  it('gte search selector', function(done) {
     request(app)
       .get('/test/resource1?age__gte=5')
       .expect('Content-Range', '0-9/20')
@@ -888,7 +972,7 @@ describe('Test single resource search capabilities', function() {
       });
   });
 
-  it('regex selector', function(done) {
+  it('regex search selector', function(done) {
     request(app)
       .get('/test/resource1?title__regex=/.*Age [0-1]?[0-3]$/g')
       .expect('Content-Range', '0-7/8')

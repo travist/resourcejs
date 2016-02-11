@@ -268,22 +268,36 @@ module.exports = function(app, route, modelName, model) {
               return;
             }
             else {
-
               // Init the filter.
               if (!findQuery.hasOwnProperty(filter.name)) {
                 findQuery[filter.name] = {};
               }
 
-              // Set the selector for this filter name.
-              value = (param.instance === 'Number') ? parseInt(value, 10) : value;
+              // Special case for in filter with multiple values.
+              if (filter.selector === 'in' && _.contains(value, ',')) {
+                value = value.split(',');
+                _.map(value, function(item) {
+                  return (param.instance === 'Number')
+                    ? parseInt(item, 10)
+                    : item;
+                });
+              }
+              else {
+                // Set the selector for this filter name.
+                value = (param.instance === 'Number')
+                  ? parseInt(value, 10)
+                  : value;
+              }
+
               findQuery[filter.name]['$' + filter.selector] = value;
               return;
             }
           }
           else {
-
             // Set the find query to this value.
-            value = (param.instance === 'Number') ? parseInt(value, 10) : value;
+            value = (param.instance === 'Number')
+              ? parseInt(value, 10)
+              : value;
             findQuery[filter.name] = value;
             return;
           }
