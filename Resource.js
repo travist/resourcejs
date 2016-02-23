@@ -264,7 +264,7 @@ module.exports = function(app, route, modelName, model) {
 
               // Set the regular expression for the filter.
               var parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
-              findQuery[filter.name] = new RegExp(parts[1], parts[2]);
+              findQuery[filter.name] = new RegExp(parts[1], (parts[2] || 'i'));
               return;
             }
             else {
