@@ -11,6 +11,7 @@ var _ = require('lodash');
 var async = require('async');
 var MongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
+var chance = (new require('chance'))();
 
 // Use the body parser.
 app.use(bodyParser.urlencoded({extended: true}));
@@ -130,6 +131,9 @@ describe('Build Resources for following tests', function() {
       title: {
         type: String,
         required: true
+      },
+      name: {
+        type: String,
       },
       age: {
         type: Number
@@ -623,16 +627,21 @@ describe('Test single resource CRUD capabilities', function() {
 });
 
 describe('Test single resource search capabilities', function() {
+  var names = [];
   it('Create a full index of resources', function(done) {
     var age = 0;
 
     async.whilst(
       function() { return age < 25; },
       function(cb) {
+        var name = (chance.name()).toUpperCase();
+        names.push(name);
+
         request(app)
           .post('/test/resource1')
           .send({
             title: 'Test Age ' + age,
+            name: name,
             description: 'Description of test age ' + age,
             age: age
           })
@@ -988,6 +997,31 @@ describe('Test single resource search capabilities', function() {
           assert.ok(valid.indexOf(resource.age) !== -1);
         });
         done();
+      });
+  });
+
+  it('regex search selector should be case insensitive', function(done) {
+    var name = names[0].toString();
+
+    request(app)
+      .get('/test/resource1?name__regex=' + name.toUpperCase())
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var uppercaseResponse = res.body;
+        request(app)
+          .get('/test/resource1?name__regex=' + name.toLowerCase())
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var lowercaseResponse = res.body;
+            assert.equal(uppercaseResponse.length, lowercaseResponse.length);
+            done();
+          });
       });
   });
 });
