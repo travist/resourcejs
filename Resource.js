@@ -154,7 +154,6 @@ module.exports = function(app, route, modelName, model) {
         }
       }
 
-      debug.respond(res.resource.status + ': ' + JSON.stringify(res.resource.item));
       next();
     },
 

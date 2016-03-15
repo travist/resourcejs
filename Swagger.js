@@ -15,7 +15,7 @@ module.exports = function(resource) {
   resource = fixNestedRoutes(resource);
 
   var addNestedIdParameter = function(resource, parameters) {
-    if (resource.route.includes("/:")) {
+    if (resource && resource.route && resource.route.includes("/:")) {
       if (resource.route.match(/:(.+)\//).length >= 1 && resource.route.match(/^\/(.+)\/\:/).length >= 1) {
 
         idName = resource.route.match(/:(.+)\//)[1];
