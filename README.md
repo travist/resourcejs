@@ -38,7 +38,7 @@ var ResourceSchema = new mongoose.Schema({
   },
   description: {
     type: String
-  }
+  },
   count: {
     type: Number
   }
