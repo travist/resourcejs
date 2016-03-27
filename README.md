@@ -396,6 +396,9 @@ The ```index()``` that is created is capable of doing some complex filtering usi
 | **less than**                | `lt`     | `/users?age__lt=30`                                  | returns all users age 29 and younger                             |
 | **less than or equal to**    | `lte`    | `/users?age__lte=30`                                 | returns all users age 30 and younger                             |
 | **in**                       | `in`     | `/users?gender__in=female,male`                      | returns all female and male users                                |
+| **nin**                      | `nin`    | `/users?age__nin=18,21`                              | returns all users who are not 18 or 21                           |
+| **exists=true**              | `exists` | `/users?age__exists=true`                            | returns all users where the age is provided.                     |
+| **exists=false**             | `exists` | `/users?age__exists=false`                           | returns all users where the age is not provided.                 |
 | **Regex**                    | `regex`  | `/users?username__regex=/^travis/i`                  | returns all users with a username starting with travis           |
 
 

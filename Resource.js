@@ -259,7 +259,7 @@ module.exports = function(app, route, modelName, model) {
           if (filter.selector) {
 
             // See if this selector is a regular expression.
-            if (filter.selector == 'regex') {
+            if (filter.selector === 'regex') {
 
               // Set the regular expression for the filter.
               var parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
@@ -272,8 +272,13 @@ module.exports = function(app, route, modelName, model) {
                 findQuery[filter.name] = {};
               }
 
+              if (filter.selector === 'exists') {
+                value = ((value === 'true') || (value === '1')) ? true : value;
+                value = ((value === 'false') || (value === '0')) ? false : value;
+                value = !!value;
+              }
               // Special case for in filter with multiple values.
-              if (filter.selector === 'in' && _.contains(value, ',')) {
+              else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1) && _.contains(value, ',')) {
                 value = value.split(',');
                 _.map(value, function(item) {
                   return (param.instance === 'Number')
