@@ -658,7 +658,32 @@ describe('Test single resource search capabilities', function() {
             cb();
           });
       },
-      done
+      function (err) {
+        if (err) {
+          return done(err);
+        }
+
+        // Insert a record with no age.
+        request(app)
+          .post('/test/resource1')
+          .send({
+            title: 'No Age',
+            name: 'noage',
+            description: 'No age'
+          })
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+            assert.equal(response.title, 'No Age');
+            assert.equal(response.description, 'No age');
+            assert.equal(response.name, 'noage');
+            assert(!response.hasOwnProperty('age'), 'Age should not be found.');
+            done();
+          });
+      }
     );
   });
 
@@ -689,7 +714,7 @@ describe('Test single resource search capabilities', function() {
     request(app)
       .get('/test/resource1?limit=5')
       .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-4/25')
+      .expect('Content-Range', '0-4/26')
       .expect(206)
       .end(function(err, res) {
         if (err) {
@@ -713,7 +738,7 @@ describe('Test single resource search capabilities', function() {
     request(app)
       .get('/test/resource1?limit=5&skip=4')
       .expect('Content-Type', /json/)
-      .expect('Content-Range', '4-8/25')
+      .expect('Content-Range', '4-8/26')
       .expect(206)
       .end(function(err, res) {
         if (err) {
@@ -737,7 +762,7 @@ describe('Test single resource search capabilities', function() {
     request(app)
       .get('/test/resource1?limit=10&skip=10&select=title,age')
       .expect('Content-Type', /json/)
-      .expect('Content-Range', '10-19/25')
+      .expect('Content-Range', '10-19/26')
       .expect(206)
       .end(function(err, res) {
         if (err) {
@@ -761,7 +786,7 @@ describe('Test single resource search capabilities', function() {
     request(app)
       .get('/test/resource1?select=age&sort=-age')
       .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-9/25')
+      .expect('Content-Range', '0-9/26')
       .expect(206)
       .end(function(err, res) {
         if (err) {
@@ -785,7 +810,7 @@ describe('Test single resource search capabilities', function() {
     request(app)
       .get('/test/resource1?limit=5&skip=5&select=age&sort=-age')
       .expect('Content-Type', /json/)
-      .expect('Content-Range', '5-9/25')
+      .expect('Content-Range', '5-9/26')
       .expect(206)
       .end(function(err, res) {
         if (err) {
@@ -874,7 +899,7 @@ describe('Test single resource search capabilities', function() {
         }
 
         var response = res.body;
-        assert.equal(response.length, 24);
+        assert.equal(response.length, 25);
         _.each(response, function(resource) {
           assert.notEqual(resource.age, 5);
         });
@@ -904,6 +929,105 @@ describe('Test single resource search capabilities', function() {
           });
 
           assert(found);
+        });
+        done();
+      });
+  });
+
+  it('nin search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age__nin=1,5')
+      .expect('Content-Type', /json/)
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        _.each(response, function(resource) {
+          var found = false;
+
+          [1,5].forEach(function(a) {
+            if (resource.age && resource.age === a) {
+              found = true;
+            }
+          });
+
+          assert(!found);
+        });
+        done();
+      });
+  });
+
+  it('exists=false search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age__exists=false')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].name, 'noage');
+        done();
+      });
+  });
+
+  it('exists=0 search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age__exists=0')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].name, 'noage');
+        done();
+      });
+  });
+
+  it('exists=true search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age__exists=true&limit=1000')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 25);
+        _.each(response, function(resource) {
+          assert(resource.name !== 'noage', 'No age should be found.');
+        });
+        done();
+      });
+  });
+
+  it('exists=1 search selector', function(done) {
+    request(app)
+      .get('/test/resource1?age__exists=true&limit=1000')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 25);
+        _.each(response, function(resource) {
+          assert(resource.name !== 'noage', 'No age should be found.');
         });
         done();
       });
