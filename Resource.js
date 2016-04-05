@@ -344,18 +344,20 @@ module.exports = function(app, route, modelName, model) {
           }
 
           // Get the default limit.
-          var defaultLimit = req.query.limit || 10;
-          defaultLimit = parseInt(defaultLimit, 10);
+          var defaults = {limit: 10, skip: 0};
+          var reqQuery = _.mapValues(_.defaults(_.pick(req.query, 'limit', 'skip'), defaults), function(value, key) {
+            value = parseInt(value, 10);
+            return (isNaN(value) || (value < 0)) ? defaults[key] : value;
+          });
 
           // If a skip is provided, then set the range headers.
-          if (req.query.skip && !req.headers.range) {
-            var defaultSkip = parseInt(req.query.skip, 10);
+          if (reqQuery.skip && !req.headers.range) {
             req.headers['range-unit'] = 'items';
-            req.headers.range = defaultSkip + '-' + (defaultSkip + (defaultLimit - 1));
+            req.headers.range = reqQuery.skip + '-' + (reqQuery.skip + (reqQuery.limit - 1));
           }
 
           // Get the page range.
-          var pageRange = paginate(req, res, count, defaultLimit) || {
+          var pageRange = paginate(req, res, count, reqQuery.limit) || {
             limit: 10,
             skip: 0
           };
@@ -363,8 +365,8 @@ module.exports = function(app, route, modelName, model) {
           // Next get the items within the index.
           query
             .find(findQuery)
-            .limit(req.query.hasOwnProperty('limit') ? req.query.limit : pageRange.limit)
-            .skip(req.query.hasOwnProperty('skip') ? req.query.skip : pageRange.skip)
+            .limit(reqQuery.limit ? reqQuery.limit : pageRange.limit)
+            .skip(reqQuery.skip)
             .select(this.getParamQuery(req, 'select'))
             .sort(this.getParamQuery(req, 'sort'))
             .exec(function(err, items) {
