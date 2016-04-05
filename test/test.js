@@ -758,6 +758,126 @@ describe('Test single resource search capabilities', function() {
       });
   });
 
+  it('Should default negative limit to 10', function(done) {
+    request(app)
+      .get('/test/resource1?limit=-5&skip=4')
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '4-13/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 4;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default negative skip to 0', function(done) {
+    request(app)
+      .get('/test/resource1?limit=5&skip=-4')
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-4/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        var age = 0;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default negative skip and negative limit to 0 and 10', function(done) {
+    request(app)
+      .get('/test/resource1?limit=-5&skip=-4')
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-9/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 0;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default non numeric limit to 10', function(done) {
+    request(app)
+      .get('/test/resource1?limit=badlimit&skip=4')
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '4-13/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 4;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default non numeric skip to 0', function(done) {
+    request(app)
+      .get('/test/resource1?limit=5&skip=badskip')
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-4/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        var age = 0;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
   it('Should be able to select fields', function(done) {
     request(app)
       .get('/test/resource1?limit=10&skip=10&select=title,age')
