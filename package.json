@@ -25,9 +25,9 @@
   "dependencies": {
     "composable-middleware": "^0.3.0",
     "debug": "^2.2.0",
-    "fast-json-patch": "^0.5.1",
-    "lodash": "^3.0.0",
-    "mongoose": "^4.1.5",
+    "fast-json-patch": "^0.5.7",
+    "lodash": "^4.13.1",
+    "mongoose": "^4.4.20",
     "node-paginate-anything": "0.0.5"
   },
   "devDependencies": {
