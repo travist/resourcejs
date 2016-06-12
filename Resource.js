@@ -358,14 +358,20 @@ module.exports = function(app, route, modelName, model) {
 
           // Get the page range.
           var pageRange = paginate(req, res, count, reqQuery.limit) || {
-            limit: 10,
-            skip: 0
+            limit: reqQuery.limit,
+            skip: reqQuery.skip
           };
+
+          // Make sure that if there is a range provided in the headers, it takes precedence.
+          if (req.headers.range) {
+            reqQuery.limit = pageRange.limit;
+            reqQuery.skip = pageRange.skip;
+          }
 
           // Next get the items within the index.
           query
             .find(findQuery)
-            .limit(reqQuery.limit ? reqQuery.limit : pageRange.limit)
+            .limit(reqQuery.limit)
             .skip(reqQuery.skip)
             .select(this.getParamQuery(req, 'select'))
             .sort(this.getParamQuery(req, 'sort'))
