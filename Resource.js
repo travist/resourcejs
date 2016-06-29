@@ -3,6 +3,7 @@ var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
 var middleware = require( 'composable-middleware');
 var debug = {
+  query: require('debug')('resourcejs:query'),
   index: require('debug')('resourcejs:index'),
   put: require('debug')('resourcejs:put'),
   post: require('debug')('resourcejs:post'),
@@ -263,7 +264,17 @@ module.exports = function(app, route, modelName, model) {
 
               // Set the regular expression for the filter.
               var parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
-              findQuery[filter.name] = new RegExp(parts[1], (parts[2] || 'i'));
+              var regex = null;
+              try {
+                regex = new RegExp(parts[1], (parts[2] || 'i'));
+              }
+              catch (err) {
+                debug.query(err);
+                regex = null;
+              }
+              if (regex) {
+                findQuery[filter.name] = regex;
+              }
               return;
             }
             else {
