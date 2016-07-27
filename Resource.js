@@ -278,7 +278,7 @@ module.exports = function(app, route, modelName, model) {
                 value = !!value;
               }
               // Special case for in filter with multiple values.
-              else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1) && _.contains(value, ',')) {
+              else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1) && _.includes(value, ',')) {
                 value = value.split(',');
                 _.map(value, function(item) {
                   return (param.instance === 'Number')
