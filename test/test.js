@@ -81,7 +81,7 @@ var wasInvoked = function(entity, sequence, method) {
 
 describe('Connect to MongoDB', function() {
   it('Connect to MongoDB', function(done) {
-    mongoose.connect('mongodb://localhost:32768/test_resourcejs', done);
+    mongoose.connect('mongodb://localhost/test', done);
   });
 
   it('Drop test database', function(done) {
@@ -89,7 +89,7 @@ describe('Connect to MongoDB', function() {
   });
 
   it('Should connect MongoDB without mongoose', function(done) {
-    MongoClient.connect('mongodb://localhost:32768/test_resourcejs', function(err, connection) {
+    MongoClient.connect('mongodb://localhost/test', function(err, connection) {
       if (err) {
         return done(err);
       }
