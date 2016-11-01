@@ -716,7 +716,7 @@ describe('Test single resource search capabilities', function() {
 
   it('Should populate', function(done) {
     request(app)
-      .get('/test/resource1?name=noage&populate=list.data') // &populate=list.data
+      .get('/test/resource1?name=noage&populate=list.data')
       .send()
       .end(function(err, res) {
         if (err) {
@@ -739,6 +739,34 @@ describe('Test single resource search capabilities', function() {
         assert.equal(response[0].list[0].data.length, 1);
         assert.equal(response[0].list[0].data[0]._id, refDoc1Response._id);
         assert.equal(response[0].list[0].data[0].data, refDoc1Content.data);
+        done();
+      });
+  });
+
+  it('Should ignore empty populate query parameter', function(done) {
+    request(app)
+      .get('/test/resource1?name=noage&populate=')
+      .send()
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+
+        // Chec statusCode
+        assert.equal(res.statusCode, 200);
+
+        // Check main resource
+        assert.equal(response[0].title, 'No Age');
+        assert.equal(response[0].description, 'No age');
+        assert.equal(response[0].name, 'noage');
+        assert.equal(response[0].list.length, 1);
+
+        // Check populated resource
+        assert.equal(response[0].list[0].label, '1');
+        assert.equal(response[0].list[0].data.length, 1);
+        assert.equal(response[0].list[0].data[0], refDoc1Response._id);
         done();
       });
   });
