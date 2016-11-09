@@ -229,7 +229,12 @@ module.exports = function(app, route, modelName, model) {
      */
     getParamQuery: function(req, name) {
       if (!req.query.hasOwnProperty(name)) {
-        return null;
+        switch (name) {
+          case 'populate':
+            return '';
+          default:
+            return null;
+        }
       }
       return _.words(req.query[name], /[^, ]+/g).join(' ');
     },
@@ -244,7 +249,7 @@ module.exports = function(app, route, modelName, model) {
       var findQuery = {};
 
       // Get the filters and omit the limit, skip, select, and sort.
-      var filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort');
+      var filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
 
       // Iterate through each filter.
       _.each(filters, function(value, name) {
@@ -379,6 +384,11 @@ module.exports = function(app, route, modelName, model) {
             reqQuery.skip = pageRange.skip;
           }
 
+          var populate = this.getParamQuery(req, 'populate');
+          if (populate) {
+            debug.index('Populate: ' + populate);
+          }
+
           // Next get the items within the index.
           query
             .find(findQuery)
@@ -386,9 +396,17 @@ module.exports = function(app, route, modelName, model) {
             .skip(reqQuery.skip)
             .select(this.getParamQuery(req, 'select'))
             .sort(this.getParamQuery(req, 'sort'))
+            .populate(populate)
             .exec(function(err, items) {
               if (err) {
                 debug.index(err);
+                debug.index(err.name);
+
+                if (err.name == 'CastError' && populate) {
+                  err.message = 'Cannot populate "' + populate + '" as it is not a reference in this resource'
+                  debug.index(err.message);
+                }
+
                 return this.setResponse(res, {status: 500, error: err}, next);
               }
 

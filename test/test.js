@@ -121,10 +121,10 @@ describe('Build Resources for following tests', function() {
       label: {
         type: String
       },
-      data: {
-        type: [mongoose.Schema.Types.ObjectId],
+      data: [{
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'ref'
-      }
+      }]
     }, {_id: false});
 
     var Resource1Schema = new mongoose.Schema({
@@ -627,6 +627,29 @@ describe('Test single resource CRUD capabilities', function() {
 });
 
 describe('Test single resource search capabilities', function() {
+  var refDoc1Content = null;
+  var refDoc1Response = null;
+
+  it('Should create a reference doc with mongoose', function(done) {
+    refDoc1Content = {data: 'test1'};
+
+    request(app)
+      .post('/test/ref')
+      .send(refDoc1Content)
+      .expect('Content-Type', /json/)
+      .expect(201)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = _.omit(res.body, '__v');
+        assert.equal(response.data, refDoc1Content.data);
+        refDoc1Response = response;
+        done();
+      });
+  });
+
   var names = [];
   it('Create a full index of resources', function(done) {
     var age = 0;
@@ -663,13 +686,17 @@ describe('Test single resource search capabilities', function() {
           return done(err);
         }
 
+        // List with a ref resource
+        var refList = [ { label: '1', data: [refDoc1Response._id] } ];
+
         // Insert a record with no age.
         request(app)
           .post('/test/resource1')
           .send({
             title: 'No Age',
             name: 'noage',
-            description: 'No age'
+            description: 'No age',
+            list: refList
           })
           .end(function(err, res) {
             if (err) {
@@ -685,6 +712,83 @@ describe('Test single resource search capabilities', function() {
           });
       }
     );
+  });
+
+  it('Should populate', function(done) {
+    request(app)
+      .get('/test/resource1?name=noage&populate=list.data')
+      .send()
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+
+        // Chec statusCode
+        assert.equal(res.statusCode, 200);
+
+        // Check main resource
+        assert.equal(response[0].title, 'No Age');
+        assert.equal(response[0].description, 'No age');
+        assert.equal(response[0].name, 'noage');
+        assert.equal(response[0].list.length, 1);
+
+        // Check populated resource
+        assert.equal(response[0].list[0].label, '1');
+        assert.equal(response[0].list[0].data.length, 1);
+        assert.equal(response[0].list[0].data[0]._id, refDoc1Response._id);
+        assert.equal(response[0].list[0].data[0].data, refDoc1Content.data);
+        done();
+      });
+  });
+
+  it('Should ignore empty populate query parameter', function(done) {
+    request(app)
+      .get('/test/resource1?name=noage&populate=')
+      .send()
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+
+        // Chec statusCode
+        assert.equal(res.statusCode, 200);
+
+        // Check main resource
+        assert.equal(response[0].title, 'No Age');
+        assert.equal(response[0].description, 'No age');
+        assert.equal(response[0].name, 'noage');
+        assert.equal(response[0].list.length, 1);
+
+        // Check populated resource
+        assert.equal(response[0].list[0].label, '1');
+        assert.equal(response[0].list[0].data.length, 1);
+        assert.equal(response[0].list[0].data[0], refDoc1Response._id);
+        done();
+      });
+  });
+
+  it('Should not populate paths that are not a reference', function(done) {
+    request(app)
+      .get('/test/resource1?name=noage&populate=list')
+      .send()
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+
+        // Chec statusCode
+        assert.equal(res.statusCode, 500);
+
+        // Check error
+        assert.equal(response.message.indexOf('Cannot populate'), 0);
+        done();
+      });
   });
 
   it('Should limit 10', function(done) {
