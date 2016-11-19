@@ -384,20 +384,27 @@ module.exports = function(app, route, modelName, model) {
             reqQuery.skip = pageRange.skip;
           }
 
+          // Get the populate parameter.
           var populate = this.getParamQuery(req, 'populate');
           if (populate) {
             debug.index('Populate: ' + populate);
           }
 
           // Next get the items within the index.
-          query
+          var queryExec = query
             .find(findQuery)
             .limit(reqQuery.limit)
             .skip(reqQuery.skip)
             .select(this.getParamQuery(req, 'select'))
-            .sort(this.getParamQuery(req, 'sort'))
-            .populate(populate)
-            .exec(function(err, items) {
+            .sort(this.getParamQuery(req, 'sort'));
+
+          // Only call populate if they provide a populate query.
+          if (populate) {
+            queryExec = queryExec.populate(populate);
+          }
+
+          // Execute the query.
+          queryExec.exec(function(err, items) {
               if (err) {
                 debug.index(err);
                 debug.index(err.name);
