@@ -1946,7 +1946,7 @@ describe('Test before hooks', function() {
 
     // Create the REST resource and continue.
     Resource(app, '', 'hook', hookModel).rest({
-      hook: {
+      hooks: {
         post: {
           before: function(req, res, item, next) {
             assert.equal(calls.length, 0);
