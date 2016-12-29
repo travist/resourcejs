@@ -26,8 +26,8 @@
     "composable-middleware": "^0.3.0",
     "debug": "^2.3.0",
     "fast-json-patch": "^0.5.7",
-    "lodash": "^4.16.6",
-    "mongoose": "^4.6.8",
+    "lodash": "^4.17.3",
+    "mongoose": "^4.7.5",
     "node-paginate-anything": "git+https://github.com/polo2ro/node-paginate-anything.git"
   },
   "devDependencies": {
