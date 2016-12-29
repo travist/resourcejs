@@ -1930,3 +1930,218 @@ describe('Test nested resource handlers capabilities', function() {
       });
   });
 });
+
+describe('Test before hooks', function() {
+  var calls = [];
+  var sub;
+
+  before(function(done) {
+    // Create the schema.
+    var hookSchema = new mongoose.Schema({
+      data: String
+    });
+
+    // Create the model.
+    var hookModel = mongoose.model('hook', hookSchema);
+
+    // Create the REST resource and continue.
+    Resource(app, '', 'hook', hookModel).rest({
+      hook: {
+        post: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        },
+        get: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        },
+        put: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        },
+        delete: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        },
+        index: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        }
+      }
+    });
+    done();
+  });
+
+  describe('post hooks', function() {
+    before(function() {
+      calls = [];
+    });
+
+    it('Bootstrap some test resources', function(done) {
+      request(app)
+        .post('/hook')
+        .send({
+          data: chance.word()
+        })
+        .expect('Content-Type', /json/)
+        .expect(201)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          sub = response;
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+  });
+
+  describe('get hooks', function() {
+    before(function() {
+      calls = [];
+    });
+
+    it('Call hooks are called in order', function(done) {
+      request(app)
+        .get('/hook')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+  });
+
+  describe('put hooks', function() {
+    before(function() {
+      calls = [];
+    });
+
+    it('Call hooks are called in order', function(done) {
+      request(app)
+        .put('/hook/' + sub._id)
+        .send({
+          data: chance.word()
+        })
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+  });
+
+  describe('delete hooks', function() {
+    before(function() {
+      calls = [];
+    });
+
+    it('Call hooks are called in order', function(done) {
+      request(app)
+        .delete('/hook/' + sub._id)
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+  });
+
+  describe('index hooks', function() {
+    before(function() {
+      calls = [];
+    });
+
+    it('Call hooks are called in order', function(done) {
+      request(app)
+        .get('/hook')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert(calls.length === 0);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+  });
+});
