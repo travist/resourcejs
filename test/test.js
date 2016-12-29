@@ -1938,7 +1938,10 @@ describe('Test before hooks', function() {
   before(function(done) {
     // Create the schema.
     var hookSchema = new mongoose.Schema({
-      data: String
+      data: {
+        type: String,
+        required: true
+      }
     });
 
     // Create the model.
@@ -2018,7 +2021,7 @@ describe('Test before hooks', function() {
   });
 
   describe('post hooks', function() {
-    before(function() {
+    beforeEach(function() {
       calls = [];
     });
 
@@ -2044,10 +2047,30 @@ describe('Test before hooks', function() {
           done();
         });
     });
+
+    it('test required validation', function(done) {
+      request(app)
+        .post('/hook')
+        .send({})
+        .expect('Content-Type', /json/)
+        .expect(400)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 1);
+          assert.equal(calls[0], 'before');
+          assert(_.get(response, 'message'), 'hook validation failed');
+
+          done();
+        });
+    });
   });
 
   describe('get hooks', function() {
-    before(function() {
+    beforeEach(function() {
       calls = [];
     });
 
@@ -2068,10 +2091,48 @@ describe('Test before hooks', function() {
           done();
         });
     });
+
+    it('test undefined resource', function(done) {
+      request(app)
+        .get('/hook/' + undefined)
+        .expect('Content-Type', /json/)
+        .expect(500)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 1);
+          assert.equal(calls[0], 'before');
+          assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+
+          done();
+        });
+    });
+
+    it('test unknown resource', function(done) {
+      request(app)
+        .get('/hook/000000000000000000000000')
+        .expect('Content-Type', /json/)
+        .expect(404)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 1);
+          assert.equal(calls[0], 'before');
+          assert.equal(_.get(response, 'errors[0]'), 'Resource not found');
+
+          done();
+        });
+    });
   });
 
   describe('put hooks', function() {
-    before(function() {
+    beforeEach(function() {
       calls = [];
     });
 
@@ -2095,10 +2156,52 @@ describe('Test before hooks', function() {
           done();
         });
     });
+
+    it('test undefined resource', function(done) {
+      request(app)
+        .put('/hook/' + undefined)
+        .send({
+          data: chance.word()
+        })
+        .expect('Content-Type', /json/)
+        .expect(500)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 0);
+          assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+
+          done();
+        });
+    });
+
+    it('test unknown resource', function(done) {
+      request(app)
+        .put('/hook/000000000000000000000000')
+        .send({
+          data: chance.word()
+        })
+        .expect('Content-Type', /json/)
+        .expect(404)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 0);
+          assert.equal(_.get(response, 'errors[0]'), 'Resource not found');
+
+          done();
+        });
+    });
   });
 
   describe('delete hooks', function() {
-    before(function() {
+    beforeEach(function() {
       calls = [];
     });
 
@@ -2119,10 +2222,46 @@ describe('Test before hooks', function() {
           done();
         });
     });
+
+    it('test undefined resource', function(done) {
+      request(app)
+        .delete('/hook/' + undefined)
+        .expect('Content-Type', /json/)
+        .expect(500)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 0);
+          assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+
+          done();
+        });
+    });
+
+    it('test unknown resource', function(done) {
+      request(app)
+        .delete('/hook/000000000000000000000000')
+        .expect('Content-Type', /json/)
+        .expect(404)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 0);
+          assert.equal(_.get(response, 'errors[0]'), 'Resource not found');
+
+          done();
+        });
+    });
   });
 
   describe('index hooks', function() {
-    before(function() {
+    beforeEach(function() {
       calls = [];
     });
 
