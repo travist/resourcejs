@@ -5,6 +5,7 @@ var bodyParser = require('body-parser');
 var request = require('supertest');
 var assert = require('assert');
 var mongoose = require('mongoose');
+mongoose.Promise = global.Promise;
 var Resource = require('../Resource');
 var app = express();
 var _ = require('lodash');
