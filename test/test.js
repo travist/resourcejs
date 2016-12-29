@@ -8,7 +8,7 @@ var mongoose = require('mongoose');
 var Resource = require('../Resource');
 var app = express();
 var _ = require('lodash');
-var async = require('async');
+var Async = require('async');
 var MongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
 var chance = (new require('chance'))();
@@ -654,7 +654,7 @@ describe('Test single resource search capabilities', function() {
   it('Create a full index of resources', function(done) {
     var age = 0;
 
-    async.whilst(
+    Async.whilst(
       function() { return age < 25; },
       function(cb) {
         var name = (chance.name()).toUpperCase();
