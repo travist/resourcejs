@@ -472,7 +472,6 @@ module.exports = function(app, route, modelName, model) {
       return this;
     },
 
-
     /**
      * Virtual (GET) method. Returns a user-defined projection (typically an aggregate result)
      * derived from this resource
@@ -551,8 +550,8 @@ module.exports = function(app, route, modelName, model) {
 
         // Remove __v field
         var update = _.omit(req.body, '__v');
-
         var query = req.modelQuery || this.model;
+
         query.findOne({_id: req.params[this.name + 'Id']}, function(err, item) {
           if (err) {
             debug.put(err);
@@ -564,15 +563,27 @@ module.exports = function(app, route, modelName, model) {
           }
 
           item.set(update);
-          item.save(function(err, item) {
-            if (err) {
-              debug.put(err);
-              return this.setResponse(res, {status: 500, error: err}, next);
-            }
+          options.hooks.put.before.call(
+            this,
+            req,
+            res,
+            item,
+            item.save.bind(item, function(err, item) {
+              if (err) {
+                debug.put(err);
+                return this.setResponse(this, res, {status: 500, error: err}, next);
+              }
 
-            debug.put(JSON.stringify(item));
-            return this.setResponse(res, {status: 200, item: item}, next);
-          }.bind(this));
+              debug.put(JSON.stringify(item));
+              return options.hooks.put.after.call(
+                this,
+                req,
+                res,
+                item,
+                this.setResponse.bind(this, res, {status: 200, item: item}, next)
+              );
+            }.bind(this))
+          );
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
