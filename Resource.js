@@ -384,12 +384,6 @@ module.exports = function(app, route, modelName, model) {
             reqQuery.skip = pageRange.skip;
           }
 
-          // Get the populate parameter.
-          var populate = this.getParamQuery(req, 'populate');
-          if (populate) {
-            debug.index('Populate: ' + populate);
-          }
-
           // Next get the items within the index.
           var queryExec = query
             .find(findQuery)
@@ -399,27 +393,29 @@ module.exports = function(app, route, modelName, model) {
             .sort(this.getParamQuery(req, 'sort'));
 
           // Only call populate if they provide a populate query.
+          var populate = this.getParamQuery(req, 'populate');
           if (populate) {
+            debug.index('Populate: ' + populate);
             queryExec = queryExec.populate(populate);
           }
 
           // Execute the query.
           queryExec.exec(function(err, items) {
-              if (err) {
-                debug.index(err);
-                debug.index(err.name);
+            if (err) {
+              debug.index(err);
+              debug.index(err.name);
 
-                if (err.name == 'CastError' && populate) {
-                  err.message = 'Cannot populate "' + populate + '" as it is not a reference in this resource'
-                  debug.index(err.message);
-                }
-
-                return this.setResponse(res, {status: 500, error: err}, next);
+              if (err.name == 'CastError' && populate) {
+                err.message = 'Cannot populate "' + populate + '" as it is not a reference in this resource'
+                debug.index(err.message);
               }
 
-              debug.index(items);
-              return this.setResponse(res, {status: res.statusCode, item: items}, next);
-            }.bind(this));
+              return this.setResponse(res, {status: 500, error: err}, next);
+            }
+
+            debug.index(items);
+            return this.setResponse(res, {status: res.statusCode, item: items}, next);
+          }.bind(this));
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
