@@ -2136,7 +2136,7 @@ describe('Test before hooks', function() {
             return done(err);
           }
 
-          assert(calls.length === 0);
+          assert(calls.length === 2);
           assert.equal(calls[0], 'before');
           assert.equal(calls[1], 'after');
 

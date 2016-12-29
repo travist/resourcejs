@@ -412,23 +412,34 @@ module.exports = function(app, route, modelName, model) {
             queryExec = queryExec.populate(populate);
           }
 
-          // Execute the query.
-          queryExec.exec(function(err, items) {
-            if (err) {
-              debug.index(err);
-              debug.index(err.name);
+          options.hooks.index.before.call(
+            this,
+            req,
+            res,
+            findQuery,
+            queryExec.exec.bind(queryExec, function(err, items) {
+              if (err) {
+                debug.index(err);
+                debug.index(err.name);
 
-              if (err.name == 'CastError' && populate) {
-                err.message = 'Cannot populate "' + populate + '" as it is not a reference in this resource'
-                debug.index(err.message);
+                if (err.name == 'CastError' && populate) {
+                  err.message = 'Cannot populate "' + populate + '" as it is not a reference in this resource'
+                  debug.index(err.message);
+                }
+
+                return this.setResponse(res, {status: 500, error: err}, next);
               }
 
-              return this.setResponse(res, {status: 500, error: err}, next);
-            }
-
-            debug.index(items);
-            return this.setResponse(res, {status: res.statusCode, item: items}, next);
-          }.bind(this));
+              debug.index(items);
+              options.hooks.index.after.call(
+                this,
+                req,
+                res,
+                items,
+                this.setResponse.bind(this, res, {status: res.statusCode, item: items}, next)
+              );
+            }.bind(this))
+          )
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
