@@ -178,7 +178,9 @@ module.exports = function(app, route, modelName, model) {
      * @returns {{}}
      */
     getMethodOptions: function(method, options) {
-      if (!options) return {};
+      if (!options) {
+        options = {};
+      }
 
       // Uppercase the method.
       method = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
@@ -198,6 +200,17 @@ module.exports = function(app, route, modelName, model) {
       else if (options.hasOwnProperty('after' + method)) {
         methodOptions.after = options['after' + method];
       }
+
+      // Expose mongoose hooks for each method.
+      _.each(['before', 'after'], function(type) {
+        var path = 'hooks.' + method.toString().toLowerCase() + '.' + type;
+
+        _.set(
+          methodOptions,
+          path,
+          _.get(options, path, function(req, res, item, next) { return next(); })
+        );
+      });
 
       // Return the options for this method.
       return methodOptions;
@@ -482,16 +495,29 @@ module.exports = function(app, route, modelName, model) {
           return next();
         }
 
-        this.model.create(req.body, function(err, item) {
-          if (err) {
-            debug.post(err);
-            return this.setResponse(res, {status: 400, error: err}, next);
-          }
+        options.hooks.post.before.call(
+          this,
+          req,
+          res,
+          req.body,
+          this.model.create.bind(this.model, req.body, function(err, item) {
+            if (err) {
+              debug.post(err);
+              return this.setResponse(res, {status: 400, error: err}, next);
+            }
 
-          debug.post(item);
-          return this.setResponse(res, {status: 201, item: item}, next);
-        }.bind(this));
-      }, this.respond.bind(this), options);
+            debug.post(item);
+            // Trigger any after hooks before responding.
+            return options.hooks.post.after.call(
+              this,
+              req,
+              res,
+              item,
+              this.setResponse.bind(this, res, {status: 201, item: item}, next)
+            );
+          }.bind(this))
+        );
+      }.bind(this), this.respond.bind(this), options);
       return this;
     },
 
