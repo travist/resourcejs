@@ -25,8 +25,8 @@ env:
   - DEBUG=*
 
 before_script:
-  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.4.1.tgz -O /tmp/mongodb.tgz
+  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.1.tgz -O /tmp/mongodb.tgz
   - tar -xvf /tmp/mongodb.tgz
   - mkdir /tmp/data
-  - ${PWD}/mongodb-linux-x86_64-amazon-3.4.1/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 &> /dev/null &
+  - ${PWD}/mongodb-linux-x86_64-3.4.1/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 &> /dev/null &
   - until nc -z localhost 27017; do echo Waiting for MongoDB; sleep 5; done
