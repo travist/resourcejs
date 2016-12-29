@@ -369,7 +369,7 @@ module.exports = function(app, route, modelName, model) {
         countQuery.find(findQuery).count(function(err, count) {
           if (err) {
             debug.index(err);
-            return this.setResponse(res, {status: 500, error: err}, next);
+            return this.setResponse.call(this, res, {status: 500, error: err}, next);
           }
 
           // Get the default limit.
@@ -427,7 +427,7 @@ module.exports = function(app, route, modelName, model) {
                   debug.index(err.message);
                 }
 
-                return this.setResponse(res, {status: 500, error: err}, next);
+                return this.setResponse.call(this, res, {status: 500, error: err}, next);
               }
 
               debug.index(items);
@@ -467,8 +467,8 @@ module.exports = function(app, route, modelName, model) {
           res,
           search,
           query.findOne.bind(query, search, function(err, item) {
-            if (err) return this.setResponse(res, {status: 500, error: err}, next);
-            if (!item) return this.setResponse(res, {status: 404}, next);
+            if (err) return this.setResponse.call(this, res, {status: 500, error: err}, next);
+            if (!item) return this.setResponse.call(this, res, {status: 404}, next);
 
             return options.hooks.get.after.call(
               this,
@@ -527,7 +527,7 @@ module.exports = function(app, route, modelName, model) {
           this.model.create.bind(this.model, req.body, function(err, item) {
             if (err) {
               debug.post(err);
-              return this.setResponse(res, {status: 400, error: err}, next);
+              return this.setResponse.call(this, res, {status: 400, error: err}, next);
             }
 
             debug.post(item);
@@ -566,11 +566,11 @@ module.exports = function(app, route, modelName, model) {
         query.findOne({_id: req.params[this.name + 'Id']}, function(err, item) {
           if (err) {
             debug.put(err);
-            return this.setResponse(res, {status: 500, error: err}, next);
+            return this.setResponse.call(this, res, {status: 500, error: err}, next);
           }
           if (!item) {
             debug.put('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
-            return this.setResponse(res, {status: 404}, next);
+            return this.setResponse.call(this, res, {status: 404}, next);
           }
 
           item.set(update);
@@ -582,7 +582,7 @@ module.exports = function(app, route, modelName, model) {
             item.save.bind(item, function(err, item) {
               if (err) {
                 debug.put(err);
-                return this.setResponse(this, res, {status: 500, error: err}, next);
+                return this.setResponse.call(this, res, {status: 500, error: err}, next);
               }
 
               debug.put(JSON.stringify(item));
@@ -662,14 +662,14 @@ module.exports = function(app, route, modelName, model) {
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) {
             debug.delete(err);
-            return this.setResponse(res, {status: 500, error: err}, next);
+            return this.setResponse.call(this, res, {status: 500, error: err}, next);
           }
           if (!item) {
             debug.delete('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
-            return this.setResponse(res, {status: 404, error: err}, next);
+            return this.setResponse.call(this, res, {status: 404, error: err}, next);
           }
           if (req.skipDelete) {
-            return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
+            return this.setResponse.call(this, res, {status: 204, item: item, deleted: true}, next);
           }
 
           options.hooks.delete.before.call(
@@ -680,7 +680,7 @@ module.exports = function(app, route, modelName, model) {
             query.remove.bind(query, {_id: item._id}, function(err) {
               if (err) {
                 debug.delete(err);
-                return this.setResponse(res, {status: 400, error: err}, next);
+                return this.setResponse.call(this, res, {status: 400, error: err}, next);
               }
 
               debug.delete(item);
