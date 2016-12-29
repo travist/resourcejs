@@ -2053,7 +2053,7 @@ describe('Test before hooks', function() {
 
     it('Call hooks are called in order', function(done) {
       request(app)
-        .get('/hook')
+        .get('/hook/' + sub._id)
         .expect('Content-Type', /json/)
         .expect(200)
         .end(function(err, res) {

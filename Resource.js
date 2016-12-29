@@ -448,12 +448,26 @@ module.exports = function(app, route, modelName, model) {
         }
 
         var query = req.modelQuery || this.model;
-        query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.setResponse(res, {status: 500, error: err}, next);
-          if (!item) return this.setResponse(res, {status: 404}, next);
+        var search = {'_id': req.params[this.name + 'Id']};
 
-          return this.setResponse(res, {status: 200, item: item}, next);
-        }.bind(this));
+        options.hooks.get.before.call(
+          this,
+          req,
+          res,
+          search,
+          query.findOne.bind(query, search, function(err, item) {
+            if (err) return this.setResponse(res, {status: 500, error: err}, next);
+            if (!item) return this.setResponse(res, {status: 404}, next);
+
+            return options.hooks.get.after.call(
+              this,
+              req,
+              res,
+              item,
+              this.setResponse.bind(this, res, {status: 200, item: item}, next)
+            );
+          }.bind(this))
+        );
       }, this.respond.bind(this), options);
       return this;
     },
