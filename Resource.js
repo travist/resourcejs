@@ -661,15 +661,27 @@ module.exports = function(app, route, modelName, model) {
             return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
           }
 
-          query.remove({_id: item._id}, function(err) {
-            if (err) {
-              debug.delete(err);
-              return this.setResponse(res, {status: 400, error: err}, next);
-            }
+          options.hooks.delete.before.call(
+            this,
+            req,
+            res,
+            item,
+            query.remove.bind(query, {_id: item._id}, function(err) {
+              if (err) {
+                debug.delete(err);
+                return this.setResponse(res, {status: 400, error: err}, next);
+              }
 
-            debug.delete(item);
-            return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
-          }.bind(this));
+              debug.delete(item);
+              options.hooks.delete.after.call(
+                this,
+                req,
+                res,
+                item,
+                this.setResponse.bind(this, res, {status: 204, item: item, deleted: true}, next)
+              );
+            }.bind(this))
+          );
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
