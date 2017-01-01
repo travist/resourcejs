@@ -24,9 +24,11 @@
   "homepage": "https://github.com/travist/resourcejs",
   "dependencies": {
     "composable-middleware": "^0.3.0",
-    "debug": "^2.3.0",
+    "debug": "^2.6.0",
+    "express": "^4.14.0",
     "fast-json-patch": "^0.5.7",
-    "lodash": "^4.17.3",
+    "lodash": "^4.17.4",
+    "mongodb": "^2.2.16",
     "mongoose": "^4.7.5",
     "node-paginate-anything": "git+https://github.com/polo2ro/node-paginate-anything.git"
   },
@@ -34,9 +36,7 @@
     "async": "^2.1.4",
     "body-parser": "^1.10.2",
     "chance": "^1.0.0",
-    "express": "^4.11.1",
     "mocha": "^2.1.0",
-    "mongodb": "^2.0.41",
     "q": "^1.4.1",
     "supertest": "^0.15.0"
   }
