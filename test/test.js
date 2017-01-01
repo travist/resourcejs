@@ -4,11 +4,13 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var request = require('supertest');
 var assert = require('assert');
+var Q = require('q');
 var mongoose = require('mongoose');
+mongoose.Promise = global.Promise || Q.Promise;
 var Resource = require('../Resource');
 var app = express();
 var _ = require('lodash');
-var async = require('async');
+var Async = require('async');
 var MongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
 var chance = (new require('chance'))();
@@ -654,7 +656,7 @@ describe('Test single resource search capabilities', function() {
   it('Create a full index of resources', function(done) {
     var age = 0;
 
-    async.whilst(
+    Async.whilst(
       function() { return age < 25; },
       function(cb) {
         var name = (chance.name()).toUpperCase();
@@ -717,7 +719,6 @@ describe('Test single resource search capabilities', function() {
   it('Should populate', function(done) {
     request(app)
       .get('/test/resource1?name=noage&populate=list.data')
-      .send()
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -725,7 +726,7 @@ describe('Test single resource search capabilities', function() {
 
         var response = res.body;
 
-        // Chec statusCode
+        // Check statusCode
         assert.equal(res.statusCode, 200);
 
         // Check main resource
@@ -746,7 +747,6 @@ describe('Test single resource search capabilities', function() {
   it('Should ignore empty populate query parameter', function(done) {
     request(app)
       .get('/test/resource1?name=noage&populate=')
-      .send()
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -754,7 +754,7 @@ describe('Test single resource search capabilities', function() {
 
         var response = res.body;
 
-        // Chec statusCode
+        // Check statusCode
         assert.equal(res.statusCode, 200);
 
         // Check main resource
@@ -774,7 +774,6 @@ describe('Test single resource search capabilities', function() {
   it('Should not populate paths that are not a reference', function(done) {
     request(app)
       .get('/test/resource1?name=noage&populate=list')
-      .send()
       .end(function(err, res) {
         if (err) {
           return done(err);
@@ -782,11 +781,19 @@ describe('Test single resource search capabilities', function() {
 
         var response = res.body;
 
-        // Chec statusCode
-        assert.equal(res.statusCode, 500);
+        // Check statusCode
+        assert.equal(res.statusCode, 200);
 
-        // Check error
-        assert.equal(response.message.indexOf('Cannot populate'), 0);
+        // Check main resource
+        assert.equal(response[0].title, 'No Age');
+        assert.equal(response[0].description, 'No age');
+        assert.equal(response[0].name, 'noage');
+        assert.equal(response[0].list.length, 1);
+
+        // Check populated resource
+        assert.equal(response[0].list[0].label, '1');
+        assert.equal(response[0].list[0].data.length, 1);
+        assert.equal(response[0].list[0].data[0], refDoc1Response._id);
         done();
       });
   });
@@ -1923,5 +1930,359 @@ describe('Test nested resource handlers capabilities', function() {
         resource = response;
         done();
       });
+  });
+});
+
+describe('Test before hooks', function() {
+  var calls = [];
+  var sub;
+
+  before(function(done) {
+    // Create the schema.
+    var hookSchema = new mongoose.Schema({
+      data: {
+        type: String,
+        required: true
+      }
+    });
+
+    // Create the model.
+    var hookModel = mongoose.model('hook', hookSchema);
+
+    // Create the REST resource and continue.
+    Resource(app, '', 'hook', hookModel).rest({
+      hooks: {
+        post: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        },
+        get: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        },
+        put: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        },
+        delete: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        },
+        index: {
+          before: function(req, res, item, next) {
+            assert.equal(calls.length, 0);
+            calls.push('before');
+            next();
+          },
+          after: function(req, res, item, next) {
+            assert.equal(calls.length, 1);
+            assert.deepEqual(calls, ['before']);
+            calls.push('after');
+            next();
+          }
+        }
+      }
+    });
+    done();
+  });
+
+  describe('post hooks', function() {
+    beforeEach(function() {
+      calls = [];
+    });
+
+    it('Bootstrap some test resources', function(done) {
+      request(app)
+        .post('/hook')
+        .send({
+          data: chance.word()
+        })
+        .expect('Content-Type', /json/)
+        .expect(201)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          sub = response;
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+
+    it('test required validation', function(done) {
+      request(app)
+        .post('/hook')
+        .send({})
+        .expect('Content-Type', /json/)
+        .expect(400)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 1);
+          assert.equal(calls[0], 'before');
+          assert(_.get(response, 'message'), 'hook validation failed');
+
+          done();
+        });
+    });
+  });
+
+  describe('get hooks', function() {
+    beforeEach(function() {
+      calls = [];
+    });
+
+    it('Call hooks are called in order', function(done) {
+      request(app)
+        .get('/hook/' + sub._id)
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+
+    it('test undefined resource', function(done) {
+      request(app)
+        .get('/hook/' + undefined)
+        .expect('Content-Type', /json/)
+        .expect(500)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 1);
+          assert.equal(calls[0], 'before');
+          assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+
+          done();
+        });
+    });
+
+    it('test unknown resource', function(done) {
+      request(app)
+        .get('/hook/000000000000000000000000')
+        .expect('Content-Type', /json/)
+        .expect(404)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 1);
+          assert.equal(calls[0], 'before');
+          assert.equal(_.get(response, 'errors[0]'), 'Resource not found');
+
+          done();
+        });
+    });
+  });
+
+  describe('put hooks', function() {
+    beforeEach(function() {
+      calls = [];
+    });
+
+    it('Call hooks are called in order', function(done) {
+      request(app)
+        .put('/hook/' + sub._id)
+        .send({
+          data: chance.word()
+        })
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+
+    it('test undefined resource', function(done) {
+      request(app)
+        .put('/hook/' + undefined)
+        .send({
+          data: chance.word()
+        })
+        .expect('Content-Type', /json/)
+        .expect(500)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 0);
+          assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+
+          done();
+        });
+    });
+
+    it('test unknown resource', function(done) {
+      request(app)
+        .put('/hook/000000000000000000000000')
+        .send({
+          data: chance.word()
+        })
+        .expect('Content-Type', /json/)
+        .expect(404)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 0);
+          assert.equal(_.get(response, 'errors[0]'), 'Resource not found');
+
+          done();
+        });
+    });
+  });
+
+  describe('delete hooks', function() {
+    beforeEach(function() {
+      calls = [];
+    });
+
+    it('Call hooks are called in order', function(done) {
+      request(app)
+        .delete('/hook/' + sub._id)
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
+
+    it('test undefined resource', function(done) {
+      request(app)
+        .delete('/hook/' + undefined)
+        .expect('Content-Type', /json/)
+        .expect(500)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 0);
+          assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+
+          done();
+        });
+    });
+
+    it('test unknown resource', function(done) {
+      request(app)
+        .delete('/hook/000000000000000000000000')
+        .expect('Content-Type', /json/)
+        .expect(404)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          var response = res.body;
+          assert(calls.length === 0);
+          assert.equal(_.get(response, 'errors[0]'), 'Resource not found');
+
+          done();
+        });
+    });
+  });
+
+  describe('index hooks', function() {
+    beforeEach(function() {
+      calls = [];
+    });
+
+    it('Call hooks are called in order', function(done) {
+      request(app)
+        .get('/hook')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            return done(err);
+          }
+
+          assert(calls.length === 2);
+          assert.equal(calls[0], 'before');
+          assert.equal(calls[1], 'after');
+
+          done();
+        });
+    });
   });
 });

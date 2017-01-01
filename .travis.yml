@@ -1,5 +1,19 @@
 language: node_js
 node_js:
+  - "node"
+  - "6"
+  - "6.9"
+  - "6.8"
+  - "6.7"
+  - "6.6"
+  - "6.5"
+  - "6.4"
+  - "6.3"
+  - "6.2"
+  - "6.1"
+  - "6.0"
+  - "4"
+  - "4.4"
   - "4.3"
   - "4.2"
   - "4.1"
@@ -9,11 +23,11 @@ node_js:
   - "0.10"
 
 env:
-  - DEBUG=*,*:*
+  - DEBUG=*
 
 before_script:
-  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.5.tgz -O /tmp/mongodb.tgz
+  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.1.tgz -O /tmp/mongodb.tgz
   - tar -xvf /tmp/mongodb.tgz
   - mkdir /tmp/data
-  - ${PWD}/mongodb-linux-x86_64-3.0.5/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 &> /dev/null &
+  - ${PWD}/mongodb-linux-x86_64-3.4.1/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 &> /dev/null &
   - until nc -z localhost 27017; do echo Waiting for MongoDB; sleep 5; done

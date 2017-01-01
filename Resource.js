@@ -178,7 +178,9 @@ module.exports = function(app, route, modelName, model) {
      * @returns {{}}
      */
     getMethodOptions: function(method, options) {
-      if (!options) return {};
+      if (!options) {
+        options = {};
+      }
 
       // Uppercase the method.
       method = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
@@ -198,6 +200,17 @@ module.exports = function(app, route, modelName, model) {
       else if (options.hasOwnProperty('after' + method)) {
         methodOptions.after = options['after' + method];
       }
+
+      // Expose mongoose hooks for each method.
+      _.each(['before', 'after'], function(type) {
+        var path = 'hooks.' + method.toString().toLowerCase() + '.' + type;
+
+        _.set(
+          methodOptions,
+          path,
+          _.get(options, path, function(req, res, item, next) { return next(); })
+        );
+      });
 
       // Return the options for this method.
       return methodOptions;
@@ -356,7 +369,7 @@ module.exports = function(app, route, modelName, model) {
         countQuery.find(findQuery).count(function(err, count) {
           if (err) {
             debug.index(err);
-            return this.setResponse(res, {status: 500, error: err}, next);
+            return this.setResponse.call(this, res, {status: 500, error: err}, next);
           }
 
           // Get the default limit.
@@ -384,12 +397,6 @@ module.exports = function(app, route, modelName, model) {
             reqQuery.skip = pageRange.skip;
           }
 
-          // Get the populate parameter.
-          var populate = this.getParamQuery(req, 'populate');
-          if (populate) {
-            debug.index('Populate: ' + populate);
-          }
-
           // Next get the items within the index.
           var queryExec = query
             .find(findQuery)
@@ -399,12 +406,18 @@ module.exports = function(app, route, modelName, model) {
             .sort(this.getParamQuery(req, 'sort'));
 
           // Only call populate if they provide a populate query.
+          var populate = this.getParamQuery(req, 'populate');
           if (populate) {
+            debug.index('Populate: ' + populate);
             queryExec = queryExec.populate(populate);
           }
 
-          // Execute the query.
-          queryExec.exec(function(err, items) {
+          options.hooks.index.before.call(
+            this,
+            req,
+            res,
+            findQuery,
+            queryExec.exec.bind(queryExec, function(err, items) {
               if (err) {
                 debug.index(err);
                 debug.index(err.name);
@@ -414,12 +427,19 @@ module.exports = function(app, route, modelName, model) {
                   debug.index(err.message);
                 }
 
-                return this.setResponse(res, {status: 500, error: err}, next);
+                return this.setResponse.call(this, res, {status: 500, error: err}, next);
               }
 
               debug.index(items);
-              return this.setResponse(res, {status: res.statusCode, item: items}, next);
-            }.bind(this));
+              options.hooks.index.after.call(
+                this,
+                req,
+                res,
+                items,
+                this.setResponse.bind(this, res, {status: res.statusCode, item: items}, next)
+              );
+            }.bind(this))
+          )
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
@@ -439,16 +459,29 @@ module.exports = function(app, route, modelName, model) {
         }
 
         var query = req.modelQuery || this.model;
-        query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
-          if (err) return this.setResponse(res, {status: 500, error: err}, next);
-          if (!item) return this.setResponse(res, {status: 404}, next);
+        var search = {'_id': req.params[this.name + 'Id']};
 
-          return this.setResponse(res, {status: 200, item: item}, next);
-        }.bind(this));
+        options.hooks.get.before.call(
+          this,
+          req,
+          res,
+          search,
+          query.findOne.bind(query, search, function(err, item) {
+            if (err) return this.setResponse.call(this, res, {status: 500, error: err}, next);
+            if (!item) return this.setResponse.call(this, res, {status: 404}, next);
+
+            return options.hooks.get.after.call(
+              this,
+              req,
+              res,
+              item,
+              this.setResponse.bind(this, res, {status: 200, item: item}, next)
+            );
+          }.bind(this))
+        );
       }, this.respond.bind(this), options);
       return this;
     },
-
 
     /**
      * Virtual (GET) method. Returns a user-defined projection (typically an aggregate result)
@@ -486,16 +519,29 @@ module.exports = function(app, route, modelName, model) {
           return next();
         }
 
-        this.model.create(req.body, function(err, item) {
-          if (err) {
-            debug.post(err);
-            return this.setResponse(res, {status: 400, error: err}, next);
-          }
+        options.hooks.post.before.call(
+          this,
+          req,
+          res,
+          req.body,
+          this.model.create.bind(this.model, req.body, function(err, item) {
+            if (err) {
+              debug.post(err);
+              return this.setResponse.call(this, res, {status: 400, error: err}, next);
+            }
 
-          debug.post(item);
-          return this.setResponse(res, {status: 201, item: item}, next);
-        }.bind(this));
-      }, this.respond.bind(this), options);
+            debug.post(item);
+            // Trigger any after hooks before responding.
+            return options.hooks.post.after.call(
+              this,
+              req,
+              res,
+              item,
+              this.setResponse.bind(this, res, {status: 201, item: item}, next)
+            );
+          }.bind(this))
+        );
+      }.bind(this), this.respond.bind(this), options);
       return this;
     },
 
@@ -515,28 +561,40 @@ module.exports = function(app, route, modelName, model) {
 
         // Remove __v field
         var update = _.omit(req.body, '__v');
-
         var query = req.modelQuery || this.model;
+
         query.findOne({_id: req.params[this.name + 'Id']}, function(err, item) {
           if (err) {
             debug.put(err);
-            return this.setResponse(res, {status: 500, error: err}, next);
+            return this.setResponse.call(this, res, {status: 500, error: err}, next);
           }
           if (!item) {
             debug.put('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
-            return this.setResponse(res, {status: 404}, next);
+            return this.setResponse.call(this, res, {status: 404}, next);
           }
 
           item.set(update);
-          item.save(function(err, item) {
-            if (err) {
-              debug.put(err);
-              return this.setResponse(res, {status: 500, error: err}, next);
-            }
+          options.hooks.put.before.call(
+            this,
+            req,
+            res,
+            item,
+            item.save.bind(item, function(err, item) {
+              if (err) {
+                debug.put(err);
+                return this.setResponse.call(this, res, {status: 500, error: err}, next);
+              }
 
-            debug.put(JSON.stringify(item));
-            return this.setResponse(res, {status: 200, item: item}, next);
-          }.bind(this));
+              debug.put(JSON.stringify(item));
+              return options.hooks.put.after.call(
+                this,
+                req,
+                res,
+                item,
+                this.setResponse.bind(this, res, {status: 200, item: item}, next)
+              );
+            }.bind(this))
+          );
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
@@ -604,25 +662,37 @@ module.exports = function(app, route, modelName, model) {
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) {
             debug.delete(err);
-            return this.setResponse(res, {status: 500, error: err}, next);
+            return this.setResponse.call(this, res, {status: 500, error: err}, next);
           }
           if (!item) {
             debug.delete('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
-            return this.setResponse(res, {status: 404, error: err}, next);
+            return this.setResponse.call(this, res, {status: 404, error: err}, next);
           }
           if (req.skipDelete) {
-            return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
+            return this.setResponse.call(this, res, {status: 204, item: item, deleted: true}, next);
           }
 
-          query.remove({_id: item._id}, function(err) {
-            if (err) {
-              debug.delete(err);
-              return this.setResponse(res, {status: 400, error: err}, next);
-            }
+          options.hooks.delete.before.call(
+            this,
+            req,
+            res,
+            item,
+            query.remove.bind(query, {_id: item._id}, function(err) {
+              if (err) {
+                debug.delete(err);
+                return this.setResponse.call(this, res, {status: 400, error: err}, next);
+              }
 
-            debug.delete(item);
-            return this.setResponse(res, {status: 204, item: item, deleted: true}, next);
-          }.bind(this));
+              debug.delete(item);
+              options.hooks.delete.after.call(
+                this,
+                req,
+                res,
+                item,
+                this.setResponse.bind(this, res, {status: 204, item: item, deleted: true}, next)
+              );
+            }.bind(this))
+          );
         }.bind(this));
       }, this.respond.bind(this), options);
       return this;
