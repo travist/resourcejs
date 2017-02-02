@@ -68,7 +68,15 @@ module.exports = function(resource) {
         }
       };
     }
-
+    // For embedded schemas:
+    if (options.type.constructor.name === 'Schema') {
+      if (options.type.hasOwnProperty('paths')) {
+        return {
+          $ref: '#/definitions/' + name,
+          definitions: getModel(options.type, name)
+        };
+      }
+    }
     if (typeof options.type === 'function') {
       var functionName = options.type.toString();
       functionName = functionName.substr('function '.length);
