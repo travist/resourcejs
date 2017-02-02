@@ -143,7 +143,8 @@ describe('Build Resources for following tests', function() {
       description: {
         type: String
       },
-      list: [R1SubdocumentSchema]
+      list: [R1SubdocumentSchema],
+      list2: [String]
     });
 
     // Create the model.
@@ -773,7 +774,7 @@ describe('Test single resource search capabilities', function() {
 
   it('Should not populate paths that are not a reference', function(done) {
     request(app)
-      .get('/test/resource1?name=noage&populate=list')
+      .get('/test/resource1?name=noage&populate=list2')
       .end(function(err, res) {
         if (err) {
           return done(err);
