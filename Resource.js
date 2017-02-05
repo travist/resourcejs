@@ -182,9 +182,14 @@ module.exports = function(app, route, modelName, model) {
         options = {};
       }
 
+      // If this is already converted to method options then return.
+      if (options.methodOptions) {
+        return options;
+      }
+
       // Uppercase the method.
       method = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
-      var methodOptions = {};
+      var methodOptions = {methodOptions: true};
 
       // Find all of the options that may have been passed to the rest method.
       if (options.before) {
@@ -224,13 +229,13 @@ module.exports = function(app, route, modelName, model) {
      */
     rest: function(options) {
       return this
-        .index(this.getMethodOptions('index', options))
-        .get(this.getMethodOptions('get', options))
-        .virtual(this.getMethodOptions('virtual', options))
-        .put(this.getMethodOptions('put', options))
-        .patch(this.getMethodOptions('patch', options))
-        .post(this.getMethodOptions('post', options))
-        .delete(this.getMethodOptions('delete', options));
+        .index(options)
+        .get(options)
+        .virtual(options)
+        .put(options)
+        .patch(options)
+        .post(options)
+        .delete(options);
     },
 
     /**
@@ -350,6 +355,7 @@ module.exports = function(app, route, modelName, model) {
      * @param options
      */
     index: function(options) {
+      options = this.getMethodOptions('index', options);
       this.methods.push('index');
       this.register(app, 'get', this.route, function(req, res, next) {
         // Store the internal method for response manipulation.
@@ -449,6 +455,7 @@ module.exports = function(app, route, modelName, model) {
      * Register the GET method for this resource.
      */
     get: function(options) {
+      options = this.getMethodOptions('get', options);
       this.methods.push('get');
       this.register(app, 'get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         // Store the internal method for response manipulation.
@@ -488,6 +495,7 @@ module.exports = function(app, route, modelName, model) {
      * derived from this resource
      */
     virtual: function(options) {
+      options = this.getMethodOptions('virtual', options);
       this.methods.push('virtual');
       var path = (options.path === undefined) ? this.path : options.path;
       this.register(app, 'get', this.route + '/virtual/' + path, function(req, res, next) {
@@ -509,6 +517,7 @@ module.exports = function(app, route, modelName, model) {
      * Post (Create) a new item
      */
     post: function(options) {
+      options = this.getMethodOptions('post', options);
       this.methods.push('post');
       this.register(app, 'post', this.route, function(req, res, next) {
         // Store the internal method for response manipulation.
@@ -549,6 +558,7 @@ module.exports = function(app, route, modelName, model) {
      * Put (Update) a resource.
      */
     put: function(options) {
+      options = this.getMethodOptions('put', options);
       this.methods.push('put');
       this.register(app, 'put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         // Store the internal method for response manipulation.
@@ -604,6 +614,7 @@ module.exports = function(app, route, modelName, model) {
      * Patch (Partial Update) a resource.
      */
     patch: function(options) {
+      options = this.getMethodOptions('patch', options);
       this.methods.push('patch');
       this.register(app, 'patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         // Store the internal method for response manipulation.
@@ -648,6 +659,7 @@ module.exports = function(app, route, modelName, model) {
      * Delete a resource.
      */
     delete: function(options) {
+      options = this.getMethodOptions('delete', options);
       this.methods.push('delete');
       this.register(app, 'delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         // Store the internal method for response manipulation.

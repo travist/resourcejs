@@ -1934,6 +1934,73 @@ describe('Test nested resource handlers capabilities', function() {
   });
 });
 
+describe('Test mount variations', function() {
+  before(function(done) {
+    // Create the REST resource and continue.
+    Resource(app, '', 'testindex', mongoose.model('testindex', new mongoose.Schema({
+      data: {
+        type: String,
+        required: true
+      }
+    }))).index();
+    done();
+  });
+
+  var resource = {};
+  it('/GET empty list', function(done) {
+    request(app)
+      .get('/testindex')
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '*/0')
+      .expect(200)
+      .end(function(err, res) {
+        assert.equal(res.hasOwnProperty('body'), true);
+        assert.deepEqual(res.body, []);
+        done(err);
+      });
+  });
+
+  it('/POST should be 404', function(done) {
+    request(app)
+      .post('/testindex')
+      .send({
+        title: 'Test1',
+        description: '12345678'
+      })
+      .expect(404)
+      .end(done);
+  });
+
+  it('/GET should be 404', function(done) {
+    request(app).get('/testindex/234234234').expect(404).end(done);
+  });
+
+  it('/PUT should be 404', function(done) {
+    request(app)
+      .put('/testindex/234234234')
+      .send({
+        title: 'Test2'
+      })
+      .expect(404)
+      .end(done);
+  });
+
+  it('/PATCH should be 404', function(done) {
+    request(app)
+      .patch('/testindex/234234234')
+      .send([{ 'op': 'replace', 'path': '/title', 'value': 'Test3' }])
+      .expect(404)
+      .end(done);
+  });
+
+  it('/DELETE the resource', function(done) {
+    request(app)
+      .delete('/testindex/234234234')
+      .expect(404)
+      .end(done);
+  });
+});
+
 describe('Test before hooks', function() {
   var calls = [];
   var sub;
