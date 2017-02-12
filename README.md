@@ -23,6 +23,8 @@ var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 var Resource = require('resourcejs');
 
+mongoose.connect('mongodb://localhost/myapp');
+
 // Create the app.
 var app = express();
 
