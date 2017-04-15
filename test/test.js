@@ -414,8 +414,8 @@ describe('Test single resource CRUD capabilities', function() {
         }
 
         var response = res.text;
-        var expected = 'Cannot POST /test/resource1/' + resource._id + '\n';
-        assert.deepEqual(response, expected);
+        var expected = 'Cannot POST /test/resource1/' + resource._id;
+        assert(response.indexOf(expected) !== -1, 'Response not found.');
         done();
       });
   });
@@ -1730,8 +1730,8 @@ describe('Test nested resource CRUD capabilities', function() {
         }
 
         var response = res.text;
-        var expected = 'Cannot POST /test/resource1/' + resource._id + '/nested1/' + nested._id + '\n';
-        assert.deepEqual(response, expected);
+        var expected = 'Cannot POST /test/resource1/' + resource._id + '/nested1/' + nested._id;
+        assert(response.indexOf(expected) !== -1, 'Response not found.');
         done();
       });
   });
