@@ -592,7 +592,7 @@ module.exports = function(app, route, modelName, model) {
             item.save.bind(item, function(err, item) {
               if (err) {
                 debug.put(err);
-                return this.setResponse.call(this, res, {status: 500, error: err}, next);
+                return this.setResponse.call(this, res, {status: 400, error: err}, next);
               }
 
               debug.put(JSON.stringify(item));
