@@ -629,9 +629,9 @@ module.exports = function(app, route, modelName, model) {
           try {
             for (var len = patches.length, i=0; i<len; ++i) {
               var patch = patches[i];
-              if(patch.op=='test'){
-                var success = jsonpatch.apply(item, [].concat(patch), true);
-                if(!success){
+              if(patch.op === 'test'){
+                var success = jsonpatch.applyPatch(item, [].concat(patch), true);
+                if(!success || !success.length){
                   return this.setResponse(res, {
                     status: 412,
                     name: 'Precondition Failed',
@@ -642,8 +642,18 @@ module.exports = function(app, route, modelName, model) {
                 }
               }
             }
-            jsonpatch.apply(item, patches, true);
+            jsonpatch.applyPatch(item, patches, true);
           } catch(err) {
+            if (err && err.name === 'TEST_OPERATION_FAILED') {
+              return this.setResponse(res, {
+                status: 412,
+                name: 'Precondition Failed',
+                message: 'A json-patch test op has failed. No changes have been applied to the document',
+                item: item,
+                patch: patch
+              }, next);
+            }
+
             if (err) return this.setResponse(res, {status: 500, item: item, error: err}, next);
           }
           item.save(function (err, item) {
