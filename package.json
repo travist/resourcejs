@@ -4,7 +4,7 @@
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha test/test.js -b -t 30000"
+    "test": "./node_modules/mocha/bin/mocha test/test.js -b -t 30000 --exit"
   },
   "repository": {
     "type": "git",
