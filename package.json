@@ -1,10 +1,10 @@
 {
   "name": "resourcejs",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha test/test.js -b -t 30000"
+    "test": "./node_modules/mocha/bin/mocha test/test.js -b -t 30000 --exit"
   },
   "repository": {
     "type": "git",
@@ -24,20 +24,21 @@
   "homepage": "https://github.com/travist/resourcejs",
   "dependencies": {
     "composable-middleware": "^0.3.0",
-    "debug": "^2.6.0",
-    "express": "^4.15.2",
-    "fast-json-patch": "^0.5.7",
+    "debug": "^3.1.0",
+    "express": "^4.16.2",
+    "fast-json-patch": "^2.0.6",
     "lodash": "^4.17.4",
-    "mongodb": "^2.2.25",
-    "mongoose": "^4.9.4",
-    "node-paginate-anything": "git+https://github.com/polo2ro/node-paginate-anything.git"
+    "mongodb": "^2.2.33",
+    "mongoose": "^4.12.4",
+    "node-paginate-anything": "git+https://github.com/polo2ro/node-paginate-anything.git",
+    "q": "^1.5.1"
   },
   "devDependencies": {
-    "async": "^2.1.4",
-    "body-parser": "^1.10.2",
-    "chance": "^1.0.0",
-    "mocha": "^2.1.0",
+    "async": "^2.5.0",
+    "body-parser": "^1.18.2",
+    "chance": "^1.0.11",
+    "mocha": "^4.0.1",
     "q": "^1.4.1",
-    "supertest": "^0.15.0"
+    "supertest": "^3.0.0"
   }
 }
