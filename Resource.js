@@ -528,12 +528,15 @@ module.exports = function(app, route, modelName, model) {
           return next();
         }
 
+        // Create the new model.
+        var model = req.model || (new this.model(req.body));
+
         options.hooks.post.before.call(
           this,
           req,
           res,
           req.body,
-          this.model.create.bind(this.model, req.body, function(err, item) {
+          model.save.bind(model, function(err, item) {
             if (err) {
               debug.post(err);
               return this.setResponse.call(this, res, {status: 400, error: err}, next);
