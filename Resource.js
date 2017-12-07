@@ -79,6 +79,19 @@ module.exports = function(app, route, modelName, model) {
       }
       mw.use(last.bind(this));
 
+      // Add a fallback error handler.
+      mw.use((err, req, res, next) => {
+        if (err) {
+          res.status(500).json({
+            status: 500,
+            message: err.message || err
+          });
+        }
+        else {
+          return next();
+        }
+      });
+
       // Declare the resourcejs object on the app.
       if (!app.resourcejs) {
         app.resourcejs = {};
@@ -368,8 +381,8 @@ module.exports = function(app, route, modelName, model) {
         var findQuery = this.getFindQuery(req);
 
         // Get the query object.
-        var countQuery = req.countQuery || req.modelQuery || this.model;
-        var query = req.modelQuery || this.model;
+        var countQuery = req.countQuery || req.modelQuery || req.model || this.model;
+        var query = req.modelQuery || req.model || this.model;
 
         // First get the total count.
         countQuery.find(findQuery).count(function(err, count) {
@@ -460,12 +473,11 @@ module.exports = function(app, route, modelName, model) {
       this.register(app, 'get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
         // Store the internal method for response manipulation.
         req.__rMethod = 'get';
-
         if (req.skipResource) {
           return next();
         }
 
-        var query = req.modelQuery || this.model;
+        var query = req.modelQuery || req.model || this.model;
         var search = {'_id': req.params[this.name + 'Id']};
 
         options.hooks.get.before.call(
@@ -503,7 +515,7 @@ module.exports = function(app, route, modelName, model) {
         req.__rMethod = 'virtual';
 
         if (req.skipResource) { return next(); }
-        var query = req.modelQuery;
+        var query = req.modelQuery || req.model;
         query.exec(function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404}, next);
@@ -528,12 +540,14 @@ module.exports = function(app, route, modelName, model) {
           return next();
         }
 
+        var Model = req.model || this.model;
+        var model = new Model(req.body);
         options.hooks.post.before.call(
           this,
           req,
           res,
           req.body,
-          this.model.create.bind(this.model, req.body, function(err, item) {
+          model.save.bind(model, function(err, item) {
             if (err) {
               debug.post(err);
               return this.setResponse.call(this, res, {status: 400, error: err}, next);
@@ -571,7 +585,7 @@ module.exports = function(app, route, modelName, model) {
 
         // Remove __v field
         var update = _.omit(req.body, '__v');
-        var query = req.modelQuery || this.model;
+        var query = req.modelQuery || req.model || this.model;
 
         query.findOne({_id: req.params[this.name + 'Id']}, function(err, item) {
           if (err) {
@@ -621,7 +635,7 @@ module.exports = function(app, route, modelName, model) {
         req.__rMethod = 'patch';
 
         if (req.skipResource) { return next(); }
-        var query = req.modelQuery || this.model;
+        var query = req.modelQuery || req.model || this.model;
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) return this.setResponse(res, {status: 500, error: err}, next);
           if (!item) return this.setResponse(res, {status: 404, error: err}, next);
@@ -680,7 +694,7 @@ module.exports = function(app, route, modelName, model) {
           return next();
         }
 
-        var query = req.modelQuery || this.model;
+        var query = req.modelQuery || req.model || this.model;
         query.findOne({'_id': req.params[this.name + 'Id']}, function(err, item) {
           if (err) {
             debug.delete(err);
