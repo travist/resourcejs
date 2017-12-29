@@ -279,6 +279,18 @@ module.exports = function(app, route, modelName, model) {
     getFindQuery: function(req) {
       var findQuery = {};
 
+      var getValue = function(value, param) {
+        if (param.instance === 'Number') {
+          return parseInt(value, 10)
+        }
+        // If this is a valid ISO Date, convert to date.
+        // See https://stackoverflow.com/questions/3143070/javascript-regex-iso-datetime for regex.
+        if (value.match(/(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/)) {
+          return new Date(value);
+        }
+        return value;
+      }
+
       // Get the filters and omit the limit, skip, select, and sort.
       var filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
 
@@ -328,16 +340,12 @@ module.exports = function(app, route, modelName, model) {
               else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1)) {
                 value = value.split(',');
                 _.map(value, function(item) {
-                  return (param.instance === 'Number')
-                    ? parseInt(item, 10)
-                    : item;
+                  return getValue(item, param);
                 });
               }
               else {
                 // Set the selector for this filter name.
-                value = (param.instance === 'Number')
-                  ? parseInt(value, 10)
-                  : value;
+                value = getValue(value, param);
               }
 
               findQuery[filter.name]['$' + filter.selector] = value;
@@ -346,9 +354,7 @@ module.exports = function(app, route, modelName, model) {
           }
           else {
             // Set the find query to this value.
-            value = (param.instance === 'Number')
-              ? parseInt(value, 10)
-              : value;
+            value = getValue(value, param);
             findQuery[filter.name] = value;
             return;
           }
