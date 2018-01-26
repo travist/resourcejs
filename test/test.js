@@ -91,12 +91,12 @@ describe('Connect to MongoDB', function() {
   });
 
   it('Should connect MongoDB without mongoose', function(done) {
-    MongoClient.connect('mongodb://localhost/test', function(err, connection) {
+    MongoClient.connect('mongodb://localhost:27017', function(err, client) {
       if (err) {
         return done(err);
       }
 
-      db = connection;
+      db = client.db('test');
       done();
     });
   });
