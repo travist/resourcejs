@@ -23,6 +23,21 @@ class Resource {
   }
 
   /**
+   * Maintain reverse compatibility.
+   *
+   * @param app
+   * @param method
+   * @param path
+   * @param callback
+   * @param last
+   * @param options
+   */
+  register(app, method, path, callback, last, options) {
+    this.app = app;
+    return this._register(method, path, callback, last, options);
+  }
+
+  /**
    * Register a new callback but add before and after options to the middleware.
    *
    * @param method
@@ -31,7 +46,7 @@ class Resource {
    * @param last
    * @param options
    */
-  register(method, path, callback, last, options) {
+  _register(method, path, callback, last, options) {
     var mw = middleware();
     var len, i;
 
@@ -209,7 +224,7 @@ class Resource {
   }
 
   /**
-   * Register the whole REST api for this resource.
+   * _register the whole REST api for this resource.
    *
    * @param options
    * @returns {*|null|HttpPromise}
@@ -241,7 +256,7 @@ class Resource {
           return null;
       }
     }
-    return _.words(req.query[name], /[^, ]+/g).join(' ');
+    return _.uniq(_.words(req.query[name], /[^, ]+/g)).join(' ');
   }
 
   /**
@@ -398,7 +413,7 @@ class Resource {
   index(options) {
     options = this.getMethodOptions('index', options);
     this.methods.push('index');
-    this.register('get', this.route, (req, res, next) => {
+    this._register('get', this.route, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'index';
 
@@ -498,7 +513,7 @@ class Resource {
   get(options) {
     options = this.getMethodOptions('get', options);
     this.methods.push('get');
-    this.register('get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+    this._register('get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
       // Store the internal method for response manipulation.
       req.__rMethod = 'get';
       if (req.skipResource) {
@@ -538,7 +553,7 @@ class Resource {
     options = this.getMethodOptions('virtual', options);
     this.methods.push('virtual');
     var path = (options.path === undefined) ? this.path : options.path;
-    this.register('get', this.route + '/virtual/' + path, function(req, res, next) {
+    this._register('get', this.route + '/virtual/' + path, function(req, res, next) {
       // Store the internal method for response manipulation.
       req.__rMethod = 'virtual';
 
@@ -559,7 +574,7 @@ class Resource {
   post(options) {
     options = this.getMethodOptions('post', options);
     this.methods.push('post');
-    this.register('post', this.route, (req, res, next) => {
+    this._register('post', this.route, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'post';
 
@@ -602,7 +617,7 @@ class Resource {
   put(options) {
     options = this.getMethodOptions('put', options);
     this.methods.push('put');
-    this.register('put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+    this._register('put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
       // Store the internal method for response manipulation.
       req.__rMethod = 'put';
 
@@ -658,7 +673,7 @@ class Resource {
   patch(options) {
     options = this.getMethodOptions('patch', options);
     this.methods.push('patch');
-    this.register('patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+    this._register('patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
       // Store the internal method for response manipulation.
       req.__rMethod = 'patch';
 
@@ -713,7 +728,7 @@ class Resource {
   delete(options) {
     options = this.getMethodOptions('delete', options);
     this.methods.push('delete');
-    this.register('delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+    this._register('delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
       // Store the internal method for response manipulation.
       req.__rMethod = 'delete';
 
