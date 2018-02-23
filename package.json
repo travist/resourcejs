@@ -28,7 +28,7 @@
     "express": "^4.16.2",
     "fast-json-patch": "^2.0.6",
     "lodash": "^4.17.5",
-    "mongodb": "^3.0.2",
+    "mongodb": "^3.0.3",
     "mongoose": "^5.0.7",
     "node-paginate-anything": "git+https://github.com/polo2ro/node-paginate-anything.git",
     "q": "^1.5.1"
