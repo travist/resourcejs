@@ -1,3 +1,5 @@
+'use strict';
+
 var _ = require('lodash');
 var paginate = require('node-paginate-anything');
 var jsonpatch = require('fast-json-patch');
