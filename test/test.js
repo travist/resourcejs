@@ -629,13 +629,678 @@ describe('Test single resource CRUD capabilities', function() {
   });
 });
 
-describe('Test single resource search capabilities', function() {
-  var refDoc1Content = null;
-  var refDoc1Response = null;
+var refDoc1Content = null;
+var refDoc1Response = null;
+var resourceNames = [];
+var testSearch = function(testPath) {
+  it('Should populate', function(done) {
+    request(app)
+      .get(`${testPath}?name=noage&populate=list.data`)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
 
+        var response = res.body;
+
+        // Check statusCode
+        assert.equal(res.statusCode, 200);
+
+        // Check main resource
+        assert.equal(response[0].title, 'No Age');
+        assert.equal(response[0].description, 'No age');
+        assert.equal(response[0].name, 'noage');
+        assert.equal(response[0].list.length, 1);
+
+        // Check populated resource
+        assert.equal(response[0].list[0].label, '1');
+        assert.equal(response[0].list[0].data.length, 1);
+        assert.equal(response[0].list[0].data[0]._id, refDoc1Response._id);
+        assert.equal(response[0].list[0].data[0].data, refDoc1Content.data);
+        done();
+      });
+  });
+
+  it('Should ignore empty populate query parameter', function(done) {
+    request(app)
+      .get(`${testPath}?name=noage&populate=`)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+
+        // Check statusCode
+        assert.equal(res.statusCode, 200);
+
+        // Check main resource
+        assert.equal(response[0].title, 'No Age');
+        assert.equal(response[0].description, 'No age');
+        assert.equal(response[0].name, 'noage');
+        assert.equal(response[0].list.length, 1);
+
+        // Check populated resource
+        assert.equal(response[0].list[0].label, '1');
+        assert.equal(response[0].list[0].data.length, 1);
+        assert.equal(response[0].list[0].data[0], refDoc1Response._id);
+        done();
+      });
+  });
+
+  it('Should not populate paths that are not a reference', function(done) {
+    request(app)
+      .get(`${testPath}?name=noage&populate=list2`)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+
+        // Check statusCode
+        assert.equal(res.statusCode, 200);
+
+        // Check main resource
+        assert.equal(response[0].title, 'No Age');
+        assert.equal(response[0].description, 'No age');
+        assert.equal(response[0].name, 'noage');
+        assert.equal(response[0].list.length, 1);
+
+        // Check populated resource
+        assert.equal(response[0].list[0].label, '1');
+        assert.equal(response[0].list[0].data.length, 1);
+        assert.equal(response[0].list[0].data[0], refDoc1Response._id);
+        done();
+      });
+  });
+
+  it('Should limit 10', function(done) {
+    request(app)
+      .get(testPath)
+      .expect('Content-Type', /json/)
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 0;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should accept a change in limit', function(done) {
+    request(app)
+      .get(`${testPath}?limit=5`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-4/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        var age = 0;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should be able to skip and limit', function(done) {
+    request(app)
+      .get(`${testPath}?limit=5&skip=4`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '4-8/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        var age = 4;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default negative limit to 10', function(done) {
+    request(app)
+      .get(`${testPath}?limit=-5&skip=4`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '4-13/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 4;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default negative skip to 0', function(done) {
+    request(app)
+      .get(`${testPath}?limit=5&skip=-4`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-4/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        var age = 0;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default negative skip and negative limit to 0 and 10', function(done) {
+    request(app)
+      .get(`${testPath}?limit=-5&skip=-4`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-9/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 0;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default non numeric limit to 10', function(done) {
+    request(app)
+      .get(`${testPath}?limit=badlimit&skip=4`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '4-13/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 4;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should default non numeric skip to 0', function(done) {
+    request(app)
+      .get(`${testPath}?limit=5&skip=badskip`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-4/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        var age = 0;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, 'Description of test age ' + age);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should be able to select fields', function(done) {
+    request(app)
+      .get(`${testPath}?limit=10&skip=10&select=title,age`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '10-19/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 10;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, 'Test Age ' + age);
+          assert.equal(resource.description, undefined);
+          assert.equal(resource.age, age);
+          age++;
+        });
+        done();
+      });
+  });
+
+  it('Should be able to sort', function(done) {
+    request(app)
+      .get(`${testPath}?select=age&sort=-age`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-9/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        var age = 24;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, undefined);
+          assert.equal(resource.description, undefined);
+          assert.equal(resource.age, age);
+          age--;
+        });
+        done();
+      });
+  });
+
+  it('Should paginate with a sort', function(done) {
+    request(app)
+      .get(`${testPath}?limit=5&skip=5&select=age&sort=-age`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '5-9/26')
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        var age = 19;
+        _.each(response, function(resource) {
+          assert.equal(resource.title, undefined);
+          assert.equal(resource.description, undefined);
+          assert.equal(resource.age, age);
+          age--;
+        });
+        done();
+      });
+  });
+
+  it('Should be able to find', function(done) {
+    request(app)
+      .get(`${testPath}?limit=5&select=age&age=5`)
+      .expect('Content-Type', /json/)
+      .expect('Content-Range', '0-0/1')
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].title, undefined);
+        assert.equal(response[0].description, undefined);
+        assert.equal(response[0].age, 5);
+        done();
+      });
+  });
+
+  it('eq search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__eq=5`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        _.each(response, function(resource) {
+          assert.equal(resource.age, 5);
+        });
+        done();
+      });
+  });
+
+  it('equals (alternative) search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age=5`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        _.each(response, function(resource) {
+          assert.equal(resource.age, 5);
+        });
+        done();
+      });
+  });
+
+  it('ne search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__ne=5&limit=100`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 25);
+        _.each(response, function(resource) {
+          assert.notEqual(resource.age, 5);
+        });
+        done();
+      });
+  });
+
+  it('in search selector', function(done) {
+    request(app)
+      .get(`${testPath}?title__in=Test Age 1,Test Age 5,Test Age 9,Test Age 20`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 4);
+        _.each(response, function(resource) {
+          var found = false;
+
+          [1,5,9,20].forEach(function(a) {
+            if (resource.age && resource.age === a) {
+              found = true;
+            }
+          });
+
+          assert(found);
+        });
+        done();
+      });
+  });
+
+  it('nin search selector', function(done) {
+    request(app)
+      .get(`${testPath}?title__nin=Test Age 1,Test Age 5`)
+      .expect('Content-Type', /json/)
+      .expect(206)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        _.each(response, function(resource) {
+          var found = false;
+
+          [1,5].forEach(function(a) {
+            if (resource.age && resource.age === a) {
+              found = true;
+            }
+          });
+
+          assert(!found);
+        });
+        done();
+      });
+  });
+
+  it('exists=false search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__exists=false`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].name, 'noage');
+        done();
+      });
+  });
+
+  it('exists=0 search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__exists=0`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].name, 'noage');
+        done();
+      });
+  });
+
+  it('exists=true search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__exists=true&limit=1000`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 25);
+        _.each(response, function(resource) {
+          assert(resource.name !== 'noage', 'No age should be found.');
+        });
+        done();
+      });
+  });
+
+  it('exists=1 search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__exists=true&limit=1000`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 25);
+        _.each(response, function(resource) {
+          assert(resource.name !== 'noage', 'No age should be found.');
+        });
+        done();
+      });
+  });
+
+  it('lt search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__lt=5`)
+      .expect('Content-Range', '0-4/5')
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 5);
+        _.each(response, function(resource) {
+          assert.ok(resource.age < 5);
+        });
+        done();
+      });
+  });
+
+  it('lte search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__lte=5`)
+      .expect('Content-Range', '0-5/6')
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 6);
+        _.each(response, function(resource) {
+          assert.ok(resource.age <= 5);
+        });
+        done();
+      });
+  });
+
+  it('gt search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__gt=5`)
+      .expect('Content-Range', '0-9/19')
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        _.each(response, function(resource) {
+          assert.ok(resource.age > 5);
+        });
+        done();
+      });
+  });
+
+  it('gte search selector', function(done) {
+    request(app)
+      .get(`${testPath}?age__gte=5`)
+      .expect('Content-Range', '0-9/20')
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        assert.equal(response.length, 10);
+        _.each(response, function(resource) {
+          assert.ok(resource.age >= 5);
+        });
+        done();
+      });
+  });
+
+  it('regex search selector', function(done) {
+    request(app)
+      .get(`${testPath}?title__regex=/.*Age [0-1]?[0-3]$/g`)
+      .expect('Content-Range', '0-7/8')
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var response = res.body;
+        var valid = [0, 1, 2, 3, 10, 11, 12, 13];
+        assert.equal(response.length, valid.length);
+        _.each(response, function(resource) {
+          assert.ok(valid.indexOf(resource.age) !== -1);
+        });
+        done();
+      });
+  });
+
+  it('regex search selector should be case insensitive', function(done) {
+    var name = resourceNames[0].toString();
+
+    request(app)
+      .get(`${testPath}?name__regex=` + name.toUpperCase())
+      .end(function(err, res) {
+        if (err) {
+          return done(err);
+        }
+
+        var uppercaseResponse = res.body;
+        request(app)
+          .get('/test/resource1?name__regex=' + name.toLowerCase())
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var lowercaseResponse = res.body;
+            assert.equal(uppercaseResponse.length, lowercaseResponse.length);
+            done();
+          });
+      });
+  });
+};
+
+describe('Test single resource search capabilities', function() {
   it('Should create a reference doc with mongoose', function(done) {
     refDoc1Content = {data: 'test1'};
-
     request(app)
       .post('/test/ref')
       .send(refDoc1Content)
@@ -653,7 +1318,6 @@ describe('Test single resource search capabilities', function() {
       });
   });
 
-  var names = [];
   it('Create a full index of resources', function(done) {
     var age = 0;
 
@@ -661,8 +1325,7 @@ describe('Test single resource search capabilities', function() {
       function() { return age < 25; },
       function(cb) {
         var name = (chance.name()).toUpperCase();
-        names.push(name);
-
+        resourceNames.push(name);
         request(app)
           .post('/test/resource1')
           .send({
@@ -716,670 +1379,20 @@ describe('Test single resource search capabilities', function() {
       }
     );
   });
+  testSearch('/test/resource1');
 
-  it('Should populate', function(done) {
-    request(app)
-      .get('/test/resource1?name=noage&populate=list.data')
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-
-        // Check statusCode
-        assert.equal(res.statusCode, 200);
-
-        // Check main resource
-        assert.equal(response[0].title, 'No Age');
-        assert.equal(response[0].description, 'No age');
-        assert.equal(response[0].name, 'noage');
-        assert.equal(response[0].list.length, 1);
-
-        // Check populated resource
-        assert.equal(response[0].list[0].label, '1');
-        assert.equal(response[0].list[0].data.length, 1);
-        assert.equal(response[0].list[0].data[0]._id, refDoc1Response._id);
-        assert.equal(response[0].list[0].data[0].data, refDoc1Content.data);
-        done();
-      });
+  it('Create an aggregation path', (done) => {
+    Resource(app, '', 'aggregation', mongoose.model('resource1')).rest({
+      beforeIndex: function(req, res, next) {
+        req.modelQuery = mongoose.model('resource1');
+        req.modelQuery.pipeline = [];
+        next();
+      }
+    });
+    done();
   });
 
-  it('Should ignore empty populate query parameter', function(done) {
-    request(app)
-      .get('/test/resource1?name=noage&populate=')
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-
-        // Check statusCode
-        assert.equal(res.statusCode, 200);
-
-        // Check main resource
-        assert.equal(response[0].title, 'No Age');
-        assert.equal(response[0].description, 'No age');
-        assert.equal(response[0].name, 'noage');
-        assert.equal(response[0].list.length, 1);
-
-        // Check populated resource
-        assert.equal(response[0].list[0].label, '1');
-        assert.equal(response[0].list[0].data.length, 1);
-        assert.equal(response[0].list[0].data[0], refDoc1Response._id);
-        done();
-      });
-  });
-
-  it('Should not populate paths that are not a reference', function(done) {
-    request(app)
-      .get('/test/resource1?name=noage&populate=list2')
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-
-        // Check statusCode
-        assert.equal(res.statusCode, 200);
-
-        // Check main resource
-        assert.equal(response[0].title, 'No Age');
-        assert.equal(response[0].description, 'No age');
-        assert.equal(response[0].name, 'noage');
-        assert.equal(response[0].list.length, 1);
-
-        // Check populated resource
-        assert.equal(response[0].list[0].label, '1');
-        assert.equal(response[0].list[0].data.length, 1);
-        assert.equal(response[0].list[0].data[0], refDoc1Response._id);
-        done();
-      });
-  });
-
-  it('Should limit 10', function(done) {
-    request(app)
-      .get('/test/resource1')
-      .expect('Content-Type', /json/)
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        var age = 0;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, 'Description of test age ' + age);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should accept a change in limit', function(done) {
-    request(app)
-      .get('/test/resource1?limit=5')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-4/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 5);
-        var age = 0;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, 'Description of test age ' + age);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should be able to skip and limit', function(done) {
-    request(app)
-      .get('/test/resource1?limit=5&skip=4')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '4-8/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 5);
-        var age = 4;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, 'Description of test age ' + age);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should default negative limit to 10', function(done) {
-    request(app)
-      .get('/test/resource1?limit=-5&skip=4')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '4-13/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        var age = 4;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, 'Description of test age ' + age);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should default negative skip to 0', function(done) {
-    request(app)
-      .get('/test/resource1?limit=5&skip=-4')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-4/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 5);
-        var age = 0;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, 'Description of test age ' + age);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should default negative skip and negative limit to 0 and 10', function(done) {
-    request(app)
-      .get('/test/resource1?limit=-5&skip=-4')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-9/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        var age = 0;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, 'Description of test age ' + age);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should default non numeric limit to 10', function(done) {
-    request(app)
-      .get('/test/resource1?limit=badlimit&skip=4')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '4-13/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        var age = 4;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, 'Description of test age ' + age);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should default non numeric skip to 0', function(done) {
-    request(app)
-      .get('/test/resource1?limit=5&skip=badskip')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-4/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 5);
-        var age = 0;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, 'Description of test age ' + age);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should be able to select fields', function(done) {
-    request(app)
-      .get('/test/resource1?limit=10&skip=10&select=title,age')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '10-19/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        var age = 10;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, 'Test Age ' + age);
-          assert.equal(resource.description, undefined);
-          assert.equal(resource.age, age);
-          age++;
-        });
-        done();
-      });
-  });
-
-  it('Should be able to sort', function(done) {
-    request(app)
-      .get('/test/resource1?select=age&sort=-age')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-9/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        var age = 24;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, undefined);
-          assert.equal(resource.description, undefined);
-          assert.equal(resource.age, age);
-          age--;
-        });
-        done();
-      });
-  });
-
-  it('Should paginate with a sort', function(done) {
-    request(app)
-      .get('/test/resource1?limit=5&skip=5&select=age&sort=-age')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '5-9/26')
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 5);
-        var age = 19;
-        _.each(response, function(resource) {
-          assert.equal(resource.title, undefined);
-          assert.equal(resource.description, undefined);
-          assert.equal(resource.age, age);
-          age--;
-        });
-        done();
-      });
-  });
-
-  it('Should be able to find', function(done) {
-    request(app)
-      .get('/test/resource1?limit=5&select=age&age=5')
-      .expect('Content-Type', /json/)
-      .expect('Content-Range', '0-0/1')
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 1);
-        assert.equal(response[0].title, undefined);
-        assert.equal(response[0].description, undefined);
-        assert.equal(response[0].age, 5);
-        done();
-      });
-  });
-
-  it('eq search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__eq=5')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 1);
-        _.each(response, function(resource) {
-          assert.equal(resource.age, 5);
-        });
-        done();
-      });
-  });
-
-  it('equals (alternative) search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age=5')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 1);
-        _.each(response, function(resource) {
-          assert.equal(resource.age, 5);
-        });
-        done();
-      });
-  });
-
-  it('ne search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__ne=5&limit=100')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 25);
-        _.each(response, function(resource) {
-          assert.notEqual(resource.age, 5);
-        });
-        done();
-      });
-  });
-
-  it('in search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__in=1,5,9,20')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 4);
-        _.each(response, function(resource) {
-          var found = false;
-
-          [1,5,9,20].forEach(function(a) {
-            if (resource.age && resource.age === a) {
-              found = true;
-            }
-          });
-
-          assert(found);
-        });
-        done();
-      });
-  });
-
-  it('nin search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__nin=1,5')
-      .expect('Content-Type', /json/)
-      .expect(206)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        _.each(response, function(resource) {
-          var found = false;
-
-          [1,5].forEach(function(a) {
-            if (resource.age && resource.age === a) {
-              found = true;
-            }
-          });
-
-          assert(!found);
-        });
-        done();
-      });
-  });
-
-  it('exists=false search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__exists=false')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 1);
-        assert.equal(response[0].name, 'noage');
-        done();
-      });
-  });
-
-  it('exists=0 search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__exists=0')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 1);
-        assert.equal(response[0].name, 'noage');
-        done();
-      });
-  });
-
-  it('exists=true search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__exists=true&limit=1000')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 25);
-        _.each(response, function(resource) {
-          assert(resource.name !== 'noage', 'No age should be found.');
-        });
-        done();
-      });
-  });
-
-  it('exists=1 search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__exists=true&limit=1000')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 25);
-        _.each(response, function(resource) {
-          assert(resource.name !== 'noage', 'No age should be found.');
-        });
-        done();
-      });
-  });
-
-  it('lt search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__lt=5')
-      .expect('Content-Range', '0-4/5')
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 5);
-        _.each(response, function(resource) {
-          assert.ok(resource.age < 5);
-        });
-        done();
-      });
-  });
-
-  it('lte search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__lte=5')
-      .expect('Content-Range', '0-5/6')
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 6);
-        _.each(response, function(resource) {
-          assert.ok(resource.age <= 5);
-        });
-        done();
-      });
-  });
-
-  it('gt search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__gt=5')
-      .expect('Content-Range', '0-9/19')
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        _.each(response, function(resource) {
-          assert.ok(resource.age > 5);
-        });
-        done();
-      });
-  });
-
-  it('gte search selector', function(done) {
-    request(app)
-      .get('/test/resource1?age__gte=5')
-      .expect('Content-Range', '0-9/20')
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        assert.equal(response.length, 10);
-        _.each(response, function(resource) {
-          assert.ok(resource.age >= 5);
-        });
-        done();
-      });
-  });
-
-  it('regex search selector', function(done) {
-    request(app)
-      .get('/test/resource1?title__regex=/.*Age [0-1]?[0-3]$/g')
-      .expect('Content-Range', '0-7/8')
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var response = res.body;
-        var valid = [0, 1, 2, 3, 10, 11, 12, 13];
-        assert.equal(response.length, valid.length);
-        _.each(response, function(resource) {
-          assert.ok(valid.indexOf(resource.age) !== -1);
-        });
-        done();
-      });
-  });
-
-  it('regex search selector should be case insensitive', function(done) {
-    var name = names[0].toString();
-
-    request(app)
-      .get('/test/resource1?name__regex=' + name.toUpperCase())
-      .end(function(err, res) {
-        if (err) {
-          return done(err);
-        }
-
-        var uppercaseResponse = res.body;
-        request(app)
-          .get('/test/resource1?name__regex=' + name.toLowerCase())
-          .end(function(err, res) {
-            if (err) {
-              return done(err);
-            }
-
-            var lowercaseResponse = res.body;
-            assert.equal(uppercaseResponse.length, lowercaseResponse.length);
-            done();
-          });
-      });
-  });
+  testSearch('/aggregation');
 });
 
 describe('Test single resource handlers capabilities', function() {
