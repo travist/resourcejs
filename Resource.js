@@ -271,9 +271,16 @@ class Resource {
     var findQuery = {};
 
     var getValue = function(value, param) {
+      var parsedValue = parseInt(value, 10);
+
       if (param.instance === 'Number') {
-        return parseInt(value, 10)
+        return parsedValue;
       }
+
+      if (param.instance === 'Date' && parsedValue) {
+        return new Date(parsedValue);
+      }
+
       // If this is a valid ISO Date, convert to date.
       // See https://stackoverflow.com/questions/3143070/javascript-regex-iso-datetime for regex.
       if (
@@ -282,6 +289,7 @@ class Resource {
       ) {
         return new Date(value);
       }
+
       return value;
     }
 
