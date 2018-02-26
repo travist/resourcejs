@@ -15,6 +15,8 @@ var MongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
 var chance = (new require('chance'))();
 
+var testDate = new Date();
+
 // Use the body parser.
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
@@ -142,6 +144,9 @@ describe('Build Resources for following tests', function() {
       },
       description: {
         type: String
+      },
+      date: {
+        type: Date
       },
       list: [R1SubdocumentSchema],
       list2: [String]
@@ -713,6 +718,58 @@ var testSearch = function(testPath) {
         assert.equal(response[0].list[0].data[0], refDoc1Response._id);
         done();
       });
+  });
+
+  it('Should search by date', function(done) {
+    var dateValue = testDate.valueOf();
+
+    Async.parallel([
+      function(done) {
+        request(app)
+          .get(`${testPath}?date__gte=${dateValue}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+
+            assert.equal(response.length, 1);
+
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`${testPath}?date__gte=${dateValue + 1}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+
+            assert.equal(response.length, 0);
+
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`${testPath}?date__gte=${testDate.toISOString()}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+
+            var response = res.body;
+
+            assert.equal(response.length, 1);
+
+            done();
+          });
+      }
+    ], done);
   });
 
   it('Should limit 10', function(done) {
@@ -1362,6 +1419,7 @@ describe('Test single resource search capabilities', function() {
             title: 'No Age',
             name: 'noage',
             description: 'No age',
+            date: testDate,
             list: refList
           })
           .end(function(err, res) {
@@ -1372,6 +1430,7 @@ describe('Test single resource search capabilities', function() {
             var response = res.body;
             assert.equal(response.title, 'No Age');
             assert.equal(response.description, 'No age');
+            assert.equal(response.date, testDate.toISOString());
             assert.equal(response.name, 'noage');
             assert(!response.hasOwnProperty('age'), 'Age should not be found.');
             done();

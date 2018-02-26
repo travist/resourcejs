@@ -277,10 +277,6 @@ class Resource {
         return parsedValue;
       }
 
-      if (param.instance === 'Date' && parsedValue) {
-        return new Date(parsedValue);
-      }
-
       // If this is a valid ISO Date, convert to date.
       // See https://stackoverflow.com/questions/3143070/javascript-regex-iso-datetime for regex.
       if (
@@ -288,6 +284,10 @@ class Resource {
         (value.match(/(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/))
       ) {
         return new Date(value);
+      }
+
+      if (param.instance === 'Date' && parsedValue) {
+        return new Date(parsedValue);
       }
 
       return value;
