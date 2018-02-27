@@ -332,7 +332,7 @@ class Resource {
             }
             // Special case for in filter with multiple values.
             else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1)) {
-              value = value.split(',');
+              value = _.isArray(value) ? value : value.split(',');
               _.map(value, function(item) {
                 return getValue(item, param);
               });
