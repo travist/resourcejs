@@ -377,14 +377,17 @@ class Resource {
     }
     let stages = [{$match: query.getQuery()}];
     stages = stages.concat(pipeline);
-    stages.push({$count: 'total'});
+    stages.push({$group: {
+      _id : null,
+      count : {$sum : 1}
+    }});
     return {
       count: (cb) => {
         query.model.aggregate(stages).exec((err, items) => {
           if (err) {
             return cb(err);
           }
-          return cb(null, items.length ? items[0].total : 0);
+          return cb(null, items.length ? items[0].count : 0);
         });
       }
     };
