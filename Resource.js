@@ -1,10 +1,11 @@
 'use strict';
 
-var _ = require('lodash');
-var paginate = require('node-paginate-anything');
-var jsonpatch = require('fast-json-patch');
-var middleware = require( 'composable-middleware');
-var debug = {
+const _ = require('lodash');
+const paginate = require('node-paginate-anything');
+const jsonpatch = require('fast-json-patch');
+const middleware = require( 'composable-middleware');
+const mongodb = require('mongodb');
+const debug = {
   query: require('debug')('resourcejs:query'),
   index: require('debug')('resourcejs:index'),
   put: require('debug')('resourcejs:put'),
@@ -14,8 +15,9 @@ var debug = {
 };
 
 class Resource {
-  constructor(app, route, modelName, model) {
+  constructor(app, route, modelName, model, options) {
     this.app = app;
+    this.options = options || {};
     this.name = modelName.toLowerCase();
     this.model = model;
     this.modelName = modelName;
@@ -261,6 +263,39 @@ class Resource {
     return _.uniq(_.words(req.query[name], /[^, ]+/g)).join(' ');
   }
 
+  getQueryValue(name, value, param) {
+    var parsedValue = parseInt(value, 10);
+
+    if (param.instance === 'Number') {
+      return parsedValue;
+    }
+
+    // If this is a valid ISO Date, convert to date.
+    // See https://stackoverflow.com/questions/3143070/javascript-regex-iso-datetime for regex.
+    if (
+      (typeof value === 'string') &&
+      (value.match(/(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/))
+    ) {
+      return new Date(value);
+    }
+
+    if (param.instance === 'Date' && parsedValue) {
+      return new Date(parsedValue);
+    }
+
+    // If this is an ID, and the value is a string, convert to an ObjectId.
+    if (this.options.convertIds && name.match(/(^|\.)_id$/) && (typeof value === 'string')) {
+      try {
+        value = new mongodb.ObjectID(value);
+      }
+      catch (err) {
+        console.warn(`Invalid ObjectID: ${value}`);
+      }
+    }
+
+    return value;
+  }
+
   /**
    * Get the find query for the index.
    *
@@ -269,29 +304,6 @@ class Resource {
    */
   getFindQuery(req) {
     var findQuery = {};
-
-    var getValue = function(value, param) {
-      var parsedValue = parseInt(value, 10);
-
-      if (param.instance === 'Number') {
-        return parsedValue;
-      }
-
-      // If this is a valid ISO Date, convert to date.
-      // See https://stackoverflow.com/questions/3143070/javascript-regex-iso-datetime for regex.
-      if (
-        (typeof value === 'string') &&
-        (value.match(/(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/))
-      ) {
-        return new Date(value);
-      }
-
-      if (param.instance === 'Date' && parsedValue) {
-        return new Date(parsedValue);
-      }
-
-      return value;
-    }
 
     // Get the filters and omit the limit, skip, select, and sort.
     var filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
@@ -341,13 +353,13 @@ class Resource {
             // Special case for in filter with multiple values.
             else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1)) {
               value = _.isArray(value) ? value : value.split(',');
-              _.map(value, function(item) {
-                return getValue(item, param);
+              value = _.map(value, (item) => {
+                return this.getQueryValue(filter.name, item, param);
               });
             }
             else {
               // Set the selector for this filter name.
-              value = getValue(value, param);
+              value = this.getQueryValue(filter.name, value, param);
             }
 
             findQuery[filter.name]['$' + filter.selector] = value;
@@ -356,7 +368,7 @@ class Resource {
         }
         else {
           // Set the find query to this value.
-          value = getValue(value, param);
+          value = this.getQueryValue(filter.name, value, param);
           findQuery[filter.name] = value;
           return;
         }
@@ -803,8 +815,8 @@ class Resource {
 }
 
 // Make sure to create a new instance of the Resource class.
-let ResourceFactory = function(app, route, modelName, model) {
-  return new Resource(app, route, modelName, model);
+let ResourceFactory = function(app, route, modelName, model, options) {
+  return new Resource(app, route, modelName, model, options);
 };
 
 ResourceFactory.Resource = Resource;
