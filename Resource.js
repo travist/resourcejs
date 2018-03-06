@@ -266,7 +266,7 @@ class Resource {
     return _.uniq(_.words(req.query[name], /[^, ]+/g)).join(' ');
   }
 
-  getQueryValue(name, value, param) {
+  getQueryValue(name, value, param, options) {
     var parsedValue = parseInt(value, 10);
 
     if (param.instance === 'Number') {
@@ -288,8 +288,8 @@ class Resource {
 
     // If this is an ID, and the value is a string, convert to an ObjectId.
     if (
-      this.options.convertIds &&
-      name.match(this.options.convertIds) &&
+      options.convertIds &&
+      name.match(options.convertIds) &&
       (typeof value === 'string') &&
       (mongodb.ObjectID.isValid(value))
     ) {
@@ -310,8 +310,9 @@ class Resource {
    * @param req
    * @returns {Object}
    */
-  getFindQuery(req) {
+  getFindQuery(req, options) {
     var findQuery = {};
+    options = options || this.options;
 
     // Get the filters and omit the limit, skip, select, and sort.
     var filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
@@ -362,12 +363,12 @@ class Resource {
             else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1)) {
               value = _.isArray(value) ? value : value.split(',');
               value = _.map(value, (item) => {
-                return this.getQueryValue(filter.name, item, param);
+                return this.getQueryValue(filter.name, item, param, options);
               });
             }
             else {
               // Set the selector for this filter name.
-              value = this.getQueryValue(filter.name, value, param);
+              value = this.getQueryValue(filter.name, value, param, options);
             }
 
             findQuery[filter.name]['$' + filter.selector] = value;
@@ -376,7 +377,7 @@ class Resource {
         }
         else {
           // Set the find query to this value.
-          value = this.getQueryValue(filter.name, value, param);
+          value = this.getQueryValue(filter.name, value, param, options);
           findQuery[filter.name] = value;
           return;
         }
