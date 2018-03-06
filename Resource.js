@@ -18,6 +18,9 @@ class Resource {
   constructor(app, route, modelName, model, options) {
     this.app = app;
     this.options = options || {};
+    if (this.options.convertIds === true) {
+      this.options.convertIds = /(^|\.)_id$/;
+    }
     this.name = modelName.toLowerCase();
     this.model = model;
     this.modelName = modelName;
@@ -284,7 +287,12 @@ class Resource {
     }
 
     // If this is an ID, and the value is a string, convert to an ObjectId.
-    if (this.options.convertIds && name.match(/(^|\.)_id$/) && (typeof value === 'string')) {
+    if (
+      this.options.convertIds &&
+      name.match(this.options.convertIds) &&
+      (typeof value === 'string') &&
+      (mongodb.ObjectID.isValid(value))
+    ) {
       try {
         value = new mongodb.ObjectID(value);
       }
