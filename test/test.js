@@ -726,7 +726,7 @@ var testSearch = function(testPath) {
     Async.parallel([
       function(done) {
         request(app)
-          .get(`${testPath}?date=${dateValue}`)
+          .get(`${testPath}?date__gte=${dateValue}`)
           .end(function(err, res) {
             if (err) {
               return done(err);
@@ -741,7 +741,7 @@ var testSearch = function(testPath) {
       },
       function(done) {
         request(app)
-          .get(`${testPath}?date=${dateValue + 1}`)
+          .get(`${testPath}?date__gte=${dateValue + 1}`)
           .end(function(err, res) {
             if (err) {
               return done(err);
@@ -756,7 +756,7 @@ var testSearch = function(testPath) {
       },
       function(done) {
         request(app)
-          .get(`${testPath}?date=${testDate.toISOString()}`)
+          .get(`${testPath}?date__gte=${testDate.toISOString()}`)
           .end(function(err, res) {
             if (err) {
               return done(err);

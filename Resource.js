@@ -3,7 +3,7 @@
 const _ = require('lodash');
 const paginate = require('node-paginate-anything');
 const jsonpatch = require('fast-json-patch');
-const middleware = require( 'composable-middleware');
+const middleware = require('composable-middleware');
 const mongodb = require('mongodb');
 const moment = require('moment');
 const debug = {
