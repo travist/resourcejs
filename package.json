@@ -1,6 +1,6 @@
 {
   "name": "resourcejs",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
@@ -28,8 +28,8 @@
     "express": "^4.16.2",
     "fast-json-patch": "^2.0.6",
     "lodash": "^4.17.5",
-    "mongodb": "^3.0.3",
-    "mongoose": "^5.0.7",
+    "mongodb": "^3.0.6",
+    "mongoose": "5.0.12",
     "node-paginate-anything": "git+https://github.com/polo2ro/node-paginate-anything.git",
     "q": "^1.5.1"
   },
