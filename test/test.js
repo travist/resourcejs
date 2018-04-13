@@ -4,6 +4,7 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var request = require('supertest');
 var assert = require('assert');
+var moment = require('moment');
 var Q = require('q');
 var mongoose = require('mongoose');
 mongoose.Promise = global.Promise || Q.Promise;
@@ -15,7 +16,13 @@ var MongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
 var chance = (new require('chance'))();
 
-var testDate = new Date();
+var baseTestDate = moment.utc('2018-04-12T12:00:00.000Z');
+var testDates = {
+  actual: baseTestDate,
+  oneDayAgo: moment(baseTestDate).subtract(1, 'day'),
+  oneMonthAgo: moment(baseTestDate).subtract(1, 'month'),
+  oneYearAgo: moment(baseTestDate).subtract(1, 'year'),
+};
 
 // Use the body parser.
 app.use(bodyParser.urlencoded({extended: true}));
@@ -145,9 +152,6 @@ describe('Build Resources for following tests', function() {
       description: {
         type: String
       },
-      date: {
-        type: Date
-      },
       list: [R1SubdocumentSchema],
       list2: [String]
     });
@@ -203,6 +207,30 @@ describe('Build Resources for following tests', function() {
     });
 
     done();
+  });
+
+  it('Build the /test/date endpoints and fill it with data', function(done) {
+    var Schema = new mongoose.Schema({
+      date: {
+        type: Date
+      }
+    });
+
+    // Create the model.
+    var Model = mongoose.model('date', Schema);
+
+    Resource(app, '/test', 'date', Model).rest();
+    Async.parallel(
+      _.map(testDates, function(date) {
+        return function(done) {
+          request(app)
+            .post('/test/date')
+            .send({
+              date: date.toDate()
+            })
+            .end(done);
+          };
+      }), done);
   });
 
   it('Build the /test/resource1/:resource1Id/nested1 endpoints', function(done) {
@@ -718,58 +746,6 @@ var testSearch = function(testPath) {
         assert.equal(response[0].list[0].data[0], refDoc1Response._id);
         done();
       });
-  });
-
-  it('Should search by date', function(done) {
-    var dateValue = testDate.valueOf();
-
-    Async.parallel([
-      function(done) {
-        request(app)
-          .get(`${testPath}?date__gte=${dateValue}`)
-          .end(function(err, res) {
-            if (err) {
-              return done(err);
-            }
-
-            var response = res.body;
-
-            assert.equal(response.length, 1);
-
-            done();
-          });
-      },
-      function(done) {
-        request(app)
-          .get(`${testPath}?date__gte=${dateValue + 1}`)
-          .end(function(err, res) {
-            if (err) {
-              return done(err);
-            }
-
-            var response = res.body;
-
-            assert.equal(response.length, 0);
-
-            done();
-          });
-      },
-      function(done) {
-        request(app)
-          .get(`${testPath}?date__gte=${testDate.toISOString()}`)
-          .end(function(err, res) {
-            if (err) {
-              return done(err);
-            }
-
-            var response = res.body;
-
-            assert.equal(response.length, 1);
-
-            done();
-          });
-      }
-    ], done);
   });
 
   it('Should limit 10', function(done) {
@@ -1419,7 +1395,6 @@ describe('Test single resource search capabilities', function() {
             title: 'No Age',
             name: 'noage',
             description: 'No age',
-            date: testDate,
             list: refList
           })
           .end(function(err, res) {
@@ -1430,7 +1405,6 @@ describe('Test single resource search capabilities', function() {
             var response = res.body;
             assert.equal(response.title, 'No Age');
             assert.equal(response.description, 'No age');
-            assert.equal(response.date, testDate.toISOString());
             assert.equal(response.name, 'noage');
             assert(!response.hasOwnProperty('age'), 'Age should not be found.');
             done();
@@ -1452,6 +1426,493 @@ describe('Test single resource search capabilities', function() {
   });
 
   testSearch('/aggregation');
+});
+
+describe('Test dates search capabilities', function() {
+  it('Should search by timestamp', function(done) {
+    var dateValue = testDates.actual.valueOf();
+  
+    Async.parallel([
+      function(done) {
+        request(app)
+          .get(`/test/date?date=${dateValue}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 1);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lt=${dateValue}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 3);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lte=${dateValue}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 4);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gte=${dateValue}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 1);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gt=${dateValue}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 0);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__ne=${dateValue}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 3);
+  
+            done();
+          });
+      }
+    ], done);
+  });
+
+  it('Should search by ISO date', function(done) {
+    var isoString = testDates.actual.toISOString();
+  
+    Async.parallel([
+      function(done) {
+        request(app)
+          .get(`/test/date?date=${isoString}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 1);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lt=${isoString}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 3);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lte=${isoString}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 4);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gte=${isoString}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 1);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gt=${isoString}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 0);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__ne=${isoString}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 3);
+  
+            done();
+          });
+      }
+    ], done);
+  });
+
+  it('Should search by YYYY-MM-DD format', function(done) {
+    var search = testDates.actual.format('YYYY-MM-DD');
+  
+    Async.parallel([
+      function(done) {
+        request(app)
+          .get(`/test/date?date=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 0);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lt=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 3);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lte=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 3);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gte=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 1);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gt=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 1);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__ne=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 4);
+  
+            done();
+          });
+      }
+    ], done);
+  });
+
+  it('Should search by YYYY-MM format', function(done) {
+    var search = testDates.actual.format('YYYY-MM');
+  
+    Async.parallel([
+      function(done) {
+        request(app)
+          .get(`/test/date?date=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 0);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lt=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 2);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lte=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 2);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gte=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 2);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gt=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 2);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__ne=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 4);
+  
+            done();
+          });
+      }
+    ], done);
+  });
+
+  it('Should search by YYYY format', function(done) {
+    var search = testDates.actual.format('YYYY');
+  
+    Async.parallel([
+      function(done) {
+        request(app)
+          .get(`/test/date?date=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 0);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lt=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 1);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__lte=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 1);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gte=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 3);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__gt=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 3);
+  
+            done();
+          });
+      },
+      function(done) {
+        request(app)
+          .get(`/test/date?date__ne=${search}`)
+          .end(function(err, res) {
+            if (err) {
+              return done(err);
+            }
+  
+            var response = res.body;
+  
+            assert.equal(response.length, 4);
+  
+            done();
+          });
+      }
+    ], done);
+  });
 });
 
 describe('Test single resource handlers capabilities', function() {
