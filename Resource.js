@@ -272,7 +272,7 @@ class Resource {
       return parseInt(value, 10);
     }
 
-    var date = moment.utc(value, ['YYYY', 'YYYY-MM', 'x', moment.ISO_8601], true);
+    var date = moment.utc(value, ['YYYY-MM-DD', 'YYYY-MM', moment.ISO_8601], true);
     if (date.isValid()) {
       return date.toDate();
     }
