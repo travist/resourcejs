@@ -1,4 +1,4 @@
-git {
+{
   "name": "resourcejs",
   "version": "1.23.0",
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
