@@ -122,24 +122,16 @@ class Resource {
 
     if (res.resource) {
       switch (res.resource.status) {
-        case 400:
-          res.status(400).json({
-            status: 400,
-            message: res.resource.error.message,
-            errors: _.mapValues(res.resource.error.errors, function(error) {
-              return _.pick(error, 'path', 'name', 'message');
-            })
-          });
-          break;
         case 404:
           res.status(404).json({
             status: 404,
             errors: ['Resource not found']
           });
           break;
+        case 400:
         case 500:
-          res.status(500).json({
-            status: 500,
+          res.status(res.resource.status).json({
+            status: res.resource.status,
             message: res.resource.error.message,
             errors: _.mapValues(res.resource.error.errors, function(error) {
               return _.pick(error, 'path', 'name', 'message');
@@ -305,7 +297,7 @@ class Resource {
     var findQuery = {};
     options = options || this.options;
 
-    // Get the filters and omit the limit, skip, select, and sort.
+    // Get the filters and omit the limit, skip, select, sort and populate.
     var filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
 
     // Iterate through each filter.
@@ -351,7 +343,7 @@ class Resource {
               value = !!value;
             }
             // Special case for in filter with multiple values.
-            else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1)) {
+            else if ((['in', 'nin'].indexOf(filter.selector) !== -1)) {
               value = _.isArray(value) ? value : value.split(',');
               value = _.map(value, (item) => {
                 return this.getQueryValue(filter.name, item, param, options);
@@ -394,7 +386,7 @@ class Resource {
       count : {$sum : 1}
     }});
     return {
-      count: (cb) => {
+      count(cb) {
         query.model.aggregate(stages).exec((err, items) => {
           if (err) {
             return cb(err);
@@ -418,11 +410,13 @@ class Resource {
     if (_.has(query, 'options.sort') && !_.isEmpty(query.options.sort)) {
       stages.push({$sort: query.options.sort});
     }
-    if (_.has(query, 'options.skip')) {
-      stages.push({$skip: query.options.skip});
-    }
+    // $limit should be immediately after $sort as mentioned at
+    // https://docs.mongodb.com/manual/reference/operator/aggregation/limit
     if (_.has(query, 'options.limit')) {
       stages.push({$limit: query.options.limit});
+    }
+    if (_.has(query, 'options.skip')) {
+      stages.push({$skip: query.options.skip});
     }
     if (!_.isEmpty(query._fields)) {
       stages.push({$project: query._fields});
