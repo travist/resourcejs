@@ -412,13 +412,11 @@ class Resource {
     if (_.has(query, 'options.sort') && !_.isEmpty(query.options.sort)) {
       stages.push({$sort: query.options.sort});
     }
-    // $limit should be immediately after $sort as mentioned at
-    // https://docs.mongodb.com/manual/reference/operator/aggregation/limit
-    if (_.has(query, 'options.limit')) {
-      stages.push({$limit: query.options.limit});
-    }
     if (_.has(query, 'options.skip')) {
       stages.push({$skip: query.options.skip});
+    }
+    if (_.has(query, 'options.limit')) {
+      stages.push({$limit: query.options.limit});
     }
     if (!_.isEmpty(query._fields)) {
       stages.push({$project: query._fields});
