@@ -264,9 +264,11 @@ class Resource {
       return parseInt(value, 10);
     }
 
-    var date = moment.utc(value, ['YYYY-MM-DD', 'YYYY-MM', moment.ISO_8601], true);
-    if (date.isValid()) {
-      return date.toDate();
+    if (param.instance === 'Date') {
+      const date = moment.utc(value, ['YYYY-MM-DD', 'YYYY-MM', 'YYYY', 'x', moment.ISO_8601], true);
+      if (date.isValid()) {
+        return date.toDate();
+      }
     }
 
     // If this is an ID, and the value is a string, convert to an ObjectId.
