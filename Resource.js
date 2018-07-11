@@ -12,7 +12,7 @@ const debug = {
   put: require('debug')('resourcejs:put'),
   post: require('debug')('resourcejs:post'),
   delete: require('debug')('resourcejs:delete'),
-  respond: require('debug')('resourcejs:respond')
+  respond: require('debug')('resourcejs:respond'),
 };
 
 class Resource {
@@ -25,7 +25,7 @@ class Resource {
     this.name = modelName.toLowerCase();
     this.model = model;
     this.modelName = modelName;
-    this.route = route + '/' + this.name;
+    this.route = `${route}/${this.name}`;
     this.methods = [];
     this._swagger = null;
   }
@@ -55,25 +55,22 @@ class Resource {
    * @param options
    */
   _register(method, path, callback, last, options) {
-    var mw = middleware();
-    var len, i;
+    const mw = middleware();
 
     // The before middleware.
     if (options && options.before) {
-      var before = [].concat(options.before);
-      for (len = before.length, i=0; i<len; ++i) {
-        mw.use(before[i].bind(this));
-      }
+      const before = [].concat(options.before);
+      before.forEach((m) => mw.use(m.bind(this)));
     }
+
     mw.use(callback.bind(this));
 
     // The after middleware.
     if (options && options.after) {
-      var after = [].concat(options.after);
-      for (len = after.length, i=0; i<len; ++i) {
-        mw.use(after[i].bind(this));
-      }
+      const after = [].concat(options.after);
+      after.forEach((m) => mw.use(m.bind(this)));
     }
+
     mw.use(last.bind(this));
 
     // Add a fallback error handler.
@@ -81,7 +78,7 @@ class Resource {
       if (err) {
         res.status(500).json({
           status: 500,
-          message: err.message || err
+          message: err.message || err,
         });
       }
       else {
@@ -122,34 +119,28 @@ class Resource {
 
     if (res.resource) {
       switch (res.resource.status) {
-        case 400:
-          res.status(400).json({
-            status: 400,
-            message: res.resource.error.message,
-            errors: _.mapValues(res.resource.error.errors, function(error) {
-              return _.pick(error, 'path', 'name', 'message');
-            })
-          });
-          break;
         case 404:
           res.status(404).json({
             status: 404,
-            errors: ['Resource not found']
+            errors: ['Resource not found'],
           });
           break;
+        case 400:
         case 500:
-          res.status(500).json({
-            status: 500,
+          res.status(res.resource.status).json({
+            status: res.resource.status,
             message: res.resource.error.message,
-            errors: _.mapValues(res.resource.error.errors, function(error) {
-              return _.pick(error, 'path', 'name', 'message');
-            })
+            errors: _.mapValues(res.resource.error.errors, (error) => _.pick(error, [
+              'path',
+              'name',
+              'message',
+            ])),
           });
           break;
         case 204:
           // Convert 204 into 200, to preserve the empty result set.
           // Update the empty response body based on request method type.
-          debug.respond('204 -> ' + req.__rMethod);
+          debug.respond(`204 -> ${req.__rMethod}`);
           switch (req.__rMethod) {
             case 'index':
               res.status(200).json([]);
@@ -199,31 +190,31 @@ class Resource {
 
     // Uppercase the method.
     method = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
-    var methodOptions = {methodOptions: true};
+    const methodOptions = { methodOptions: true };
 
     // Find all of the options that may have been passed to the rest method.
     if (options.before) {
       methodOptions.before = options.before;
     }
-    else if (options.hasOwnProperty('before' + method)) {
-      methodOptions.before = options['before' + method];
+    else if (options.hasOwnProperty(`before${method}`)) {
+      methodOptions.before = options[`before${method}`];
     }
 
     if (options.after) {
       methodOptions.after = options.after;
     }
-    else if (options.hasOwnProperty('after' + method)) {
-      methodOptions.after = options['after' + method];
+    else if (options.hasOwnProperty(`after${method}`)) {
+      methodOptions.after = options[`after${method}`];
     }
 
     // Expose mongoose hooks for each method.
-    _.each(['before', 'after'], function(type) {
-      var path = 'hooks.' + method.toString().toLowerCase() + '.' + type;
+    ['before', 'after'].forEach((type) => {
+      const path = `hooks.${method.toString().toLowerCase()}.${type}`;
 
       _.set(
         methodOptions,
         path,
-        _.get(options, path, function(req, res, item, next) { return next(); })
+        _.get(options, path, (req, res, item, next) => next())
       );
     });
 
@@ -264,7 +255,12 @@ class Resource {
           return null;
       }
     }
-    return _.uniq(_.words(req.query[name], /[^, ]+/g)).join(' ');
+    return _
+    .chain(req.query[name])
+    .words(/[^, ]+/g)
+    .uniq()
+    .join(' ')
+    .value();
   }
 
   getQueryValue(name, value, param, options) {
@@ -272,9 +268,11 @@ class Resource {
       return parseInt(value, 10);
     }
 
-    var date = moment.utc(value, ['YYYY-MM-DD', 'YYYY-MM', moment.ISO_8601], true);
-    if (date.isValid()) {
-      return date.toDate();
+    if (param.instance === 'Date') {
+      const date = moment.utc(value, ['YYYY-MM-DD', 'YYYY-MM', 'YYYY', 'x', moment.ISO_8601], true);
+      if (date.isValid()) {
+        return date.toDate();
+      }
     }
 
     // If this is an ID, and the value is a string, convert to an ObjectId.
@@ -302,31 +300,27 @@ class Resource {
    * @returns {Object}
    */
   getFindQuery(req, options) {
-    var findQuery = {};
+    const findQuery = {};
     options = options || this.options;
 
-    // Get the filters and omit the limit, skip, select, and sort.
-    var filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
+    // Get the filters and omit the limit, skip, select, sort and populate.
+    const filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
 
     // Iterate through each filter.
-    _.each(filters, (value, name) => {
-
+    _.forOwn(filters, (value, name) => {
       // Get the filter object.
-      var filter = _.zipObject(['name', 'selector'], name.split('__'));
+      const filter = _.zipObject(['name', 'selector'], name.split('__'));
 
       // See if this parameter is defined in our model.
-      var param = this.model.schema.paths[filter.name.split('.')[0]];
+      const param = this.model.schema.paths[filter.name.split('.')[0]];
       if (param) {
-
         // See if there is a selector.
         if (filter.selector) {
-
           // See if this selector is a regular expression.
           if (filter.selector === 'regex') {
-
             // Set the regular expression for the filter.
-            var parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
-            var regex = null;
+            const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
+            let regex = null;
             try {
               regex = new RegExp(parts[1], (parts[2] || 'i'));
             }
@@ -351,18 +345,16 @@ class Resource {
               value = !!value;
             }
             // Special case for in filter with multiple values.
-            else if ((_.indexOf(['in', 'nin'], filter.selector) !== -1)) {
-              value = _.isArray(value) ? value : value.split(',');
-              value = _.map(value, (item) => {
-                return this.getQueryValue(filter.name, item, param, options);
-              });
+            else if (['in', 'nin'].includes(filter.selector)) {
+              value = Array.isArray(value) ? value : value.split(',');
+              value = value.map((item) => this.getQueryValue(filter.name, item, param, options));
             }
             else {
               // Set the selector for this filter name.
               value = this.getQueryValue(filter.name, value, param, options);
             }
 
-            findQuery[filter.name]['$' + filter.selector] = value;
+            findQuery[filter.name][`$${filter.selector}`] = value;
             return;
           }
         }
@@ -387,21 +379,25 @@ class Resource {
     if (!_.isEmpty(query._mongooseOptions) || !pipeline) {
       return query;
     }
-    let stages = [{$match: query.getQuery()}];
-    stages = stages.concat(pipeline);
-    stages.push({$group: {
-      _id : null,
-      count : {$sum : 1}
-    }});
+    const stages = [
+      { $match: query.getQuery() },
+      ...pipeline,
+      {
+        $group: {
+          _id : null,
+          count : { $sum : 1 },
+        },
+      },
+    ];
     return {
-      count: (cb) => {
+      count(cb) {
         query.model.aggregate(stages).exec((err, items) => {
           if (err) {
             return cb(err);
           }
           return cb(null, items.length ? items[0].count : 0);
         });
-      }
+      },
     };
   }
 
@@ -410,22 +406,23 @@ class Resource {
     if (!_.isEmpty(query._mongooseOptions) || !pipeline) {
       return query;
     }
-    let stages = [{$match: query.getQuery()}];
 
-    // Add the model pipeline.
-    stages = stages.concat(pipeline);
+    const stages = [
+      { $match: query.getQuery() },
+      ...pipeline,
+    ];
 
     if (_.has(query, 'options.sort') && !_.isEmpty(query.options.sort)) {
-      stages.push({$sort: query.options.sort});
+      stages.push({ $sort: query.options.sort });
     }
     if (_.has(query, 'options.skip')) {
-      stages.push({$skip: query.options.skip});
+      stages.push({ $skip: query.options.skip });
     }
     if (_.has(query, 'options.limit')) {
-      stages.push({$limit: query.options.limit});
+      stages.push({ $limit: query.options.limit });
     }
     if (!_.isEmpty(query._fields)) {
-      stages.push({$project: query._fields});
+      stages.push({ $project: query._fields });
     }
     return query.model.aggregate(stages);
   }
@@ -443,39 +440,46 @@ class Resource {
       req.__rMethod = 'index';
 
       // Allow before handlers the ability to disable resource CRUD.
-      if (req.skipResource) { return next(); }
+      if (req.skipResource) {
+        return next();
+      }
 
       // Get the find query.
-      var findQuery = this.getFindQuery(req);
+      const findQuery = this.getFindQuery(req);
 
       // Get the query object.
-      var countQuery = req.countQuery || req.modelQuery || req.model || this.model;
-      var query = req.modelQuery || req.model || this.model;
+      const countQuery = req.countQuery || req.modelQuery || req.model || this.model;
+      const query = req.modelQuery || req.model || this.model;
 
       // First get the total count.
       this.countQuery(countQuery.find(findQuery), query.pipeline).count((err, count) => {
         if (err) {
           debug.index(err);
-          return this.setResponse.call(this, res, {status: 500, error: err}, next);
+          return this.setResponse.call(this, res, { status: 500, error: err }, next);
         }
 
         // Get the default limit.
-        var defaults = {limit: 10, skip: 0};
-        var reqQuery = _.mapValues(_.defaults(_.pick(req.query, 'limit', 'skip'), defaults), function(value, key) {
-          value = parseInt(value, 10);
-          return (isNaN(value) || (value < 0)) ? defaults[key] : value;
-        });
+        const defaults = { limit: 10, skip: 0 };
+        const reqQuery = _
+          .chain(req.query)
+          .pick('limit', 'skip')
+          .defaults(defaults)
+          .mapValues((value, key) => {
+            value = parseInt(value, 10);
+            return (isNaN(value) || (value < 0)) ? defaults[key] : value;
+          })
+          .value();
 
         // If a skip is provided, then set the range headers.
         if (reqQuery.skip && !req.headers.range) {
           req.headers['range-unit'] = 'items';
-          req.headers.range = reqQuery.skip + '-' + (reqQuery.skip + (reqQuery.limit - 1));
+          req.headers.range = `${reqQuery.skip}-${reqQuery.skip + (reqQuery.limit - 1)}`;
         }
 
         // Get the page range.
-        var pageRange = paginate(req, res, count, reqQuery.limit) || {
+        const pageRange = paginate(req, res, count, reqQuery.limit) || {
           limit: reqQuery.limit,
-          skip: reqQuery.skip
+          skip: reqQuery.skip,
         };
 
         // Make sure that if there is a range provided in the headers, it takes precedence.
@@ -485,7 +489,7 @@ class Resource {
         }
 
         // Next get the items within the index.
-        var queryExec = query
+        let queryExec = query
           .find(findQuery)
           .limit(reqQuery.limit)
           .skip(reqQuery.skip)
@@ -493,9 +497,9 @@ class Resource {
           .sort(this.getParamQuery(req, 'sort'));
 
         // Only call populate if they provide a populate query.
-        var populate = this.getParamQuery(req, 'populate');
+        const populate = this.getParamQuery(req, 'populate');
         if (populate) {
-          debug.index('Populate: ' + populate);
+          debug.index(`Populate: ${populate}`);
           queryExec = queryExec.populate(populate);
         }
 
@@ -509,12 +513,12 @@ class Resource {
               debug.index(err);
               debug.index(err.name);
 
-              if (err.name == 'CastError' && populate) {
-                err.message = 'Cannot populate "' + populate + '" as it is not a reference in this resource'
+              if (err.name === 'CastError' && populate) {
+                err.message = `Cannot populate "${populate}" as it is not a reference in this resource`;
                 debug.index(err.message);
               }
 
-              return this.setResponse.call(this, res, {status: 500, error: err}, next);
+              return this.setResponse.call(this, res, { status: 500, error: err }, next);
             }
 
             debug.index(items);
@@ -523,10 +527,10 @@ class Resource {
               req,
               res,
               items,
-              this.setResponse.bind(this, res, {status: res.statusCode, item: items}, next)
+              this.setResponse.bind(this, res, { status: res.statusCode, item: items }, next)
             );
           })
-        )
+        );
       });
     }, this.respond.bind(this), options);
     return this;
@@ -538,15 +542,15 @@ class Resource {
   get(options) {
     options = this.getMethodOptions('get', options);
     this.methods.push('get');
-    this._register('get', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+    this._register('get', `${this.route}/:${this.name}Id`, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'get';
       if (req.skipResource) {
         return next();
       }
 
-      var query = req.modelQuery || req.model || this.model;
-      var search = {'_id': req.params[this.name + 'Id']};
+      const query = req.modelQuery || req.model || this.model;
+      const search = { '_id': req.params[`${this.name}Id`] };
 
       options.hooks.get.before.call(
         this,
@@ -554,15 +558,15 @@ class Resource {
         res,
         search,
         query.findOne.bind(query, search, (err, item) => {
-          if (err) return this.setResponse.call(this, res, {status: 500, error: err}, next);
-          if (!item) return this.setResponse.call(this, res, {status: 404}, next);
+          if (err) return this.setResponse.call(this, res, { status: 500, error: err }, next);
+          if (!item) return this.setResponse.call(this, res, { status: 404 }, next);
 
           return options.hooks.get.after.call(
             this,
             req,
             res,
             item,
-            this.setResponse.bind(this, res, {status: 200, item: item}, next)
+            this.setResponse.bind(this, res, { status: 200, item: item }, next)
           );
         })
       );
@@ -577,17 +581,19 @@ class Resource {
   virtual(options) {
     options = this.getMethodOptions('virtual', options);
     this.methods.push('virtual');
-    var path = (options.path === undefined) ? this.path : options.path;
-    this._register('get', this.route + '/virtual/' + path, function(req, res, next) {
+    const path = (options.path === undefined) ? this.path : options.path;
+    this._register('get', `${this.route}/virtual/${path}`, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'virtual';
 
-      if (req.skipResource) { return next(); }
-      var query = req.modelQuery || req.model;
+      if (req.skipResource) {
+        return next();
+      }
+      const query = req.modelQuery || req.model;
       query.exec((err, item) => {
-        if (err) return this.setResponse(res, {status: 500, error: err}, next);
-        if (!item) return this.setResponse(res, {status: 404}, next);
-        return this.setResponse(res, {status: 200, item: item}, next);
+        if (err) return this.setResponse(res, { status: 500, error: err }, next);
+        if (!item) return this.setResponse(res, { status: 404 }, next);
+        return this.setResponse(res, { status: 200, item }, next);
       });
     }, this.respond.bind(this), options);
     return this;
@@ -608,8 +614,8 @@ class Resource {
         return next();
       }
 
-      var Model = req.model || this.model;
-      var model = new Model(req.body);
+      const Model = req.model || this.model;
+      const model = new Model(req.body);
       options.hooks.post.before.call(
         this,
         req,
@@ -618,7 +624,7 @@ class Resource {
         model.save.bind(model, (err, item) => {
           if (err) {
             debug.post(err);
-            return this.setResponse.call(this, res, {status: 400, error: err}, next);
+            return this.setResponse.call(this, res, { status: 400, error: err }, next);
           }
 
           debug.post(item);
@@ -628,7 +634,7 @@ class Resource {
             req,
             res,
             item,
-            this.setResponse.bind(this, res, {status: 201, item: item}, next)
+            this.setResponse.bind(this, res, { status: 201, item }, next)
           );
         })
       );
@@ -642,7 +648,7 @@ class Resource {
   put(options) {
     options = this.getMethodOptions('put', options);
     this.methods.push('put');
-    this._register('put', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+    this._register('put', `${this.route}/:${this.name}Id`, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'put';
 
@@ -652,17 +658,17 @@ class Resource {
       }
 
       // Remove __v field
-      var update = _.omit(req.body, '__v');
-      var query = req.modelQuery || req.model || this.model;
+      const update = _.omit(req.body, '__v');
+      const query = req.modelQuery || req.model || this.model;
 
-      query.findOne({_id: req.params[this.name + 'Id']}, (err, item) => {
+      query.findOne({ _id: req.params[`${this.name}Id`] }, (err, item) => {
         if (err) {
           debug.put(err);
-          return this.setResponse.call(this, res, {status: 500, error: err}, next);
+          return this.setResponse.call(this, res, { status: 500, error: err }, next);
         }
         if (!item) {
-          debug.put('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
-          return this.setResponse.call(this, res, {status: 404}, next);
+          debug.put(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
+          return this.setResponse.call(this, res, { status: 404 }, next);
         }
 
         item.set(update);
@@ -674,7 +680,7 @@ class Resource {
           item.save.bind(item, (err, item) => {
             if (err) {
               debug.put(err);
-              return this.setResponse.call(this, res, {status: 400, error: err}, next);
+              return this.setResponse.call(this, res, { status: 400, error: err }, next);
             }
 
             debug.put(JSON.stringify(item));
@@ -683,7 +689,7 @@ class Resource {
               req,
               res,
               item,
-              this.setResponse.bind(this, res, {status: 200, item: item}, next)
+              this.setResponse.bind(this, res, { status: 200, item }, next)
             );
           })
         );
@@ -698,49 +704,53 @@ class Resource {
   patch(options) {
     options = this.getMethodOptions('patch', options);
     this.methods.push('patch');
-    this._register('patch', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+    this._register('patch', `${this.route}/:${this.name}Id`, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'patch';
 
-      if (req.skipResource) { return next(); }
-      var query = req.modelQuery || req.model || this.model;
-      query.findOne({'_id': req.params[this.name + 'Id']}, (err, item) => {
-        if (err) return this.setResponse(res, {status: 500, error: err}, next);
-        if (!item) return this.setResponse(res, {status: 404, error: err}, next);
-        var patches = req.body;
+      if (req.skipResource) {
+        return next();
+      }
+      const query = req.modelQuery || req.model || this.model;
+      query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
+        if (err) return this.setResponse(res, { status: 500, error: err }, next);
+        if (!item) return this.setResponse(res, { status: 404, error: err }, next);
+        const patches = req.body;
+        let patchFail = null;
         try {
-          for (var len = patches.length, i=0; i<len; ++i) {
-            var patch = patches[i];
-            if(patch.op === 'test'){
-              var success = jsonpatch.applyPatch(item, [].concat(patch), true);
-              if(!success || !success.length){
+          patches.forEach((patch) => {
+            if (patch.op === 'test') {
+              patchFail = patch;
+              const success = jsonpatch.applyPatch(item, [].concat(patch), true);
+              if (!success || !success.length) {
                 return this.setResponse(res, {
                   status: 412,
                   name: 'Precondition Failed',
                   message: 'A json-patch test op has failed. No changes have been applied to the document',
-                  item: item,
-                  patch: patch
+                  item,
+                  patch,
                 }, next);
               }
             }
-          }
+          });
           jsonpatch.applyPatch(item, patches, true);
-        } catch(err) {
+        }
+        catch (err) {
           if (err && err.name === 'TEST_OPERATION_FAILED') {
             return this.setResponse(res, {
               status: 412,
               name: 'Precondition Failed',
               message: 'A json-patch test op has failed. No changes have been applied to the document',
-              item: item,
-              patch: patch
+              item,
+              patch: patchFail,
             }, next);
           }
 
-          if (err) return this.setResponse(res, {status: 500, item: item, error: err}, next);
+          if (err) return this.setResponse(res, { status: 500, item, error: err }, next);
         }
         item.save((err, item) => {
-          if (err) return this.setResponse(res, {status: 400, error: err}, next);
-          return this.setResponse(res, {status: 200, item: item}, next);
+          if (err) return this.setResponse(res, { status: 400, error: err }, next);
+          return this.setResponse(res, { status: 200, item }, next);
         });
       });
     }, this.respond.bind(this), options);
@@ -753,7 +763,7 @@ class Resource {
   delete(options) {
     options = this.getMethodOptions('delete', options);
     this.methods.push('delete');
-    this._register('delete', this.route + '/:' + this.name + 'Id', function(req, res, next) {
+    this._register('delete', `${this.route}/:${this.name}Id`, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'delete';
 
@@ -762,18 +772,18 @@ class Resource {
         return next();
       }
 
-      var query = req.modelQuery || req.model || this.model;
-      query.findOne({'_id': req.params[this.name + 'Id']}, (err, item) => {
+      const query = req.modelQuery || req.model || this.model;
+      query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
         if (err) {
           debug.delete(err);
-          return this.setResponse.call(this, res, {status: 500, error: err}, next);
+          return this.setResponse.call(this, res, { status: 500, error: err }, next);
         }
         if (!item) {
-          debug.delete('No ' + this.name + ' found with ' + this.name + 'Id: ' + req.params[this.name + 'Id']);
-          return this.setResponse.call(this, res, {status: 404, error: err}, next);
+          debug.delete(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
+          return this.setResponse.call(this, res, { status: 404, error: err }, next);
         }
         if (req.skipDelete) {
-          return this.setResponse.call(this, res, {status: 204, item: item, deleted: true}, next);
+          return this.setResponse.call(this, res, { status: 204, item, deleted: true }, next);
         }
 
         options.hooks.delete.before.call(
@@ -781,10 +791,10 @@ class Resource {
           req,
           res,
           item,
-          query.remove.bind(query, {_id: item._id}, (err) => {
+          query.remove.bind(query, { _id: item._id }, (err) => {
             if (err) {
               debug.delete(err);
-              return this.setResponse.call(this, res, {status: 400, error: err}, next);
+              return this.setResponse.call(this, res, { status: 400, error: err }, next);
             }
 
             debug.delete(item);
@@ -793,7 +803,7 @@ class Resource {
               req,
               res,
               item,
-              this.setResponse.bind(this, res, {status: 204, item: item, deleted: true}, next)
+              this.setResponse.bind(this, res, { status: 204, item, deleted: true }, next)
             );
           })
         );
@@ -815,9 +825,9 @@ class Resource {
 }
 
 // Make sure to create a new instance of the Resource class.
-let ResourceFactory = function(app, route, modelName, model, options) {
+function ResourceFactory(app, route, modelName, model, options) {
   return new Resource(app, route, modelName, model, options);
-};
-
+}
 ResourceFactory.Resource = Resource;
+
 module.exports = ResourceFactory;

@@ -1,5 +1,5 @@
 var _ = require('lodash');
-var mongoose = require('mongoose');
+
 module.exports = function(resource) {
 
   var fixNestedRoutes = function(resource) {

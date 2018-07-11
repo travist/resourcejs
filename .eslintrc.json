@@ -1,0 +1,48 @@
+{
+  "extends": "formio",
+  "parserOptions": {
+    "ecmaVersion": 2015
+  },
+  "env": {
+    "browser": true,
+    "es6": true,
+    "node": true,
+    "mocha": true
+  },
+  "rules": {
+    "max-len": [
+      "warn",
+      {
+        "code": 120,
+        "ignoreComments": true,
+        "ignoreStrings": true
+      }
+    ],
+    "no-console": "off",
+    "prefer-const": "error",
+    "prefer-template": "error",
+    "object-curly-spacing": [
+      "error",
+      "always"
+    ],
+    "new-cap": [
+      "error",
+      {
+        "newIsCap": true,
+        "capIsNew": true,
+        "newIsCapExceptions": ["require"],
+        "capIsNewExceptions": ["Resource", "ObjectId"]
+      }
+    ],
+    "comma-dangle": [
+      "error",
+      {
+        "arrays": "always-multiline",
+        "objects": "always-multiline",
+        "imports": "always-multiline",
+        "exports": "always-multiline",
+        "functions": "ignore"
+      }
+    ]
+  }
+}
