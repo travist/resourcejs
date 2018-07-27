@@ -88,11 +88,15 @@ function wasInvoked(entity, sequence, method) {
 }
 
 describe('Connect to MongoDB', () => {
-  it('Connect to MongoDB', () => mongoose.connect('mongodb://localhost/test'));
+  it('Connect to MongoDB', () => mongoose.connect('mongodb://localhost:27017/test', {
+    useNewUrlParser: true
+  }));
 
   it('Drop test database', () => mongoose.connection.db.dropDatabase());
 
-  it('Should connect MongoDB without mongoose', () => MongoClient.connect('mongodb://localhost:27017')
+  it('Should connect MongoDB without mongoose', () => MongoClient.connect('mongodb://localhost:27017', {
+    useNewUrlParser: true
+  })
     .then((client) => {
       db = client.db('test');
     }));

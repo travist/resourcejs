@@ -390,7 +390,7 @@ class Resource {
       },
     ];
     return {
-      count(cb) {
+      countDocuments(cb) {
         query.model.aggregate(stages).exec((err, items) => {
           if (err) {
             return cb(err);
@@ -452,7 +452,7 @@ class Resource {
       const query = req.modelQuery || req.model || this.model;
 
       // First get the total count.
-      this.countQuery(countQuery.find(findQuery), query.pipeline).count((err, count) => {
+      this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
         if (err) {
           debug.index(err);
           return this.setResponse.call(this, res, { status: 500, error: err }, next);
