@@ -89,17 +89,15 @@ function wasInvoked(entity, sequence, method) {
 
 describe('Connect to MongoDB', () => {
   it('Connect to MongoDB', () => mongoose.connect('mongodb://localhost:27017/test', {
-    useNewUrlParser: true
+    useNewUrlParser: true,
   }));
 
   it('Drop test database', () => mongoose.connection.db.dropDatabase());
 
   it('Should connect MongoDB without mongoose', () => MongoClient.connect('mongodb://localhost:27017', {
-    useNewUrlParser: true
+    useNewUrlParser: true,
   })
-    .then((client) => {
-      db = client.db('test');
-    }));
+    .then((client) => db = client.db('test')));
 });
 
 describe('Build Resources for following tests', () => {
@@ -1164,6 +1162,56 @@ describe('Test dates search capabilities', () => {
       request(app)
         .get(`/test/date?date__ne=${search}`)
         .then(({ body: response }) => assert.equal(response.length, 4)),
+    ]);
+  });
+
+  it('Should search by YYYY format', () => {
+    const search = testDates[0].format('YYYY');
+
+    return Promise.all([
+      request(app)
+        .get(`/test/date?date=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 0)),
+      request(app)
+        .get(`/test/date?date__lt=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 1)),
+      request(app)
+        .get(`/test/date?date__lte=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 1)),
+      request(app)
+        .get(`/test/date?date__gte=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 3)),
+      request(app)
+        .get(`/test/date?date__gt=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 3)),
+      request(app)
+        .get(`/test/date?date__ne=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 4)),
+    ]);
+  });
+
+  it('Should search by timestamp', () => {
+    const search = testDates[0].format('x');
+
+    return Promise.all([
+      request(app)
+        .get(`/test/date?date=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 1)),
+      request(app)
+        .get(`/test/date?date__lt=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 3)),
+      request(app)
+        .get(`/test/date?date__lte=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 4)),
+      request(app)
+        .get(`/test/date?date__gte=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 1)),
+      request(app)
+        .get(`/test/date?date__gt=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 0)),
+      request(app)
+        .get(`/test/date?date__ne=${search}`)
+        .then(({ body: response }) => assert.equal(response.length, 3)),
     ]);
   });
 });
