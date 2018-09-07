@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.25.4
+### Changed
+ - Upgrade dependencies.
+
 ## v1.25.3
 ### Changed
  - Upgraded mongodb@3.1.4, mongoose@5.2.10
