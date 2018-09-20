@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
  - Upgraded fast-json-patch@2.0.7, lodash@4.17.11, mongodb@3.1.6, mongoose@5.2.16, eslint@5.6.0, supertest@3.3.0, debug@4.0.1
 
+## v1.25.4
+### Changed
+ - Upgrade dependencies.
+
 ## v1.25.3
 ### Changed
  - Upgraded mongodb@3.1.4, mongoose@5.2.10
