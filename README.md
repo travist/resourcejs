@@ -305,7 +305,7 @@ function increaseCount(currentCount, resourceId, next) {
 Adding custom queries
 ---------------------------------
 Using the method above, it is possible to provide some custom queries in your ***before*** middleware.
-We can do this by adding a ***methodQuery*** to the ***req*** object during the middleware. This query
+We can do this by adding a ***modelQuery*** to the ***req*** object during the middleware. This query
 uses the Mongoose query mechanism that you can see here http://mongoosejs.com/docs/api.html#query_Query-where.
 
 For example, if we wish to show an index that filters ages greater than 18, we would do the following.
