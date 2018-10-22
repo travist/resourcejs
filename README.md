@@ -318,6 +318,20 @@ Resource(app, '', 'user', UserModel).rest({
 });
 ```
 
+Passing write options on PUT, POST, PATCH, and DELETE requests
+--------------------------------------------------------------
+It is possible to pass a set of options to the underlying `Document.save()` and `Document.remove()` commands. This can be useful when plugins expect data to be passed in as options. We can do this by adding a ***writeOptions*** object to the ***req*** object during middleware. This uses the Mongoose mechanism that you can see here https://mongoosejs.com/docs/api.html#document_Document-save.
+
+For example, a set of options can be added by doing the following.
+
+```javascript
+Resource(app, '', 'user', UserModel).rest({
+  before: function(req, res, next) {
+    req.writeOptions = { actingUserId: req.user.id };
+  }
+});
+```
+
 Nested Resources
 -----------------
 With this library, it is also pretty easy to nest resources. Here is an example of how to do it.

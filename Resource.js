@@ -621,22 +621,25 @@ class Resource {
         req,
         res,
         req.body,
-        model.save.bind(model, (err, item) => {
-          if (err) {
-            debug.post(err);
-            return this.setResponse.call(this, res, { status: 400, error: err }, next);
-          }
+        () => {
+          const writeOptions = req.writeOptions || {};
+          model.save(writeOptions, (err, item) => {
+            if (err) {
+              debug.post(err);
+              return this.setResponse.call(this, res, { status: 400, error: err }, next);
+            }
 
-          debug.post(item);
-          // Trigger any after hooks before responding.
-          return options.hooks.post.after.call(
-            this,
-            req,
-            res,
-            item,
-            this.setResponse.bind(this, res, { status: 201, item }, next)
-          );
-        })
+            debug.post(item);
+            // Trigger any after hooks before responding.
+            return options.hooks.post.after.call(
+              this,
+              req,
+              res,
+              item,
+              this.setResponse.bind(this, res, { status: 201, item }, next)
+            );
+          });
+        }
       );
     }, this.respond.bind(this), options);
     return this;
@@ -677,7 +680,9 @@ class Resource {
           req,
           res,
           item,
-          item.save.bind(item, (err, item) => {
+          () => {
+          const writeOptions = req.writeOptions || {};
+          item.save(writeOptions, (err, item) => {
             if (err) {
               debug.put(err);
               return this.setResponse.call(this, res, { status: 400, error: err }, next);
@@ -691,8 +696,8 @@ class Resource {
               item,
               this.setResponse.bind(this, res, { status: 200, item }, next)
             );
-          })
-        );
+          });
+        });
       });
     }, this.respond.bind(this), options);
     return this;
@@ -712,6 +717,7 @@ class Resource {
         return next();
       }
       const query = req.modelQuery || req.model || this.model;
+      const writeOptions = req.writeOptions || {};
       query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
         if (err) return this.setResponse(res, { status: 500, error: err }, next);
         if (!item) return this.setResponse(res, { status: 404, error: err }, next);
@@ -748,7 +754,7 @@ class Resource {
 
           if (err) return this.setResponse(res, { status: 500, item, error: err }, next);
         }
-        item.save((err, item) => {
+        item.save(writeOptions, (err, item) => {
           if (err) return this.setResponse(res, { status: 400, error: err }, next);
           return this.setResponse(res, { status: 200, item }, next);
         });
@@ -791,21 +797,24 @@ class Resource {
           req,
           res,
           item,
-          query.remove.bind(query, { _id: item._id }, (err) => {
-            if (err) {
-              debug.delete(err);
-              return this.setResponse.call(this, res, { status: 400, error: err }, next);
-            }
+          () => {
+            const writeOptions = req.writeOptions || {};
+            item.remove(writeOptions, (err) => {
+              if (err) {
+                debug.delete(err);
+                return this.setResponse.call(this, res, { status: 400, error: err }, next);
+              }
 
-            debug.delete(item);
-            options.hooks.delete.after.call(
-              this,
-              req,
-              res,
-              item,
-              this.setResponse.bind(this, res, { status: 204, item, deleted: true }, next)
-            );
-          })
+              debug.delete(item);
+              options.hooks.delete.after.call(
+                this,
+                req,
+                res,
+                item,
+                this.setResponse.bind(this, res, { status: 204, item, deleted: true }, next)
+              );
+            });
+          }
         );
       });
     }, this.respond.bind(this), options);
