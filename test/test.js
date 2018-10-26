@@ -298,18 +298,18 @@ describe('Build Resources for following tests', () => {
 
     Resource3Schema.pre('save', function(next, options) {
       if (options && options.writeSetting) {
-        this.writeOption = options.writeSetting;
-      }
-      next();
-    });
-
-    Resource3Schema.pre('remove', function(next, options) {
-      console.log(options);
-      if (options && options.writeSetting === 'DELETEman') {
         return next();
       }
 
-      return next(new Error('Options Missing'));
+      next(new Error('Save options not passed to middleware'));
+    });
+
+    Resource3Schema.pre('remove', function(next, options) {
+      if (options && options.writeSetting) {
+        return next();
+      }
+
+      return next(new Error('DeleteOptions not passed to middleware'));
     });
 
     // Create the model.
@@ -319,7 +319,7 @@ describe('Build Resources for following tests', () => {
     Resource(app, '/test', 'resource3', Resource3Model).rest({
       before(req, res, next) {
         // This setting should be passed down to the underlying `save()` command
-        req.writeOptions = { writeSetting: req.query.writeSetting };
+        req.writeOptions = { writeSetting: true };
 
         next();
       },
@@ -1357,44 +1357,41 @@ describe('Test writeOptions capabilities', () => {
   let resource = {};
 
   it('/POST a new resource3 with options', () => request(app)
-    .post('/test/resource3?writeSetting=POSTman')
+    .post('/test/resource3')
     .send({ title: 'Test1' })
     .expect('Content-Type', /json/)
     .expect(201)
     .then((res) => {
       const response = res.body;
       assert.equal(response.title, 'Test1');
-      assert.equal(response.writeOption, 'POSTman');
       assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
       resource = response;
     }));
 
   it('/PUT an update with options', () => request(app)
-    .put(`/test/resource3/${resource._id}?writeSetting=PUTman`)
+    .put(`/test/resource3/${resource._id}`)
     .send({ title: 'Test1 - Updated' })
     .expect('Content-Type', /json/)
     .expect(200)
     .then((res) => {
       const response = res.body;
       assert.equal(response.title, 'Test1 - Updated');
-      assert.equal(response.writeOption, 'PUTman');
       assert(response.hasOwnProperty('_id'), 'Resource ID not found');
     }));
 
   it('/PATCH an update with options', () => request(app)
-    .patch(`/test/resource3/${resource._id}?writeSetting=PATCHman`)
+    .patch(`/test/resource3/${resource._id}`)
     .send([{ 'op': 'replace', 'path': '/title', 'value': 'Test1 - Updated Again' }])
     .expect('Content-Type', /json/)
     .expect(200)
     .then((res) => {
       const response = res.body;
       assert.equal(response.title, 'Test1 - Updated Again');
-      assert.equal(response.writeOption, 'PATCHman');
       assert(response.hasOwnProperty('_id'), 'Resource ID not found');
     }));
 
   it('/DELETE a resource3 with options', () => request(app)
-    .delete(`/test/resource3/${resource._id}?writeSetting=DELETEman`)
+    .delete(`/test/resource3/${resource._id}`)
     .expect(200)
     .then((res) => {
       const response = res.body;
