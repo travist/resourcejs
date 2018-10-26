@@ -288,6 +288,43 @@ describe('Build Resources for following tests', () => {
       },
     });
   });
+
+  it('Build the /test/resource3 endpoints', () => {
+    // Create the schema.
+    const Resource3Schema = new mongoose.Schema({
+      title: String,
+      writeOption: String,
+     });
+
+    Resource3Schema.pre('save', function(next, options) {
+      if (options && options.writeSetting) {
+        this.writeOption = options.writeSetting;
+      }
+      next();
+    });
+
+    Resource3Schema.pre('remove', function(next, options) {
+      console.log(options);
+      if (options && options.writeSetting === 'DELETEman') {
+        return next();
+      }
+
+      return next(new Error('Options Missing'));
+    });
+
+    // Create the model.
+    const Resource3Model = mongoose.model('resource3', Resource3Schema);
+
+    // Create the REST resource and continue.
+    Resource(app, '/test', 'resource3', Resource3Model).rest({
+      before(req, res, next) {
+        // This setting should be passed down to the underlying `save()` command
+        req.writeOptions = { writeSetting: req.query.writeSetting };
+
+        next();
+      },
+    });
+  });
 });
 
 describe('Test single resource CRUD capabilities', () => {
@@ -1313,6 +1350,55 @@ describe('Test single resource handlers capabilities', () => {
 
       // Store the resource and continue.
       resource = response;
+    }));
+});
+
+describe('Test writeOptions capabilities', () => {
+  let resource = {};
+
+  it('/POST a new resource3 with options', () => request(app)
+    .post('/test/resource3?writeSetting=POSTman')
+    .send({ title: 'Test1' })
+    .expect('Content-Type', /json/)
+    .expect(201)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.title, 'Test1');
+      assert.equal(response.writeOption, 'POSTman');
+      assert(response.hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+      resource = response;
+    }));
+
+  it('/PUT an update with options', () => request(app)
+    .put(`/test/resource3/${resource._id}?writeSetting=PUTman`)
+    .send({ title: 'Test1 - Updated' })
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.title, 'Test1 - Updated');
+      assert.equal(response.writeOption, 'PUTman');
+      assert(response.hasOwnProperty('_id'), 'Resource ID not found');
+    }));
+
+  it('/PATCH an update with options', () => request(app)
+    .patch(`/test/resource3/${resource._id}?writeSetting=PATCHman`)
+    .send([{ 'op': 'replace', 'path': '/title', 'value': 'Test1 - Updated Again' }])
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.title, 'Test1 - Updated Again');
+      assert.equal(response.writeOption, 'PATCHman');
+      assert(response.hasOwnProperty('_id'), 'Resource ID not found');
+    }));
+
+  it('/DELETE a resource3 with options', () => request(app)
+    .delete(`/test/resource3/${resource._id}?writeSetting=DELETEman`)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.deepEqual(response, {});
     }));
 });
 
