@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.28.0
+### Added
+ - Add ability to pass options to underlying `.save()` and `.remove()`
+
+### Changed
+ - Upgraded mongodb@3.1.8, express@4.16.4, debug@4.1.0, eslint@5.8.0, mongoose@5.3.7
+
 ## v1.26.0
 ### Changed
  - Upgraded fast-json-patch@2.0.7, lodash@4.17.11, mongodb@3.1.6, mongoose@5.2.16, eslint@5.6.0, supertest@3.3.0, debug@4.0.1
