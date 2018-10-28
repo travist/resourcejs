@@ -111,7 +111,7 @@ class Resource {
    * @param next
    *   The next middleware
    */
-  respond(req, res, next) {
+  static respond(req, res, next) {
     if (req.noResponse || res.headerSent || res.headersSent) {
       debug.respond('Skipping');
       return next();
@@ -167,7 +167,7 @@ class Resource {
    * @param resource
    * @param next
    */
-  setResponse(res, resource, next) {
+  static setResponse(res, resource, next) {
     res.resource = resource;
     next();
   }
@@ -178,7 +178,7 @@ class Resource {
    * @param options
    * @returns {{}}
    */
-  getMethodOptions(method, options) {
+  static getMethodOptions(method, options) {
     if (!options) {
       options = {};
     }
@@ -246,7 +246,7 @@ class Resource {
    * @param name
    * @returns {*}
    */
-  getParamQuery(req, name) {
+  static getParamQuery(req, name) {
     if (!req.query.hasOwnProperty(name)) {
       switch (name) {
         case 'populate':
@@ -263,7 +263,7 @@ class Resource {
     .value();
   }
 
-  getQueryValue(name, value, param, options) {
+  static getQueryValue(name, value, param, options) {
     if (param.instance === 'Number') {
       return parseInt(value, 10);
     }
@@ -347,11 +347,11 @@ class Resource {
             // Special case for in filter with multiple values.
             else if (['in', 'nin'].includes(filter.selector)) {
               value = Array.isArray(value) ? value : value.split(',');
-              value = value.map((item) => this.getQueryValue(filter.name, item, param, options));
+              value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options));
             }
             else {
               // Set the selector for this filter name.
-              value = this.getQueryValue(filter.name, value, param, options);
+              value = Resource.getQueryValue(filter.name, value, param, options);
             }
 
             findQuery[filter.name][`$${filter.selector}`] = value;
@@ -360,7 +360,7 @@ class Resource {
         }
         else {
           // Set the find query to this value.
-          value = this.getQueryValue(filter.name, value, param, options);
+          value = Resource.getQueryValue(filter.name, value, param, options);
           findQuery[filter.name] = value;
           return;
         }
@@ -433,7 +433,7 @@ class Resource {
    * @param options
    */
   index(options) {
-    options = this.getMethodOptions('index', options);
+    options = Resource.getMethodOptions('index', options);
     this.methods.push('index');
     this._register('get', this.route, (req, res, next) => {
       // Store the internal method for response manipulation.
@@ -455,7 +455,7 @@ class Resource {
       this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
         if (err) {
           debug.index(err);
-          return this.setResponse.call(this, res, { status: 500, error: err }, next);
+          return Resource.setResponse(res, { status: 500, error: err }, next);
         }
 
         // Get the default limit.
@@ -493,11 +493,11 @@ class Resource {
           .find(findQuery)
           .limit(reqQuery.limit)
           .skip(reqQuery.skip)
-          .select(this.getParamQuery(req, 'select'))
-          .sort(this.getParamQuery(req, 'sort'));
+          .select(Resource.getParamQuery(req, 'select'))
+          .sort(Resource.getParamQuery(req, 'sort'));
 
         // Only call populate if they provide a populate query.
-        const populate = this.getParamQuery(req, 'populate');
+        const populate = Resource.getParamQuery(req, 'populate');
         if (populate) {
           debug.index(`Populate: ${populate}`);
           queryExec = queryExec.populate(populate);
@@ -518,7 +518,7 @@ class Resource {
                 debug.index(err.message);
               }
 
-              return this.setResponse.call(this, res, { status: 500, error: err }, next);
+              return Resource.setResponse(res, { status: 500, error: err }, next);
             }
 
             debug.index(items);
@@ -527,12 +527,12 @@ class Resource {
               req,
               res,
               items,
-              this.setResponse.bind(this, res, { status: res.statusCode, item: items }, next)
+              Resource.setResponse.bind(Resource, res, { status: res.statusCode, item: items }, next)
             );
           })
         );
       });
-    }, this.respond.bind(this), options);
+    }, Resource.respond, options);
     return this;
   }
 
@@ -540,7 +540,7 @@ class Resource {
    * Register the GET method for this resource.
    */
   get(options) {
-    options = this.getMethodOptions('get', options);
+    options = Resource.getMethodOptions('get', options);
     this.methods.push('get');
     this._register('get', `${this.route}/:${this.name}Id`, (req, res, next) => {
       // Store the internal method for response manipulation.
@@ -558,19 +558,19 @@ class Resource {
         res,
         search,
         query.findOne.bind(query, search, (err, item) => {
-          if (err) return this.setResponse.call(this, res, { status: 500, error: err }, next);
-          if (!item) return this.setResponse.call(this, res, { status: 404 }, next);
+          if (err) return Resource.setResponse(res, { status: 500, error: err }, next);
+          if (!item) return Resource.setResponse(res, { status: 404 }, next);
 
           return options.hooks.get.after.call(
             this,
             req,
             res,
             item,
-            this.setResponse.bind(this, res, { status: 200, item: item }, next)
+            Resource.setResponse.bind(Resource, res, { status: 200, item: item }, next)
           );
         })
       );
-    }, this.respond.bind(this), options);
+    }, Resource.respond, options);
     return this;
   }
 
@@ -579,7 +579,7 @@ class Resource {
    * derived from this resource
    */
   virtual(options) {
-    options = this.getMethodOptions('virtual', options);
+    options = Resource.getMethodOptions('virtual', options);
     this.methods.push('virtual');
     const path = (options.path === undefined) ? this.path : options.path;
     this._register('get', `${this.route}/virtual/${path}`, (req, res, next) => {
@@ -591,11 +591,11 @@ class Resource {
       }
       const query = req.modelQuery || req.model;
       query.exec((err, item) => {
-        if (err) return this.setResponse(res, { status: 500, error: err }, next);
-        if (!item) return this.setResponse(res, { status: 404 }, next);
-        return this.setResponse(res, { status: 200, item }, next);
+        if (err) return Resource.setResponse(res, { status: 500, error: err }, next);
+        if (!item) return Resource.setResponse(res, { status: 404 }, next);
+        return Resource.setResponse(res, { status: 200, item }, next);
       });
-    }, this.respond.bind(this), options);
+    }, Resource.respond, options);
     return this;
   }
 
@@ -603,7 +603,7 @@ class Resource {
    * Post (Create) a new item
    */
   post(options) {
-    options = this.getMethodOptions('post', options);
+    options = Resource.getMethodOptions('post', options);
     this.methods.push('post');
     this._register('post', this.route, (req, res, next) => {
       // Store the internal method for response manipulation.
@@ -626,7 +626,7 @@ class Resource {
           model.save(writeOptions, (err, item) => {
             if (err) {
               debug.post(err);
-              return this.setResponse.call(this, res, { status: 400, error: err }, next);
+              return Resource.setResponse(res, { status: 400, error: err }, next);
             }
 
             debug.post(item);
@@ -636,12 +636,12 @@ class Resource {
               req,
               res,
               item,
-              this.setResponse.bind(this, res, { status: 201, item }, next)
+              Resource.setResponse.bind(Resource, res, { status: 201, item }, next)
             );
           });
         }
       );
-    }, this.respond.bind(this), options);
+    }, Resource.respond, options);
     return this;
   }
 
@@ -649,7 +649,7 @@ class Resource {
    * Put (Update) a resource.
    */
   put(options) {
-    options = this.getMethodOptions('put', options);
+    options = Resource.getMethodOptions('put', options);
     this.methods.push('put');
     this._register('put', `${this.route}/:${this.name}Id`, (req, res, next) => {
       // Store the internal method for response manipulation.
@@ -667,11 +667,11 @@ class Resource {
       query.findOne({ _id: req.params[`${this.name}Id`] }, (err, item) => {
         if (err) {
           debug.put(err);
-          return this.setResponse.call(this, res, { status: 500, error: err }, next);
+          return Resource.setResponse(res, { status: 500, error: err }, next);
         }
         if (!item) {
           debug.put(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
-          return this.setResponse.call(this, res, { status: 404 }, next);
+          return Resource.setResponse(res, { status: 404 }, next);
         }
 
         item.set(update);
@@ -685,7 +685,7 @@ class Resource {
           item.save(writeOptions, (err, item) => {
             if (err) {
               debug.put(err);
-              return this.setResponse.call(this, res, { status: 400, error: err }, next);
+              return Resource.setResponse(res, { status: 400, error: err }, next);
             }
 
             debug.put(JSON.stringify(item));
@@ -694,12 +694,12 @@ class Resource {
               req,
               res,
               item,
-              this.setResponse.bind(this, res, { status: 200, item }, next)
+              Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
             );
           });
         });
       });
-    }, this.respond.bind(this), options);
+    }, Resource.respond, options);
     return this;
   }
 
@@ -707,7 +707,7 @@ class Resource {
    * Patch (Partial Update) a resource.
    */
   patch(options) {
-    options = this.getMethodOptions('patch', options);
+    options = Resource.getMethodOptions('patch', options);
     this.methods.push('patch');
     this._register('patch', `${this.route}/:${this.name}Id`, (req, res, next) => {
       // Store the internal method for response manipulation.
@@ -719,8 +719,8 @@ class Resource {
       const query = req.modelQuery || req.model || this.model;
       const writeOptions = req.writeOptions || {};
       query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
-        if (err) return this.setResponse(res, { status: 500, error: err }, next);
-        if (!item) return this.setResponse(res, { status: 404, error: err }, next);
+        if (err) return Resource.setResponse(res, { status: 500, error: err }, next);
+        if (!item) return Resource.setResponse(res, { status: 404, error: err }, next);
         const patches = req.body;
         let patchFail = null;
         try {
@@ -729,7 +729,7 @@ class Resource {
               patchFail = patch;
               const success = jsonpatch.applyPatch(item, [].concat(patch), true);
               if (!success || !success.length) {
-                return this.setResponse(res, {
+                return Resource.setResponse(res, {
                   status: 412,
                   name: 'Precondition Failed',
                   message: 'A json-patch test op has failed. No changes have been applied to the document',
@@ -743,7 +743,7 @@ class Resource {
         }
         catch (err) {
           if (err && err.name === 'TEST_OPERATION_FAILED') {
-            return this.setResponse(res, {
+            return Resource.setResponse(res, {
               status: 412,
               name: 'Precondition Failed',
               message: 'A json-patch test op has failed. No changes have been applied to the document',
@@ -752,14 +752,14 @@ class Resource {
             }, next);
           }
 
-          if (err) return this.setResponse(res, { status: 500, item, error: err }, next);
+          if (err) return Resource.setResponse(res, { status: 500, item, error: err }, next);
         }
         item.save(writeOptions, (err, item) => {
-          if (err) return this.setResponse(res, { status: 400, error: err }, next);
-          return this.setResponse(res, { status: 200, item }, next);
+          if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
+          return Resource.setResponse(res, { status: 200, item }, next);
         });
       });
-    }, this.respond.bind(this), options);
+    }, Resource.respond, options);
     return this;
   }
 
@@ -767,7 +767,7 @@ class Resource {
    * Delete a resource.
    */
   delete(options) {
-    options = this.getMethodOptions('delete', options);
+    options = Resource.getMethodOptions('delete', options);
     this.methods.push('delete');
     this._register('delete', `${this.route}/:${this.name}Id`, (req, res, next) => {
       // Store the internal method for response manipulation.
@@ -782,14 +782,14 @@ class Resource {
       query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
         if (err) {
           debug.delete(err);
-          return this.setResponse.call(this, res, { status: 500, error: err }, next);
+          return Resource.setResponse(res, { status: 500, error: err }, next);
         }
         if (!item) {
           debug.delete(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
-          return this.setResponse.call(this, res, { status: 404, error: err }, next);
+          return Resource.setResponse(res, { status: 404, error: err }, next);
         }
         if (req.skipDelete) {
-          return this.setResponse.call(this, res, { status: 204, item, deleted: true }, next);
+          return Resource.setResponse(res, { status: 204, item, deleted: true }, next);
         }
 
         options.hooks.delete.before.call(
@@ -802,7 +802,7 @@ class Resource {
             item.remove(writeOptions, (err) => {
               if (err) {
                 debug.delete(err);
-                return this.setResponse.call(this, res, { status: 400, error: err }, next);
+                return Resource.setResponse(res, { status: 400, error: err }, next);
               }
 
               debug.delete(item);
@@ -811,13 +811,13 @@ class Resource {
                 req,
                 res,
                 item,
-                this.setResponse.bind(this, res, { status: 204, item, deleted: true }, next)
+                Resource.setResponse.bind(Resource, res, { status: 204, item, deleted: true }, next)
               );
             });
           }
         );
       });
-    }, this.respond.bind(this), options);
+    }, Resource.respond, options);
     return this;
   }
 
