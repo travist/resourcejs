@@ -193,19 +193,13 @@ class Resource {
     const methodOptions = { methodOptions: true };
 
     // Find all of the options that may have been passed to the rest method.
-    if (options.before) {
-      methodOptions.before = options.before;
-    }
-    else if (options.hasOwnProperty(`before${method}`)) {
-      methodOptions.before = options[`before${method}`];
-    }
+    const beforeHandlers = options.before || [];
+    const beforeMethodHandlers = options[`before${method}`] || [];
+    methodOptions.before = _.concat(beforeHandlers, beforeMethodHandlers);
 
-    if (options.after) {
-      methodOptions.after = options.after;
-    }
-    else if (options.hasOwnProperty(`after${method}`)) {
-      methodOptions.after = options[`after${method}`];
-    }
+    const afterHandlers = options.after || [];
+    const afterMethodHandlers = options[`after${method}`] || [];
+    methodOptions.after = _.concat(afterHandlers, afterMethodHandlers);
 
     // Expose mongoose hooks for each method.
     ['before', 'after'].forEach((type) => {
