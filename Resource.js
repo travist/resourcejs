@@ -9,6 +9,7 @@ const moment = require('moment');
 const debug = {
   query: require('debug')('resourcejs:query'),
   index: require('debug')('resourcejs:index'),
+  get: require('debug')('resourcejs:get'),
   put: require('debug')('resourcejs:put'),
   post: require('debug')('resourcejs:post'),
   delete: require('debug')('resourcejs:delete'),
@@ -255,12 +256,18 @@ class Resource {
           return null;
       }
     }
-    return _
-    .chain(req.query[name])
-    .words(/[^, ]+/g)
-    .uniq()
-    .join(' ')
-    .value();
+
+    if (name === 'populate' && _.isObjectLike(req.query[name])) {
+      return req.query[name];
+    }
+    else {
+      return _
+      .chain(req.query[name])
+      .words(/[^, ]+/g)
+      .uniq()
+      .join(' ')
+      .value();
+    }
   }
 
   getQueryValue(name, value, param, options) {
@@ -489,7 +496,7 @@ class Resource {
         }
 
         // Next get the items within the index.
-        let queryExec = query
+        const queryExec = query
           .find(findQuery)
           .limit(reqQuery.limit)
           .skip(reqQuery.skip)
@@ -500,7 +507,7 @@ class Resource {
         const populate = this.getParamQuery(req, 'populate');
         if (populate) {
           debug.index(`Populate: ${populate}`);
-          queryExec = queryExec.populate(populate);
+          queryExec.populate(populate);
         }
 
         options.hooks.index.before.call(
@@ -549,26 +556,35 @@ class Resource {
         return next();
       }
 
-      const query = req.modelQuery || req.model || this.model;
+      const query = (req.modelQuery || req.model || this.model).findOne();
       const search = { '_id': req.params[`${this.name}Id`] };
+
+      // Only call populate if they provide a populate query.
+      const populate = this.getParamQuery(req, 'populate');
+      if (populate) {
+        debug.get(`Populate: ${populate}`);
+        query.populate(populate);
+      }
 
       options.hooks.get.before.call(
         this,
         req,
         res,
         search,
-        query.findOne.bind(query, search, (err, item) => {
-          if (err) return this.setResponse.call(this, res, { status: 500, error: err }, next);
-          if (!item) return this.setResponse.call(this, res, { status: 404 }, next);
+        () => {
+          query.where(search).exec((err, item) => {
+            if (err) return this.setResponse.call(this, res, { status: 500, error: err }, next);
+            if (!item) return this.setResponse.call(this, res, { status: 404 }, next);
 
-          return options.hooks.get.after.call(
-            this,
-            req,
-            res,
-            item,
-            this.setResponse.bind(this, res, { status: 200, item: item }, next)
-          );
-        })
+            return options.hooks.get.after.call(
+              this,
+              req,
+              res,
+              item,
+              this.setResponse.bind(this, res, { status: 200, item: item }, next)
+            );
+          });
+        }
       );
     }, this.respond.bind(this), options);
     return this;

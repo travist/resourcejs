@@ -665,6 +665,27 @@ function testSearch(testPath) {
       assert.equal(response[0].list[0].data[0], refDoc1Response._id);
     }));
 
+  it('Should populate with options', () => request(app)
+    .get(`${testPath}?name=noage&populate[path]=list.data`)
+    .then((res) => {
+      const response = res.body;
+
+      // Check statusCode
+      assert.equal(res.statusCode, 200);
+
+      // Check main resource
+      assert.equal(response[0].title, 'No Age');
+      assert.equal(response[0].description, 'No age');
+      assert.equal(response[0].name, 'noage');
+      assert.equal(response[0].list.length, 1);
+
+      // Check populated resource
+      assert.equal(response[0].list[0].label, '1');
+      assert.equal(response[0].list[0].data.length, 1);
+      assert.equal(response[0].list[0].data[0]._id, refDoc1Response._id);
+      assert.equal(response[0].list[0].data[0].data, refDoc1Content.data);
+    }));
+
   it('Should limit 10', () => request(app)
     .get(testPath)
     .expect('Content-Type', /json/)
@@ -1058,6 +1079,7 @@ function testSearch(testPath) {
 }
 
 describe('Test single resource search capabilities', () => {
+  let singleResource1Id = undefined;
   it('Should create a reference doc with mongoose', () => {
     refDoc1Content = { data: 'test1' };
     return request(app)
@@ -1108,10 +1130,33 @@ describe('Test single resource search capabilities', () => {
           assert.equal(response.description, 'No age');
           assert.equal(response.name, 'noage');
           assert(!response.hasOwnProperty('age'), 'Age should not be found.');
+
+          singleResource1Id = res.body._id;
         });
     }));
 
   testSearch('/test/resource1');
+
+  it('Should allow population on single object GET request', () => request(app)
+    .get(`/test/resource1/${singleResource1Id}?populate=list.data`)
+    .then((res) => {
+      const response = res.body;
+
+      // Check statusCode
+      assert.equal(res.statusCode, 200);
+
+      // Check main resource
+      assert.equal(response.title, 'No Age');
+      assert.equal(response.description, 'No age');
+      assert.equal(response.name, 'noage');
+      assert.equal(response.list.length, 1);
+
+      // Check populated resource
+      assert.equal(response.list[0].label, '1');
+      assert.equal(response.list[0].data.length, 1);
+      assert.equal(response.list[0].data[0]._id, refDoc1Response._id);
+      assert.equal(response.list[0].data[0].data, refDoc1Content.data);
+    }));
 
   it('Create an aggregation path', () => {
     Resource(app, '', 'aggregation', mongoose.model('resource1')).rest({
