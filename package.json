@@ -1,6 +1,6 @@
 {
   "name": "resourcejs",
-  "version": "1.28.0",
+  "version": "1.29.0",
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
@@ -39,7 +39,7 @@
     "eslint-config-formio": "^1.1.4",
     "express": "^4.16.4",
     "mocha": "^5.2.0",
-    "mongoose": "^5.3.7",
+    "mongoose": "^5.3.9",
     "supertest": "^3.3.0"
   },
   "peerDependencies": {
