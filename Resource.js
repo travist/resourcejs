@@ -554,7 +554,7 @@ class Resource {
       const search = { '_id': req.params[`${this.name}Id`] };
 
       // Only call populate if they provide a populate query.
-      const populate = this.getParamQuery(req, 'populate');
+      const populate = Resource.getParamQuery(req, 'populate');
       if (populate) {
         debug.get(`Populate: ${populate}`);
         query.populate(populate);
