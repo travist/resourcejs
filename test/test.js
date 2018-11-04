@@ -186,9 +186,19 @@ describe('Build Resources for following tests', () => {
         setInvoked('resource2', 'before', req);
         next();
       },
+      beforePost(req, res, next) {
+        // Store the invoked handler and continue.
+        setInvoked('resource2', 'beforePost', req);
+        next();
+      },
       after(req, res, next) {
         // Store the invoked handler and continue.
         setInvoked('resource2', 'after', req);
+        next();
+      },
+      afterPost(req, res, next) {
+        // Store the invoked handler and continue.
+        setInvoked('resource2', 'afterPost', req);
         next();
       },
     });
@@ -1257,7 +1267,7 @@ describe('Test single resource handlers capabilities', () => {
   // Store the resource being mutated.
   let resource = {};
 
-  it('A POST request should invoke the global handlers', () => request(app)
+  it('A POST request should invoke the global handlers and method handlers', () => request(app)
     .post('/test/resource2')
     .send({
       title: 'Test1',
@@ -1274,6 +1284,8 @@ describe('Test single resource handlers capabilities', () => {
       // Confirm that the handlers were called.
       assert.equal(wasInvoked('resource2', 'before', 'post'), true);
       assert.equal(wasInvoked('resource2', 'after', 'post'), true);
+      assert.equal(wasInvoked('resource2', 'beforePost', 'post'), true);
+      assert.equal(wasInvoked('resource2', 'afterPost', 'post'), true);
 
       // Store the resource and continue.
       resource = response;
@@ -1292,6 +1304,10 @@ describe('Test single resource handlers capabilities', () => {
       // Confirm that the handlers were called.
       assert.equal(wasInvoked('resource2', 'before', 'get'), true);
       assert.equal(wasInvoked('resource2', 'after', 'get'), true);
+
+      // Confirm that POST method handlers were NOT called
+      assert.equal(wasInvoked('resource2', 'beforePost', 'get'), false);
+      assert.equal(wasInvoked('resource2', 'afterPost', 'get'), false);
 
       // Store the resource and continue.
       resource = response;
