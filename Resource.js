@@ -77,8 +77,8 @@ class Resource {
     // Add a fallback error handler.
     mw.use((err, req, res, next) => {
       if (err) {
-        res.status(500).json({
-          status: 500,
+        res.status(400).json({
+          status: 400,
           message: err.message || err,
         });
       }
