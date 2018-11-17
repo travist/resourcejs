@@ -405,7 +405,7 @@ class Resource {
   indexQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
     if (!_.isEmpty(query._mongooseOptions) || !pipeline) {
-      return query;
+      return query.lean();
     }
 
     const stages = [
@@ -566,7 +566,7 @@ class Resource {
         res,
         search,
         () => {
-          query.where(search).exec((err, item) => {
+          query.where(search).lean().exec((err, item) => {
             if (err) return Resource.setResponse(res, { status: 500, error: err }, next);
             if (!item) return Resource.setResponse(res, { status: 404 }, next);
 

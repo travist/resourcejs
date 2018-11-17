@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.31.0
+### Changed
+ - Now using lean() to improve performance of index and find queries.
+
 ## v1.30.0
 ### Changed
  - If an error occurs in a request middleware, return 400 instead of 500.
