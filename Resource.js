@@ -698,7 +698,6 @@ class Resource {
               return Resource.setResponse(res, { status: 400, error: err }, next);
             }
 
-            debug.put(JSON.stringify(item));
             return options.hooks.put.after.call(
               this,
               req,

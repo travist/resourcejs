@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.32.0
+### Changed
+ - Improve performance of PUT by not sending stringified version of object to debug.
+
 ## v1.31.0
 ### Changed
  - Now using lean() to improve performance of index and find queries.
