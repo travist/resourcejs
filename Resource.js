@@ -456,7 +456,7 @@ class Resource {
       this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
         if (err) {
           debug.index(err);
-          return Resource.setResponse(res, { status: 500, error: err }, next);
+          return Resource.setResponse(res, { status: 400, error: err }, next);
         }
 
         // Get the default limit.
@@ -519,7 +519,7 @@ class Resource {
                 debug.index(err.message);
               }
 
-              return Resource.setResponse(res, { status: 500, error: err }, next);
+              return Resource.setResponse(res, { status: 400, error: err }, next);
             }
 
             debug.index(items);
@@ -567,7 +567,7 @@ class Resource {
         search,
         () => {
           query.where(search).lean().exec((err, item) => {
-            if (err) return Resource.setResponse(res, { status: 500, error: err }, next);
+            if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
             if (!item) return Resource.setResponse(res, { status: 404 }, next);
 
             return options.hooks.get.after.call(
@@ -601,7 +601,7 @@ class Resource {
       }
       const query = req.modelQuery || req.model;
       query.exec((err, item) => {
-        if (err) return Resource.setResponse(res, { status: 500, error: err }, next);
+        if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
         if (!item) return Resource.setResponse(res, { status: 404 }, next);
         return Resource.setResponse(res, { status: 200, item }, next);
       });
@@ -677,7 +677,7 @@ class Resource {
       query.findOne({ _id: req.params[`${this.name}Id`] }, (err, item) => {
         if (err) {
           debug.put(err);
-          return Resource.setResponse(res, { status: 500, error: err }, next);
+          return Resource.setResponse(res, { status: 400, error: err }, next);
         }
         if (!item) {
           debug.put(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
@@ -728,7 +728,7 @@ class Resource {
       const query = req.modelQuery || req.model || this.model;
       const writeOptions = req.writeOptions || {};
       query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
-        if (err) return Resource.setResponse(res, { status: 500, error: err }, next);
+        if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
         if (!item) return Resource.setResponse(res, { status: 404, error: err }, next);
         const patches = req.body;
         let patchFail = null;
@@ -761,7 +761,7 @@ class Resource {
             }, next);
           }
 
-          if (err) return Resource.setResponse(res, { status: 500, item, error: err }, next);
+          if (err) return Resource.setResponse(res, { status: 400, item, error: err }, next);
         }
         item.save(writeOptions, (err, item) => {
           if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
@@ -791,7 +791,7 @@ class Resource {
       query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
         if (err) {
           debug.delete(err);
-          return Resource.setResponse(res, { status: 500, error: err }, next);
+          return Resource.setResponse(res, { status: 400, error: err }, next);
         }
         if (!item) {
           debug.delete(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);

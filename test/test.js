@@ -1947,7 +1947,7 @@ describe('Test before hooks', () => {
     it('test undefined resource', () => request(app)
       .get(`/hook/${undefined}`)
       .expect('Content-Type', /json/)
-      .expect(500)
+      .expect(400)
       .then((res) => {
         const response = res.body;
         assert(calls.length === 1);
@@ -1991,7 +1991,7 @@ describe('Test before hooks', () => {
         data: chance.word(),
       })
       .expect('Content-Type', /json/)
-      .expect(500)
+      .expect(400)
       .then((res) => {
         const response = res.body;
         assert(calls.length === 0);
@@ -2030,7 +2030,7 @@ describe('Test before hooks', () => {
     it('test undefined resource', () => request(app)
       .delete(`/hook/${undefined}`)
       .expect('Content-Type', /json/)
-      .expect(500)
+      .expect(400)
       .then((res) => {
         const response = res.body;
         assert(calls.length === 0);
