@@ -416,7 +416,9 @@ The ```index()``` that is created is capable of doing some complex filtering usi
 | **exists=true**              | `exists` | `/users?age__exists=true`                            | returns all users where the age is provided.                     |
 | **exists=false**             | `exists` | `/users?age__exists=false`                           | returns all users where the age is not provided.                 |
 | **Regex**                    | `regex`  | `/users?username__regex=/^travis/i`                  | returns all users with a username starting with travis           |
-
+| **limit**                    | `limit` | `/users?limit=5`                                     | limits results to the specified amount
+| **skip**                     | `skip` | `/users?skip=10`                                     | skip to the specified record in the result set
+| **select**                   | `select` | `/users?select=first_name,last_name`               | return only the specified fields
 
 Adding Swagger.io v2 documentation
 --------------------------------
