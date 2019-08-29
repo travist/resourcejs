@@ -1,6 +1,6 @@
 {
   "name": "resourcejs",
-  "version": "1.34.0",
+  "version": "1.35.0",
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
@@ -26,20 +26,20 @@
   "dependencies": {
     "composable-middleware": "^0.3.0",
     "debug": "^4.1.1",
-    "fast-json-patch": "^2.1.0",
-    "lodash": "^4.17.11",
+    "fast-json-patch": "^2.2.1",
+    "lodash": "^4.17.15",
     "moment": "^2.24.0",
-    "mongodb": "^3.2.6",
+    "mongodb": "^3.3.2",
     "node-paginate-anything": "^1.0.0"
   },
   "devDependencies": {
     "body-parser": "^1.19.0",
     "chance": "^1.0.18",
-    "eslint": "^5.16.0",
+    "eslint": "^6.2.2",
     "eslint-config-formio": "^1.1.4",
     "express": "^4.17.1",
     "mocha": "^5.2.0",
-    "mongoose": "^5.5.11",
+    "mongoose": "^5.6.11",
     "supertest": "^3.3.0"
   },
   "peerDependencies": {
