@@ -265,6 +265,10 @@ class Resource {
   }
 
   static getQueryValue(name, value, param, options) {
+    if (value === 'null') {
+      return null;
+    }
+
     if (param.instance === 'Number') {
       return parseInt(value, 10);
     }
