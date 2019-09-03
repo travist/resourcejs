@@ -264,9 +264,27 @@ class Resource {
     }
   }
 
-  static getQueryValue(name, value, param, options) {
-    if (value === 'null') {
-      return null;
+  static getQueryValue(name, value, param, options, selector) {
+    if (selector && (selector === 'eq' || selector === 'ne') && (typeof value === 'string')) {
+      const lcValue = value.toLowerCase();
+      if (lcValue === 'null') {
+        return null;
+      }
+      if (lcValue === '"null"') {
+        return 'null';
+      }
+      if (lcValue === 'true') {
+        return true;
+      }
+      if (lcValue === '"true"') {
+        return 'true';
+      }
+      if (lcValue === 'false') {
+        return false;
+      }
+      if (lcValue === '"false"') {
+        return 'false';
+      }
     }
 
     if (param.instance === 'Number') {
@@ -352,11 +370,11 @@ class Resource {
             // Special case for in filter with multiple values.
             else if (['in', 'nin'].includes(filter.selector)) {
               value = Array.isArray(value) ? value : value.split(',');
-              value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options));
+              value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options, filter.selector));
             }
             else {
               // Set the selector for this filter name.
-              value = Resource.getQueryValue(filter.name, value, param, options);
+              value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
             }
 
             findQuery[filter.name][`$${filter.selector}`] = value;
@@ -365,7 +383,7 @@ class Resource {
         }
         else {
           // Set the find query to this value.
-          value = Resource.getQueryValue(filter.name, value, param, options);
+          value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
           findQuery[filter.name] = value;
           return;
         }
