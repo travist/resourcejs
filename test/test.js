@@ -170,6 +170,14 @@ describe('Build Resources for following tests', () => {
       age: {
         type: Number,
       },
+      married: {
+        type: Boolean,
+        default: false
+      },
+      updated: {
+        type: Number,
+        default: null
+      },
       description: {
         type: String,
       },
@@ -1411,6 +1419,103 @@ describe('Test single resource handlers capabilities', () => {
 
       // Store the resource and continue.
       resource = response;
+    }));
+});
+
+describe('Handle native data formats', () => {
+  it('Should create a new resource with boolean and string values set.', () => request(app)
+    .post('/test/resource2')
+    .send({
+      title: 'null',
+      description: 'false',
+      married: true
+    })
+    .expect('Content-Type', /json/)
+    .expect(201)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.married, true);
+      assert.equal(response.title, 'null');
+      assert.equal(response.description, 'false');
+    }));
+
+  it('Should find the record when filtering the title as "null"', () => request(app)
+    .get('/test/resource2?title=null')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(res.body.length, 1);
+      assert.equal(res.body[0].title, 'null');
+    }));
+
+  it('Should find the record when filtering the description as "false"', () => request(app)
+    .get('/test/resource2?description=false')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(res.body.length, 1);
+      assert.equal(res.body[0].title, 'null');
+      assert.equal(res.body[0].description, 'false');
+    }));
+
+  it('Should find the record when filtering the description as "true"', () => request(app)
+    .get('/test/resource2?description=true')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(res.body.length, 0);
+    }));
+
+  it('Should find the record when filtering the updated property as null with strict equality', () => request(app)
+    .get('/test/resource2?updated__eq=null')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(res.body.length, 1);
+      assert.equal(res.body[0].title, 'null');
+      assert.equal(res.body[0].updated, null);
+    }));
+
+  it('Should find the boolean values based on equality', () => request(app)
+    .get('/test/resource2?married__eq=true')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(res.body.length, 1);
+      assert.equal(res.body[0].title, 'null');
+      assert.equal(res.body[0].married, true);
+    }));
+
+  it('Should CAST a boolean to find the boolean values based on equals', () => request(app)
+    .get('/test/resource2?married=true')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(res.body.length, 1);
+      assert.equal(res.body[0].title, 'null');
+      assert.equal(res.body[0].married, true);
+    }));
+
+  it('Should CAST a boolean to find the boolean values based on equals', () => request(app)
+    .get('/test/resource2?married=false')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(res.body.length, 0);
     }));
 });
 
