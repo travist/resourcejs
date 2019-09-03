@@ -1496,6 +1496,18 @@ describe('Handle native data formats', () => {
       assert.equal(res.body[0].married, true);
     }));
 
+  it('Should still find the boolean values based on string if explicitely provided', () => request(app)
+    .get('/test/resource2?description__eq=%22false%22')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(res.body.length, 1);
+      assert.equal(res.body[0].title, 'null');
+      assert.equal(res.body[0].married, true);
+    }));
+
   it('Should CAST a boolean to find the boolean values based on equals', () => request(app)
     .get('/test/resource2?married=true')
     .send()

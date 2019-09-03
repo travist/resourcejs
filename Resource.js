@@ -266,14 +266,24 @@ class Resource {
 
   static getQueryValue(name, value, param, options, selector) {
     if (selector && (selector === 'eq' || selector === 'ne') && (typeof value === 'string')) {
-      if (value.toLowerCase() === 'null') {
+      const lcValue = value.toLowerCase();
+      if (lcValue === 'null') {
         return null;
       }
-      if (value.toLowerCase() === 'true') {
+      if (lcValue === '"null"') {
+        return 'null';
+      }
+      if (lcValue === 'true') {
         return true;
       }
-      if (value.toLowerCase() === 'false') {
+      if (lcValue === '"true"') {
+        return 'true';
+      }
+      if (lcValue === 'false') {
         return false;
+      }
+      if (lcValue === '"false"') {
+        return 'false';
       }
     }
 
