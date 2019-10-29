@@ -389,8 +389,10 @@ class Resource {
         }
       }
 
-      // Set the find query to this value.
-      findQuery[filter.name] = value;
+      if (!options.queryFilter) {
+        // Set the find query to this value.
+        findQuery[filter.name] = value;
+      }
     });
 
     // Return the findQuery.
