@@ -1,6 +1,4 @@
 const _ = require('lodash');
-const mongodb = require('mongodb');
-const ObjectId = mongodb.ObjectID;
 
 module.exports = function(resource) {
 
@@ -114,6 +112,11 @@ module.exports = function(resource) {
     }
 
     switch(options.type) {
+      case 'ObjectId':
+        return {
+          'type': 'string',
+          'description': 'ObjectId'
+        };
       case String:
         return {
           type: 'string'

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.38.1
+### Fixed
+ - Incorrect swagger type getting handled for ObjectId.
+
 ## v1.38.0
 ### Fixed
  - Issue where the ObjectId object is not defined in Swagger.js.
