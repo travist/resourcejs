@@ -1,4 +1,6 @@
-var _ = require('lodash');
+const _ = require('lodash');
+const mongodb = require('mongodb');
+const ObjectId = mongodb.ObjectID;
 
 module.exports = function(resource) {
 

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.38.0
+### Fixed
+ - Issue where the ObjectId object is not defined in Swagger.js.
+ 
+### Changed
+ - Upgraded mongodb@3.4.0, mongoose@5.8.0
+
 ## v1.37.0
 ### Changed
  - Upgraded mongodb@3.3.3, chance@1.1.3, mocha@6.2.2, eslint@6.6.0, mongoose@5.7.7
