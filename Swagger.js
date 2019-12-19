@@ -230,12 +230,6 @@ module.exports = function(resource) {
 
   // Build Swagger definitions.
   swagger.definitions = _.merge(swagger.definitions, bodyDefinitions);
-  swagger.definitions[resource.modelName + 'List'] = {
-    type: 'array',
-      items: {
-        $ref: '#/definitions/' + resource.modelName,
-      }
-  };
 
   // Build Swagger paths
   var methods = resource.methods;
@@ -258,7 +252,10 @@ module.exports = function(resource) {
         200: {
           description: 'Resource(s) found.  Returned as array.',
           schema: {
-            $ref: "#/definitions/" + resource.modelName + "List"
+            type: "array",
+            items: {
+              $ref: "#/definitions/" + resource.modelName
+            }
           }
         }
       },
