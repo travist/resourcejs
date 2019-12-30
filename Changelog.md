@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.38.2
+### Fixed
+ - Improve swagger schema that includes an array of types
+
+### Changed
+ - Upgrade mongodb@3.4.1, mongoose@5.8.3
+
 ## v1.38.1
 ### Fixed
  - Incorrect swagger type getting handled for ObjectId.
