@@ -1,3 +1,4 @@
+/* eslint-disable no-prototype-builtins */
 'use strict';
 
 const express = require('express');
@@ -172,11 +173,11 @@ describe('Build Resources for following tests', () => {
       },
       married: {
         type: Boolean,
-        default: false
+        default: false,
       },
       updated: {
         type: Number,
-        default: null
+        default: null,
       },
       description: {
         type: String,
@@ -621,6 +622,7 @@ describe('Test single resource CRUD capabilities', () => {
 let refDoc1Content = null;
 let refDoc1Response = null;
 const resourceNames = [];
+// eslint-disable-next-line max-statements
 function testSearch(testPath) {
   it('Should populate', () => request(app)
     .get(`${testPath}?name=noage&populate=list.data`)
@@ -1428,7 +1430,7 @@ describe('Handle native data formats', () => {
     .send({
       title: 'null',
       description: 'false',
-      married: true
+      married: true,
     })
     .expect('Content-Type', /json/)
     .expect(201)
@@ -1446,8 +1448,8 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
     }));
 
   it('Should find the record when filtering the description as "false"', () => request(app)
@@ -1457,9 +1459,9 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].description, 'false');
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].description, 'false');
     }));
 
   it('Should find the record when filtering the description as "true"', () => request(app)
@@ -1469,7 +1471,7 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 0);
+      assert.equal(response.length, 0);
     }));
 
   it('Should find the record when filtering the updated property as null with strict equality', () => request(app)
@@ -1479,9 +1481,9 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].updated, null);
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].updated, null);
     }));
 
   it('Should find the boolean values based on equality', () => request(app)
@@ -1491,9 +1493,9 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].married, true);
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].married, true);
     }));
 
   it('Should still find the boolean values based on string if explicitely provided', () => request(app)
@@ -1503,9 +1505,9 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].married, true);
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].married, true);
     }));
 
   it('Should CAST a boolean to find the boolean values based on equals', () => request(app)
@@ -1515,9 +1517,9 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].married, true);
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].married, true);
     }));
 
   it('Should CAST a boolean to find the boolean values based on equals', () => request(app)
@@ -1527,7 +1529,7 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 0);
+      assert.equal(response.length, 0);
     }));
 });
 
