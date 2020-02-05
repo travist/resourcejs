@@ -242,7 +242,7 @@ class Resource {
    * @returns {*}
    */
   static getParamQuery(req, name) {
-    if (!req.query.hasOwnProperty(name)) {
+    if (!Object.prototype.hasOwnProperty.call(req.query, name)) {
       switch (name) {
         case 'populate':
           return '';
@@ -358,7 +358,7 @@ class Resource {
           }
           else {
             // Init the filter.
-            if (!findQuery.hasOwnProperty(filter.name)) {
+            if (!Object.prototype.hasOwnProperty.call(findQuery, filter.name)) {
               findQuery[filter.name] = {};
             }
 
@@ -611,11 +611,13 @@ class Resource {
   /**
    * Virtual (GET) method. Returns a user-defined projection (typically an aggregate result)
    * derived from this resource
+   * The virtual method expects at least the path and the before option params to be set.
    */
   virtual(options) {
+    if (!options || !options.path || !options.before) return this;
+    const path = options.path;
     options = Resource.getMethodOptions('virtual', options);
     this.methods.push('virtual');
-    const path = (options.path === undefined) ? this.path : options.path;
     this._register('get', `${this.route}/virtual/${path}`, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'virtual';
@@ -624,6 +626,7 @@ class Resource {
         return next();
       }
       const query = req.modelQuery || req.model;
+      if (!query) return Resource.setResponse(res, { status: 404 }, next);
       query.exec((err, item) => {
         if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
         if (!item) return Resource.setResponse(res, { status: 404 }, next);
