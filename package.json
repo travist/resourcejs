@@ -4,7 +4,8 @@
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
-    "test": "mocha test/test.js -b -t 30000 --exit",
+    "test": "mocha test/test.js -t 2000 --exit",
+    "coverage": "nyc --reporter=lcov --report-dir=./coverage npm run test ",
     "lint": "eslint Resource.js"
   },
   "repository": {
@@ -40,6 +41,7 @@
     "express": "^4.17.1",
     "mocha": "^7.0.1",
     "mongoose": "^5.8.11",
+    "nyc": "^15.0.0",
     "supertest": "^4.0.2"
   },
   "peerDependencies": {
