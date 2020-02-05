@@ -90,12 +90,14 @@ function wasInvoked(entity, sequence, method) {
 
 describe('Connect to MongoDB', () => {
   it('Connect to MongoDB', () => mongoose.connect('mongodb://localhost:27017/test', {
+    useUnifiedTopology: true,
     useNewUrlParser: true,
   }));
 
   it('Drop test database', () => mongoose.connection.db.dropDatabase());
 
   it('Should connect MongoDB without mongoose', () => MongoClient.connect('mongodb://localhost:27017', {
+    useUnifiedTopology: true,
     useNewUrlParser: true,
   })
     .then((client) => db = client.db('test')));
