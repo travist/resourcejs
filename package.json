@@ -27,7 +27,7 @@
   "dependencies": {
     "composable-middleware": "^0.3.0",
     "debug": "^4.1.1",
-    "fast-json-patch": "^2.2.1",
+    "fast-json-patch": "^3.0.0-1",
     "lodash": "^4.17.15",
     "moment": "^2.24.0",
     "mongodb": "^3.5.3",
