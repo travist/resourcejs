@@ -3,7 +3,6 @@
 const _ = require('lodash');
 const paginate = require('node-paginate-anything');
 const jsonpatch = require('fast-json-patch');
-const middleware = require('composable-middleware');
 const mongodb = require('mongodb');
 const moment = require('moment');
 const debug = {
@@ -56,26 +55,23 @@ class Resource {
    * @param options
    */
   _register(method, path, callback, last, options) {
-    const mw = middleware();
-
+    let routeStack = [];
     // The before middleware.
     if (options && options.before) {
-      const before = [].concat(options.before);
-      before.forEach((m) => mw.use(m.bind(this)));
+      const before = options.before.map((m) => m.bind(this));
+      routeStack = [...routeStack, ...before];
     }
 
-    mw.use(callback.bind(this));
+    routeStack = [...routeStack, callback.bind(this)];
 
     // The after middleware.
     if (options && options.after) {
-      const after = [].concat(options.after);
-      after.forEach((m) => mw.use(m.bind(this)));
+      const after = options.after.map((m) => m.bind(this));
+      routeStack = [...routeStack, ...after];
     }
 
-    mw.use(last.bind(this));
-
     // Add a fallback error handler.
-    mw.use((err, req, res, next) => {
+    this.app.use(path, (err, req, res, next) => {
       if (err) {
         res.status(400).json({
           status: 400,
@@ -97,10 +93,26 @@ class Resource {
     }
 
     // Add these methods to resourcejs object in the app.
-    this.app.resourcejs[path][method] = mw;
+    this.app.resourcejs[path][method] = routeStack;
 
     // Apply these callbacks to the application.
-    this.app[method](path, mw);
+    switch (method) {
+      case 'get':
+        this.app.get(path, routeStack, last.bind(this));
+        break;
+      case 'post':
+        this.app.post(path, routeStack, last.bind(this));
+        break;
+      case 'put':
+        this.app.put(path, routeStack, last.bind(this));
+        break;
+      case 'patch':
+        this.app.patch(path, routeStack, last.bind(this));
+        break;
+      case 'delete':
+        this.app.delete(path, routeStack, last.bind(this));
+        break;
+    }
   }
 
   /**
