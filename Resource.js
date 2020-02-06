@@ -337,49 +337,46 @@ class Resource {
       // See if this parameter is defined in our model.
       const param = this.model.schema.paths[filter.name.split('.')[0]];
       if (param) {
-        // See if there is a selector.
-        if (filter.selector) {
-          // See if this selector is a regular expression.
-          if (filter.selector === 'regex') {
-            // Set the regular expression for the filter.
-            const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
-            let regex = null;
-            try {
-              regex = new RegExp(parts[1], (parts[2] || 'i'));
-            }
-            catch (err) {
-              debug.query(err);
-              regex = null;
-            }
-            if (regex) {
-              findQuery[filter.name] = regex;
-            }
-            return;
+        // See if this selector is a regular expression.
+        if (filter.selector === 'regex') {
+          // Set the regular expression for the filter.
+          const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
+          let regex = null;
+          try {
+            regex = new RegExp(parts[1], (parts[2] || 'i'));
+          }
+          catch (err) {
+            debug.query(err);
+            regex = null;
+          }
+          if (regex) {
+            findQuery[filter.name] = regex;
+          }
+          return;
+        } // See if there is a selector.
+        else if (filter.selector) {
+          // Init the filter.
+          if (!Object.prototype.hasOwnProperty.call(findQuery, filter.name)) {
+            findQuery[filter.name] = {};
+          }
+
+          if (filter.selector === 'exists') {
+            value = ((value === 'true') || (value === '1')) ? true : value;
+            value = ((value === 'false') || (value === '0')) ? false : value;
+            value = !!value;
+          }
+          // Special case for in filter with multiple values.
+          else if (['in', 'nin'].includes(filter.selector)) {
+            value = Array.isArray(value) ? value : value.split(',');
+            value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options, filter.selector));
           }
           else {
-            // Init the filter.
-            if (!Object.prototype.hasOwnProperty.call(findQuery, filter.name)) {
-              findQuery[filter.name] = {};
-            }
-
-            if (filter.selector === 'exists') {
-              value = ((value === 'true') || (value === '1')) ? true : value;
-              value = ((value === 'false') || (value === '0')) ? false : value;
-              value = !!value;
-            }
-            // Special case for in filter with multiple values.
-            else if (['in', 'nin'].includes(filter.selector)) {
-              value = Array.isArray(value) ? value : value.split(',');
-              value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options, filter.selector));
-            }
-            else {
-              // Set the selector for this filter name.
-              value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
-            }
-
-            findQuery[filter.name][`$${filter.selector}`] = value;
-            return;
+            // Set the selector for this filter name.
+            value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
           }
+
+          findQuery[filter.name][`$${filter.selector}`] = value;
+          return;
         }
         else {
           // Set the find query to this value.
