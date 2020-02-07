@@ -346,6 +346,111 @@ describe('Build Resources for following tests', () => {
       },
     });
   });
+
+  it('Build the /test/skip endpoints', () => {
+    // Create the schema.
+    const SkipSchema = new mongoose.Schema({
+      title: String,
+     });
+
+    // Create the model.
+    const SkipModel = mongoose.model('skip', SkipSchema);
+
+    // Create the REST resource and continue.
+    Resource(app, '/test', 'skip', SkipModel)
+      .rest({
+        before(req, res, next) {
+          req.skipResource = true;
+          next();
+        },
+      })
+      .virtual({
+        path: 'resource',
+        before: function(req, res, next) {
+          req.skipResource = true;
+          return next();
+        },
+      });
+  });
+
+describe('Test skipResource', () => {
+  const resource = {};
+  it('/GET empty list', () => request(app)
+    .get('/test/skip')
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = 'Cannot GET /test/skip';
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/POST Create new resource', () => request(app)
+    .post('/test/skip')
+    .send({
+      title: 'Test1',
+      description: '12345678',
+    })
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = 'Cannot POST /test/skip';
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/GET The new resource', () => request(app)
+    .get(`/test/skip/${resource._id}`)
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = `Cannot GET /test/skip/${resource._id}`;
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/PUT Change data on the resource', () => request(app)
+    .put(`/test/skip/${resource._id}`)
+    .send({
+      title: 'Test2',
+    })
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = `Cannot PUT /test/skip/${resource._id}`;
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/PATCH Change data on the resource', () => request(app)
+    .patch(`/test/skip/${resource._id}`)
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = `Cannot PATCH /test/skip/${resource._id}`;
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/DELETE the resource', () => request(app)
+    .delete(`/test/skip/${resource._id}`)
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = `Cannot DELETE /test/skip/${resource._id}`;
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/VIRTUAL the resource', () => request(app)
+    .get('/test/skip/virtual/resource')
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = 'Cannot GET /test/skip/virtual/resource';
+      assert(response.includes(expected), 'Response not found.');
+    }));
 });
 
 describe('Test single resource CRUD capabilities', () => {
