@@ -11,7 +11,9 @@ const debug = {
   get: require('debug')('resourcejs:get'),
   put: require('debug')('resourcejs:put'),
   post: require('debug')('resourcejs:post'),
+  patch: require('debug')('resourcejs:patch'),
   delete: require('debug')('resourcejs:delete'),
+  virtual: require('debug')('resourcejs:virtual'),
   respond: require('debug')('resourcejs:respond'),
 };
 
@@ -475,6 +477,7 @@ class Resource {
 
       // Allow before handlers the ability to disable resource CRUD.
       if (req.skipResource) {
+        debug.index('Skipping Resource');
         return next();
       }
 
@@ -580,6 +583,7 @@ class Resource {
       // Store the internal method for response manipulation.
       req.__rMethod = 'get';
       if (req.skipResource) {
+        debug.get('Skipping Resource');
         return next();
       }
 
@@ -632,6 +636,7 @@ class Resource {
       req.__rMethod = 'virtual';
 
       if (req.skipResource) {
+        debug.virtual('Skipping Resource');
         return next();
       }
       const query = req.modelQuery || req.model;
@@ -759,6 +764,7 @@ class Resource {
       req.__rMethod = 'patch';
 
       if (req.skipResource) {
+        debug.patch('Skipping Resource');
         return next();
       }
       const query = req.modelQuery || req.model || this.model;
@@ -766,7 +772,9 @@ class Resource {
       query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
         if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
         if (!item) return Resource.setResponse(res, { status: 404, error: err }, next);
-        const patches = req.body;
+
+        // Ensure patches is an array
+        const patches = [].concat(req.body);
         let patchFail = null;
         try {
           patches.forEach((patch) => {
@@ -787,17 +795,41 @@ class Resource {
           jsonpatch.applyPatch(item, patches, true);
         }
         catch (err) {
-          if (err && err.name === 'TEST_OPERATION_FAILED') {
-            return Resource.setResponse(res, {
-              status: 412,
-              name: 'Precondition Failed',
-              message: 'A json-patch test op has failed. No changes have been applied to the document',
-              item,
-              patch: patchFail,
-            }, next);
+          switch (err.name) {
+            // Check whether JSON PATCH error
+            case 'TEST_OPERATION_FAILED':
+              return Resource.setResponse(res, {
+                status: 412,
+                name: 'Precondition Failed',
+                message: 'A json-patch test op has failed. No changes have been applied to the document',
+                item,
+                patch: patchFail,
+              }, next);
+            case 'SEQUENCE_NOT_AN_ARRAY':
+            case 'OPERATION_NOT_AN_OBJECT':
+            case 'OPERATION_OP_INVALID':
+            case 'OPERATION_PATH_INVALID':
+            case 'OPERATION_FROM_REQUIRED':
+            case 'OPERATION_VALUE_REQUIRED':
+            case 'OPERATION_VALUE_CANNOT_CONTAIN_UNDEFINED':
+            case 'OPERATION_PATH_CANNOT_ADD':
+            case 'OPERATION_PATH_UNRESOLVABLE':
+            case 'OPERATION_FROM_UNRESOLVABLE':
+            case 'OPERATION_PATH_ILLEGAL_ARRAY_INDEX':
+            case 'OPERATION_VALUE_OUT_OF_BOUNDS':
+              err.errors = [{
+                name: err.name,
+                message: err.toString(),
+              }];
+              return Resource.setResponse(res, {
+                status: 400,
+                item,
+                error: err,
+              }, next);
+            // Something else than JSON PATCH
+            default:
+              return Resource.setResponse(res, { status: 400, item, error: err }, next);
           }
-
-          if (err) return Resource.setResponse(res, { status: 400, item, error: err }, next);
         }
         item.save(writeOptions, (err, item) => {
           if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
@@ -819,7 +851,7 @@ class Resource {
       req.__rMethod = 'delete';
 
       if (req.skipResource) {
-        debug.delete('SKipping Resource');
+        debug.delete('Skipping Resource');
         return next();
       }
 

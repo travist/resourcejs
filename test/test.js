@@ -423,6 +423,105 @@ describe('Test single resource CRUD capabilities', () => {
       resource = res.body;
     }));
 
+  it('/PATCH Reject update due to incorrect patch operation', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'does-not-exist', 'path': '/title', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_OP_INVALID');
+    }));
+
+  it('/PATCH Should not care whether patch is array or not', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send({ 'op': 'test', 'path': '/title', 'value': 'Test3' })
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      assert.equal(res.body.title, 'Test3');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch object', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send(['invalid-patch'])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_NOT_AN_OBJECT');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch value', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'replace', 'path': '/title', 'value': undefined }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_VALUE_REQUIRED');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch add path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'add', 'path': '/path/does/not/exist', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_CANNOT_ADD');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'replace', 'path': '/path/does/not/exist', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_UNRESOLVABLE');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'replace', 'path': 1, 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_INVALID');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'add', 'path': '/path/does/not/exist', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_CANNOT_ADD');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'move', 'from': '/path/does/not/exist', 'path': '/path/does/not/exist', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_FROM_UNRESOLVABLE');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch array', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'add', 'path': '/list/invalidindex', 'value': '2' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_ILLEGAL_ARRAY_INDEX');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch array', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'add', 'path': '/list/9999', 'value': '2' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_VALUE_OUT_OF_BOUNDS');
+    }));
+
   it('/GET The changed resource', () => request(app)
     .get(`/test/resource1/${resource._id}`)
     .expect('Content-Type', /json/)
