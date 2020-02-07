@@ -373,6 +373,69 @@ describe('Build Resources for following tests', () => {
       });
   });
 
+  it('Build the /test/resource4 endpoints', () => {
+    // Create the schema.
+    const Resource4Schema = new mongoose.Schema({
+      title: String,
+      writeOption: String,
+     });
+
+    // Create the model.
+    const Resource4Model = mongoose.model('resource4', Resource4Schema);
+
+    const doc = new Resource4Model({ title: 'Foo' });
+    doc.save();
+
+    // Create the REST resource and continue.
+    Resource(app, '/test', 'resource4', Resource4Model)
+    .rest({
+      beforePatch(req, res, next) {
+        req.modelQuery = { findOne: function findOne(_,callback) {
+          callback(new Error('failed'), undefined);
+          },
+        };
+        next();
+      },
+    })
+    .virtual({
+      path: 'undefined_query',
+      before: function(req, res, next) {
+        req.modelQuery = undefined;
+        return next();
+      },
+    })
+    .virtual({
+      path: 'defined',
+      before: function(req, res, next) {
+        req.modelQuery = Resource4Model.aggregate([
+          { $group: { _id: null, titles: { $sum: '$title' } } },
+        ]);
+        return next();
+      },
+    })
+    .virtual({
+      path: 'error',
+      before: function(req, res, next) {
+        req.modelQuery = { exec: function exec(callback) {
+          callback(new Error('Failed'), undefined);
+          },
+        };
+        return next();
+      },
+    })
+    .virtual({
+      path: 'empty',
+      before: function(req, res, next) {
+        req.modelQuery = { exec: function exec(callback) {
+          callback(undefined, undefined);
+          },
+        };
+        return next();
+      },
+    });
+  });
+});
+
 describe('Test skipResource', () => {
   const resource = {};
   it('/GET empty list', () => request(app)
@@ -450,6 +513,53 @@ describe('Test skipResource', () => {
       const response = res.text;
       const expected = 'Cannot GET /test/skip/virtual/resource';
       assert(response.includes(expected), 'Response not found.');
+    }));
+});
+
+describe('Test Virtual resource and Patch errors', () => {
+  it('/VIRTUAL undefined resource query', () => request(app)
+    .get('/test/resource4/virtual/undefined_query')
+    .expect('Content-Type', /json/)
+    .expect(404)
+    .then((res) => {
+      assert.equal(res.body.errors[0], 'Resource not found');
+    }));
+
+  it('/VIRTUAL resource query', () => request(app)
+    .get('/test/resource4/virtual/defined')
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response[0]._id, null);
+      assert.equal(response[0].titles, 0);
+    }));
+
+  it('/VIRTUAL errorous resource query', () => request(app)
+    .get('/test/resource4/virtual/error')
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.message, 'Failed');
+    }));
+
+  it('/VIRTUAL empty resource response', () => request(app)
+    .get('/test/resource4/virtual/empty')
+    .expect('Content-Type', /json/)
+    .expect(404)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.errors[0], 'Resource not found');
+    }));
+
+  it('/PATCH with errorous modelquery', () => request(app)
+    .patch('/test/resource4/1234')
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.message, 'failed');
     }));
 });
 
@@ -2126,6 +2236,11 @@ describe('Test mount variations', () => {
   it('/PATCH should be 404', () => request(app)
     .patch('/testindex/234234234')
     .send([{ 'op': 'replace', 'path': '/title', 'value': 'Test3' }])
+    .expect(404));
+
+  it('/VIRTUAL should be 404', () => request(app)
+    .get('/testindex/234234234/virtual')
+    .send()
     .expect(404));
 
   it('/DELETE the resource', () => request(app)
