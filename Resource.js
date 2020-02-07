@@ -772,8 +772,8 @@ class Resource {
           patches.forEach((patch) => {
             if (patch.op === 'test') {
               patchFail = patch;
-              const success = jsonpatch.applyPatch(item, [].concat(patch), true);
-              if (!success || !success.length) {
+              const success = jsonpatch.applyOperation(item, patch, true);
+              if (!success || !success.test) {
                 return Resource.setResponse(res, {
                   status: 412,
                   name: 'Precondition Failed',
