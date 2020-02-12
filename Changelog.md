@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.39.0
+### Changed
+ - Upgrade mongoose@5.8.11, mongodb@3.5.3, mocha@7.0.1 
+
 ## v1.38.2
 ### Fixed
  - Improve swagger schema that includes an array of types
