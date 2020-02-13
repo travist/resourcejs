@@ -90,6 +90,7 @@ function wasInvoked(entity, sequence, method) {
 
 describe('Connect to MongoDB', () => {
   it('Connect to MongoDB', () => mongoose.connect('mongodb://localhost:27017/test', {
+    useCreateIndex: true,
     useUnifiedTopology: true,
     useNewUrlParser: true,
   }));
@@ -97,6 +98,7 @@ describe('Connect to MongoDB', () => {
   it('Drop test database', () => mongoose.connection.db.dropDatabase());
 
   it('Should connect MongoDB without mongoose', () => MongoClient.connect('mongodb://localhost:27017', {
+    useCreateIndex: true,
     useUnifiedTopology: true,
     useNewUrlParser: true,
   })
@@ -401,7 +403,7 @@ describe('Build Resources for following tests', () => {
     assert.equal(swaggerio.definitions.resource3.title, 'resource3');
     assert.equal(Object.values(swaggerio.paths).length, 2);
     assert.deepEqual(swaggerio, resource3Swaggerio);
-     });
+  });
 
   it('Build the /test/resource4 endpoints', () => {
     // Create the schema.
@@ -2610,4 +2612,8 @@ describe('Test before hooks', () => {
         assert.equal(calls[1], 'after');
       }));
   });
+});
+
+describe('Test Swagger.io', () => {
+
 });
