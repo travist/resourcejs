@@ -1,5 +1,3 @@
-const _ = require('lodash');
-
 module.exports = function(resource) {
   const fixNestedRoutes = function(resource) {
     const routeParts = resource.route.split('/');
@@ -152,8 +150,7 @@ module.exports = function(resource) {
       properties: {},
     };
     // Iterate through each model schema path.
-    _.each(schema.paths, function(path, name) {
-
+    Object.entries(schema.paths).forEach(([name, path]) => {
       // Set the property for the swagger model.
       const property = getProperty(path, name);
       if (name.substr(0, 2) !== '__' && property) {
@@ -199,7 +196,7 @@ module.exports = function(resource) {
 
         // Allow properties to pass back additional definitions.
         if (property.definitions) {
-          definitions = _.merge(definitions, property.definitions);
+          definitions = Object.assign(definitions, property.definitions);
           delete property.definitions;
         }
 
@@ -223,7 +220,7 @@ module.exports = function(resource) {
   };
 
   // Build Swagger definitions.
-  swagger.definitions = _.merge(swagger.definitions, bodyDefinitions);
+  swagger.definitions = Object.assign(swagger.definitions, bodyDefinitions);
 
   // Build Swagger paths
   const methods = resource.methods;
@@ -248,7 +245,7 @@ module.exports = function(resource) {
             type: 'array',
             items: {
               $ref: `#/definitions/${  resource.modelName}`,
-      },
+            },
           },
         },
       },

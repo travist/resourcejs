@@ -1,6 +1,5 @@
 'use strict';
 
-const _ = require('lodash');
 const paginate = require('node-paginate-anything');
 const jsonpatch = require('fast-json-patch');
 const mongodb = require('mongodb');
@@ -16,6 +15,7 @@ const debug = {
   virtual: require('debug')('resourcejs:virtual'),
   respond: require('debug')('resourcejs:respond'),
 };
+const utils = require('./utils');
 
 class Resource {
   constructor(app, route, modelName, model, options) {
@@ -149,11 +149,10 @@ class Resource {
           res.status(res.resource.status).json({
             status: res.resource.status,
             message: res.resource.error.message,
-            errors: _.mapValues(res.resource.error.errors, (error) => _.pick(error, [
-              'path',
-              'name',
-              'message',
-            ])),
+            errors: res.resource.error.errors ? [].concat(res.resource.error.errors).map((error) => {
+              const { path, name, message } = error;
+              return { path, name, message };
+            }) : [],
           });
           break;
         case 204:
@@ -212,22 +211,22 @@ class Resource {
     const methodOptions = { methodOptions: true };
 
     // Find all of the options that may have been passed to the rest method.
-    const beforeHandlers = options.before || [];
-    const beforeMethodHandlers = options[`before${method}`] || [];
-    methodOptions.before = _.concat(beforeHandlers, beforeMethodHandlers);
+    const beforeHandlers = options.before ?  [options.before] : [];
+    const beforeMethodHandlers = options[`before${method}`] ? [options[`before${method}`]] : [];
+    methodOptions.before = [...beforeHandlers, ...beforeMethodHandlers];
 
-    const afterHandlers = options.after || [];
-    const afterMethodHandlers = options[`after${method}`] || [];
-    methodOptions.after = _.concat(afterHandlers, afterMethodHandlers);
+    const afterHandlers = options.after ?  [options.after] : [];
+    const afterMethodHandlers = options[`after${method}`] ? [options[`after${method}`]] : [];
+    methodOptions.after = [...afterHandlers, ...afterMethodHandlers];
 
     // Expose mongoose hooks for each method.
     ['before', 'after'].forEach((type) => {
       const path = `hooks.${method.toString().toLowerCase()}.${type}`;
 
-      _.set(
+      utils.set(
         methodOptions,
         path,
-        _.get(options, path, (req, res, item, next) => next())
+        utils.get(options, path, (req, res, item, next) => next())
       );
     });
 
@@ -269,16 +268,12 @@ class Resource {
       }
     }
 
-    if (name === 'populate' && _.isObjectLike(req.query[name])) {
+    if (name === 'populate' && utils.isObjectLike(req.query[name])) {
       return req.query[name];
     }
     else {
-      return _
-      .chain(req.query[name])
-      .words(/[^, ]+/g)
-      .uniq()
-      .join(' ')
-      .value();
+      // Generate string of spaced unique keys 
+      return [...new Set(req.query[name].match(/[^, ]+/g))].join(' ')
     }
   }
 
@@ -345,12 +340,12 @@ class Resource {
     options = options || this.options;
 
     // Get the filters and omit the limit, skip, select, sort and populate.
-    const filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
+    const {limit, skip, select, sort, populate, ...filters} = req.query;
 
     // Iterate through each filter.
-    _.forOwn(filters, (value, name) => {
+    Object.entries(filters).forEach(([name, value]) => {
       // Get the filter object.
-      const filter = _.zipObject(['name', 'selector'], name.split('__'));
+      const filter = utils.zipObject(['name', 'selector'], name.split('__'));
 
       // See if this parameter is defined in our model.
       const param = this.model.schema.paths[filter.name.split('.')[0]];
@@ -416,7 +411,7 @@ class Resource {
 
   countQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
-    if (!_.isEmpty(query._mongooseOptions) || !pipeline) {
+    if (query._mongooseOptions.length !== 0 || !pipeline) {
       return query;
     }
     const stages = [
@@ -443,7 +438,7 @@ class Resource {
 
   indexQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
-    if (!_.isEmpty(query._mongooseOptions) || !pipeline) {
+    if (query._mongooseOptions.length !== 0 || !pipeline) {
       return query.lean();
     }
 
@@ -452,16 +447,16 @@ class Resource {
       ...pipeline,
     ];
 
-    if (_.has(query, 'options.sort') && !_.isEmpty(query.options.sort)) {
+    if (query.options && query.options.sort && query.options.sort.length !== 0) {
       stages.push({ $sort: query.options.sort });
     }
-    if (_.has(query, 'options.skip')) {
+    if (query.options && query.options.skip) {
       stages.push({ $skip: query.options.skip });
     }
-    if (_.has(query, 'options.limit')) {
+    if (query.options && query.options.limit) {
       stages.push({ $limit: query.options.limit });
     }
-    if (!_.isEmpty(query._fields)) {
+    if (query._fields.length !== 0) {
       stages.push({ $project: query._fields });
     }
     return query.model.aggregate(stages);
@@ -501,15 +496,12 @@ class Resource {
 
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
-        const reqQuery = _
-          .chain(req.query)
-          .pick('limit', 'skip')
-          .defaults(defaults)
-          .mapValues((value, key) => {
-            value = parseInt(value, 10);
-            return (isNaN(value) || (value < 0)) ? defaults[key] : value;
-          })
-          .value();
+        let { limit, skip } = req.query
+        limit = parseInt(limit, 10)
+        limit = (isNaN(limit) || (limit < 0)) ? defaults.limit : limit
+        skip = parseInt(skip, 10)
+        skip = (isNaN(skip) || (skip < 0)) ? defaults.skip : skip
+        const reqQuery = { limit, skip };
 
         // If a skip is provided, then set the range headers.
         if (reqQuery.skip && !req.headers.range) {
@@ -716,7 +708,7 @@ class Resource {
       }
 
       // Remove __v field
-      const update = _.omit(req.body, '__v');
+      const { __v, ...update} = req.body;
       const query = req.modelQuery || req.model || this.model;
 
       query.findOne({ _id: req.params[`${this.name}Id`] }, (err, item) => {
