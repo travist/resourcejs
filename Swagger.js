@@ -1,33 +1,31 @@
 const _ = require('lodash');
 
 module.exports = function(resource) {
-
-  var fixNestedRoutes = function(resource) {
-    routeParts = resource.route.split('/');
-    for (i=0;i<routeParts.length;i++) {
-      if (routeParts[i].charAt(0) == ':') {
-        routeParts[i] = '{' + routeParts[i].slice(1) + '}'
+  const fixNestedRoutes = function(resource) {
+    const routeParts = resource.route.split('/');
+    for (let i=0;i<routeParts.length;i++) {
+      if (routeParts[i].charAt(0) === ':') {
+        routeParts[i] = `{${  routeParts[i].slice(1)  }}`;
       }
     }
     resource.routeFixed = routeParts.join('/');
-    return resource
+    return resource;
   };
   resource = fixNestedRoutes(resource);
 
-  var addNestedIdParameter = function(resource, parameters) {
-    if (resource && resource.route && resource.route.includes("/:")) {
-      if (resource.route.match(/:(.+)\//).length >= 1 && resource.route.match(/^\/(.+)\/\:/).length >= 1) {
-
-        idName = resource.route.match(/:(.+)\//)[1];
-        primaryModel = resource.route.match(/^\/(.+)\/\:/)[1];
+  const addNestedIdParameter = function(resource, parameters) {
+    if (resource && resource.route && resource.route.includes('/:')) {
+      if (resource.route.match(/:(.+)\//).length >= 1 && resource.route.match(/^\/(.+)\/:/).length >= 1) {
+        const idName = resource.route.match(/:(.+)\//)[1];
+        const primaryModel = resource.route.match(/^\/(.+)\/:/)[1];
 
         parameters.push({
           in: 'path',
           name: idName,
-          description: 'The parent model of ' + resource.modelName + ': ' + primaryModel,
+          description: `The parent model of ${  resource.modelName  }: ${  primaryModel}`,
           required: true,
-          type: 'string'
-        })
+          type: 'string',
+        });
       }
     }
   };
@@ -37,12 +35,11 @@ module.exports = function(resource) {
    * @param options
    * @returns {*}
    */
-  var getProperty = function(path, name) {
-
-    var options = path.options;
+  const getProperty = function(path, name) {
+    let options = path.options;
 
     // Convert to the proper format if needed.
-    if (!options.hasOwnProperty('type')) options = {type: options};
+    if (!Object.prototype.hasOwnProperty.call(options, 'type')) options = { type: options };
 
     // If no type, then return null.
     if (!options.type) {
@@ -51,34 +48,34 @@ module.exports = function(resource) {
 
     // If this is an array, then return the array with items.
     if (Array.isArray(options.type)) {
-      if (options.type[0].hasOwnProperty('paths')) {
+      if (Object.prototype.hasOwnProperty.call(options.type[0], 'paths')) {
         return {
           type: 'array',
           title: name,
           items: {
-            $ref: '#/definitions/' + name
+            $ref: `#/definitions/${  name}`,
           },
-          definitions: getModel(options.type[0], name)
+          definitions: getModel(options.type[0], name),
         };
       }
       return {
         type: 'array',
         items: {
           type: 'string',
-        }
+        },
       };
     }
     // For embedded schemas:
     if (options.type.constructor.name === 'Schema') {
-      if (options.type.hasOwnProperty('paths')) {
+      if (Object.prototype.hasOwnProperty.call(options.type, 'paths')) {
         return {
-          $ref: '#/definitions/' + name,
-          definitions: getModel(options.type, name)
+          $ref: `#/definitions/${  name}`,
+          definitions: getModel(options.type, name),
         };
       }
     }
     if (typeof options.type === 'function') {
-      var functionName = options.type.toString();
+      let functionName = options.type.toString();
       functionName = functionName.substr('function '.length);
       functionName = functionName.substr(0, functionName.indexOf('('));
 
@@ -86,54 +83,54 @@ module.exports = function(resource) {
         case 'ObjectId':
           return {
             'type': 'string',
-            'description': 'ObjectId'
+            'description': 'ObjectId',
           };
         case 'Oid':
           return {
             'type': 'string',
-            'description': 'Oid'
+            'description': 'Oid',
           };
         case 'Array':
           return {
             type: 'array',
             items: {
-              type: 'string'
-            }
+              type: 'string',
+            },
           };
         case 'Mixed':
           return {
-            type: 'object'
+            type: 'object',
           };
         case 'Buffer':
           return {
-            type: 'string'
+            type: 'string',
           };
       }
     }
 
-    switch(options.type) {
+    switch (options.type) {
       case 'ObjectId':
         return {
           'type': 'string',
-          'description': 'ObjectId'
+          'description': 'ObjectId',
         };
       case String:
         return {
-          type: 'string'
+          type: 'string',
         };
       case Number:
         return {
           type: 'integer',
-          format: 'int64'
+          format: 'int64',
         };
       case Date:
         return {
           type: 'string',
-          format: 'date'
+          format: 'date',
         };
       case Boolean:
         return {
-          type: 'boolean'
+          type: 'boolean',
         };
       case Function:
         break;
@@ -142,26 +139,24 @@ module.exports = function(resource) {
     }
 
     if (options.type instanceof Object) return null;
-    throw new Error('Unrecognized type: ' + options.type);
+    throw new Error(`Unrecognized type: ${  options.type}`);
   };
 
-  var getModel = function(schema, modelName) {
+  const getModel = function(schema, modelName) {
     // Define the definition structure.
-    var definitions = {};
+    let definitions = {};
 
     definitions[modelName] = {
 //      required: [],
       title: modelName,
       properties: {},
     };
-
     // Iterate through each model schema path.
     _.each(schema.paths, function(path, name) {
 
       // Set the property for the swagger model.
-      var property = getProperty(path, name);
+      const property = getProperty(path, name);
       if (name.substr(0, 2) !== '__' && property) {
-
         // Add the description if they provided it.
         if (path.options.description) {
           property.description = path.options.description;
@@ -216,24 +211,22 @@ module.exports = function(resource) {
     return definitions;
   };
 
-
   // Build and return a Swagger definition for this model.
 
-  var listPath = resource.routeFixed;
-  var itemPath = listPath + '/{' + resource.modelName + 'Id}';
-  bodyDefinitions = getModel(resource.model.schema, resource.modelName);
+  const listPath = resource.routeFixed;
+  const itemPath = `${listPath  }/{${  resource.modelName  }Id}`;
+  const bodyDefinitions = getModel(resource.model.schema, resource.modelName);
 
-  var swagger = {
+  const swagger = {
     definitions: {},
-    paths: {}
+    paths: {},
   };
 
   // Build Swagger definitions.
   swagger.definitions = _.merge(swagger.definitions, bodyDefinitions);
 
   // Build Swagger paths
-  var methods = resource.methods;
-
+  const methods = resource.methods;
 
   // INDEX and POST listPath
   if (methods.indexOf('index') > -1 || methods.indexOf('post') > -1) swagger.paths[listPath] = {};
@@ -242,22 +235,22 @@ module.exports = function(resource) {
   if (methods.indexOf('index') > -1) {
     swagger.paths[listPath].get = {
       tags: [resource.name],
-      summary: 'List multiple ' + resource.modelName + ' resources.',
-      description: 'This operation allows you to list and search for ' + resource.modelName + ' resources provided query arguments.',
-      operationId: 'get' + resource.modelName + 's',
+      summary: `List multiple ${  resource.modelName  } resources.`,
+      description: `This operation allows you to list and search for ${  resource.modelName  } resources provided query arguments.`,
+      operationId: `get${  resource.modelName  }s`,
       responses: {
         401: {
-          description: 'Unauthorized.'
+          description: 'Unauthorized.',
         },
         200: {
           description: 'Resource(s) found.  Returned as array.',
           schema: {
-            type: "array",
+            type: 'array',
             items: {
-              $ref: "#/definitions/" + resource.modelName
-            }
-          }
-        }
+              $ref: `#/definitions/${  resource.modelName}`,
+      },
+          },
+        },
       },
       parameters: [
         {
@@ -266,7 +259,7 @@ module.exports = function(resource) {
           description: 'How many records to skip when listing. Used for pagination.',
           required: false,
           type: 'integer',
-          default: 0
+          default: 0,
         },
         {
           name: 'limit',
@@ -274,7 +267,7 @@ module.exports = function(resource) {
           description: 'How many records to limit the output.',
           required: false,
           type: 'integer',
-          default: 10
+          default: 10,
         },
         //{
         //  name: 'count',
@@ -290,7 +283,7 @@ module.exports = function(resource) {
           description: 'Which fields to sort the records on.',
           type: 'string',
           required: false,
-          default: ''
+          default: '',
         },
         {
           name: 'select',
@@ -298,7 +291,7 @@ module.exports = function(resource) {
           description: 'Select which fields will be returned by the query.',
           type: 'string',
           required: false,
-          default: ''
+          default: '',
         },
         {
           name: 'populate',
@@ -306,47 +299,45 @@ module.exports = function(resource) {
           description: 'Select which fields will be fully populated with the reference.',
           type: 'string',
           required: false,
-          default: ''
-        }
-      ]
+          default: '',
+        },
+      ],
 
     };
-    addNestedIdParameter(resource, swagger.paths[listPath].get.parameters)
-
+    addNestedIdParameter(resource, swagger.paths[listPath].get.parameters);
   }
 
   // POST listPath.
   if (methods.indexOf('post') > -1) {
     swagger.paths[listPath].post = {
       tags: [resource.name],
-      summary: 'Create a new ' + resource.modelName,
-      description: 'Create a new ' + resource.modelName,
-      operationId: 'create' + resource.modelName,
+      summary: `Create a new ${  resource.modelName}`,
+      description: `Create a new ${  resource.modelName}`,
+      operationId: `create${  resource.modelName}`,
       responses: {
         401: {
-          description: 'Unauthorized.  Note that anonymous submissions are *enabled* by default.'
+          description: 'Unauthorized.  Note that anonymous submissions are *enabled* by default.',
         },
         400: {
-          description: 'An error has occured trying to create the resource.'
+          description: 'An error has occured trying to create the resource.',
         },
         201: {
-          description: 'The resource has been created.'
-        }
+          description: 'The resource has been created.',
+        },
       },
       parameters: [
         {
           in: 'body',
           name: 'body',
-          description: 'Data used to create a new ' + resource.modelName,
+          description: `Data used to create a new ${  resource.modelName}`,
           required: true,
           schema: {
-            $ref: "#/definitions/" + resource.modelName
-          }
-        }
-      ]
+            $ref: `#/definitions/${  resource.modelName}`,
+          },
+        },
+      ],
     };
-    addNestedIdParameter(resource, swagger.paths[listPath].post.parameters)
-
+    addNestedIdParameter(resource, swagger.paths[listPath].post.parameters);
   }
 
   // The resource path for this resource.
@@ -358,126 +349,123 @@ module.exports = function(resource) {
   if (methods.indexOf('get') > -1) {
     swagger.paths[itemPath].get = {
       tags: [resource.name],
-      summary: 'Return a specific ' + resource.name + ' instance.',
-      description: 'Return a specific ' + resource.name + ' instance.',
-      operationId: 'get' + resource.modelName,
+      summary: `Return a specific ${  resource.name  } instance.`,
+      description: `Return a specific ${  resource.name  } instance.`,
+      operationId: `get${  resource.modelName}`,
       responses: {
         500: {
-          description: 'An error has occurred.'
+          description: 'An error has occurred.',
         },
         404: {
-          description: 'Resource not found'
+          description: 'Resource not found',
         },
         401: {
-          description: 'Unauthorized.'
+          description: 'Unauthorized.',
         },
         200: {
           description: 'Resource found',
           schema: {
-            $ref: "#/definitions/" + resource.modelName
-          }
-        }
+            $ref: `#/definitions/${  resource.modelName}`,
+          },
+        },
       },
       parameters: [
         {
-          name: resource.modelName + 'Id',
+          name: `${resource.modelName  }Id`,
           in: 'path',
-          description: 'The ID of the ' + resource.name + ' that will be retrieved.',
+          description: `The ID of the ${  resource.name  } that will be retrieved.`,
           required: true,
-          type: 'string'
-        }
-      ]
+          type: 'string',
+        },
+      ],
     };
-    addNestedIdParameter(resource, swagger.paths[itemPath].get.parameters)
-
+    addNestedIdParameter(resource, swagger.paths[itemPath].get.parameters);
   }
 
   // PUT itemPath
   if (methods.indexOf('put') > -1) {
     swagger.paths[itemPath].put = {
       tags: [resource.name],
-      summary: 'Update a specific ' + resource.name + ' instance.',
-      description: 'Update a specific ' + resource.name + ' instance.',
-      operationId: 'update' + resource.modelName,
+      summary: `Update a specific ${  resource.name  } instance.`,
+      description: `Update a specific ${  resource.name  } instance.`,
+      operationId: `update${  resource.modelName}`,
       responses: {
         500: {
-          description: 'An error has occurred.'
+          description: 'An error has occurred.',
         },
         404: {
-          description: 'Resource not found'
+          description: 'Resource not found',
         },
         401: {
-          description: 'Unauthorized.'
+          description: 'Unauthorized.',
         },
         400: {
-          description: 'Resource could not be updated.'
+          description: 'Resource could not be updated.',
         },
         200: {
           description: 'Resource updated',
           schema: {
-            $ref: "#/definitions/" + resource.modelName
-          }
-        }
+            $ref: `#/definitions/${  resource.modelName}`,
+          },
+        },
       },
       parameters: [
         {
-          name: resource.modelName + 'Id',
+          name: `${resource.modelName  }Id`,
           in: 'path',
-          description: 'The ID of the ' + resource.name + ' that will be updated.',
+          description: `The ID of the ${  resource.name  } that will be updated.`,
           required: true,
-          type: 'string'
+          type: 'string',
         },
         {
           in: 'body',
           name: 'body',
-          description: 'Data used to update ' + resource.modelName,
+          description: `Data used to update ${  resource.modelName}`,
           required: true,
           schema: {
-            $ref: "#/definitions/" + resource.modelName
-          }
-        }
-      ]
+            $ref: `#/definitions/${  resource.modelName}`,
+          },
+        },
+      ],
     };
-    addNestedIdParameter(resource, swagger.paths[itemPath].put.parameters)
-
+    addNestedIdParameter(resource, swagger.paths[itemPath].put.parameters);
   }
 
   // DELETE itemPath
   if (methods.indexOf('delete') > -1) {
     swagger.paths[itemPath].delete = {
       tags: [resource.name],
-      summary: 'Delete a specific ' + resource.name,
-      description: 'Delete a specific ' + resource.name,
-      operationId: 'delete' + resource.modelName,
+      summary: `Delete a specific ${  resource.name}`,
+      description: `Delete a specific ${  resource.name}`,
+      operationId: `delete${  resource.modelName}`,
       responses: {
         500: {
-          description: 'An error has occurred.'
+          description: 'An error has occurred.',
         },
         404: {
-          description: 'Resource not found'
+          description: 'Resource not found',
         },
         401: {
-          description: 'Unauthorized.'
+          description: 'Unauthorized.',
         },
         400: {
-          description: 'Resource could not be deleted.'
+          description: 'Resource could not be deleted.',
         },
         204: {
-          description: 'Resource was deleted'
-        }
+          description: 'Resource was deleted',
+        },
       },
       parameters: [
         {
-          name: resource.modelName + 'Id',
+          name: `${resource.modelName  }Id`,
           in: 'path',
-          description: 'The ID of the ' + resource.name + ' that will be deleted.',
+          description: `The ID of the ${  resource.name  } that will be deleted.`,
           required: true,
-          type: 'string'
-        }
-      ]
+          type: 'string',
+        },
+      ],
     };
-    addNestedIdParameter(resource, swagger.paths[itemPath].delete.parameters)
-
+    addNestedIdParameter(resource, swagger.paths[itemPath].delete.parameters);
   }
 
   // Return the swagger definition for this resource.
