@@ -1,212 +1,213 @@
-module.exports = function(resource) {
-  const fixNestedRoutes = function(resource) {
-    const routeParts = resource.route.split('/');
-    for (let i=0;i<routeParts.length;i++) {
-      if (routeParts[i].charAt(0) === ':') {
-        routeParts[i] = `{${  routeParts[i].slice(1)  }}`;
-      }
+const fixNestedRoutes = function(resource) {
+  const routeParts = resource.route.split('/');
+  for (let i=0;i<routeParts.length;i++) {
+    if (routeParts[i].charAt(0) === ':') {
+      routeParts[i] = `{${  routeParts[i].slice(1)  }}`;
     }
-    resource.routeFixed = routeParts.join('/');
-    return resource;
-  };
-  resource = fixNestedRoutes(resource);
+  }
+  resource.routeFixed = routeParts.join('/');
+  return resource;
+};
 
-  const addNestedIdParameter = function(resource, parameters) {
-    if (resource && resource.route && resource.route.includes('/:')) {
-      if (resource.route.match(/:(.+)\//).length >= 1 && resource.route.match(/^\/(.+)\/:/).length >= 1) {
-        const idName = resource.route.match(/:(.+)\//)[1];
-        const primaryModel = resource.route.match(/^\/(.+)\/:/)[1];
+const addNestedIdParameter = function(resource, parameters) {
+  if (resource && resource.route && resource.route.includes('/:')) {
+    if (resource.route.match(/:(.+)\//).length >= 1 && resource.route.match(/^\/(.+)\/:/).length >= 1) {
+      const idName = resource.route.match(/:(.+)\//)[1];
+      const primaryModel = resource.route.match(/^\/(.+)\/:/)[1];
 
-        parameters.push({
-          in: 'path',
-          name: idName,
-          description: `The parent model of ${  resource.modelName  }: ${  primaryModel}`,
-          required: true,
-          type: 'string',
-        });
-      }
+      parameters.push({
+        in: 'path',
+        name: idName,
+        description: `The parent model of ${  resource.modelName  }: ${  primaryModel}`,
+        required: true,
+        type: 'string',
+      });
     }
-  };
-  /**
-   * Converts a Mongoose property to a Swagger property.
-   *
-   * @param options
-   * @returns {*}
-   */
-  const getProperty = function(path, name) {
-    let options = path.options;
+  }
+};
+/**
+ * Converts a Mongoose property to a Swagger property.
+ *
+ * @param options
+ * @returns {*}
+ */
+const getProperty = function(path, name) {
+  let options = path.options;
 
-    // Convert to the proper format if needed.
-    if (!Object.prototype.hasOwnProperty.call(options, 'type')) options = { type: options };
+  // Convert to the proper format if needed.
+  if (!Object.prototype.hasOwnProperty.call(options, 'type')) options = { type: options };
 
-    // If no type, then return null.
-    if (!options.type) {
-      return null;
-    }
+  // If no type, then return null.
+  if (!options.type) {
+    return null;
+  }
 
-    // If this is an array, then return the array with items.
-    if (Array.isArray(options.type)) {
-      if (Object.prototype.hasOwnProperty.call(options.type[0], 'paths')) {
-        return {
-          type: 'array',
-          title: name,
-          items: {
-            $ref: `#/definitions/${  name}`,
-          },
-          definitions: getModel(options.type[0], name),
-        };
-      }
+  // If this is an array, then return the array with items.
+  if (Array.isArray(options.type)) {
+    if (Object.prototype.hasOwnProperty.call(options.type[0], 'paths')) {
       return {
         type: 'array',
+        title: name,
         items: {
-          type: 'string',
+          $ref: `#/definitions/${  name}`,
         },
+        definitions: getModel(options.type[0], name),
       };
     }
-    // For embedded schemas:
-    if (options.type.constructor.name === 'Schema') {
-      if (Object.prototype.hasOwnProperty.call(options.type, 'paths')) {
-        return {
-          $ref: `#/definitions/${  name}`,
-          definitions: getModel(options.type, name),
-        };
-      }
+    return {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    };
+  }
+  // For embedded schemas:
+  if (options.type.constructor.name === 'Schema') {
+    if (Object.prototype.hasOwnProperty.call(options.type, 'paths')) {
+      return {
+        $ref: `#/definitions/${  name}`,
+        definitions: getModel(options.type, name),
+      };
     }
-    if (typeof options.type === 'function') {
-      let functionName = options.type.toString();
-      functionName = functionName.substr('function '.length);
-      functionName = functionName.substr(0, functionName.indexOf('('));
+  }
+  if (typeof options.type === 'function') {
+    let functionName = options.type.toString();
+    functionName = functionName.substr('function '.length);
+    functionName = functionName.substr(0, functionName.indexOf('('));
 
-      switch (functionName) {
-        case 'ObjectId':
-          return {
-            'type': 'string',
-            'description': 'ObjectId',
-          };
-        case 'Oid':
-          return {
-            'type': 'string',
-            'description': 'Oid',
-          };
-        case 'Array':
-          return {
-            type: 'array',
-            items: {
-              type: 'string',
-            },
-          };
-        case 'Mixed':
-          return {
-            type: 'object',
-          };
-        case 'Buffer':
-          return {
-            type: 'string',
-          };
-      }
-    }
-
-    switch (options.type) {
+    switch (functionName) {
       case 'ObjectId':
         return {
           'type': 'string',
           'description': 'ObjectId',
         };
-      case String:
+      case 'Oid':
+        return {
+          'type': 'string',
+          'description': 'Oid',
+        };
+      case 'Array':
+        return {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        };
+      case 'Mixed':
+        return {
+          type: 'object',
+        };
+      case 'Buffer':
         return {
           type: 'string',
         };
-      case Number:
-        return {
-          type: 'integer',
-          format: 'int64',
-        };
-      case Date:
-        return {
-          type: 'string',
-          format: 'date',
-        };
-      case Boolean:
-        return {
-          type: 'boolean',
-        };
-      case Function:
-        break;
-      case Object:
-        return null;
     }
+  }
 
-    if (options.type instanceof Object) return null;
-    throw new Error(`Unrecognized type: ${  options.type}`);
-  };
+  switch (options.type) {
+    case 'ObjectId':
+      return {
+        'type': 'string',
+        'description': 'ObjectId',
+      };
+    case String:
+      return {
+        type: 'string',
+      };
+    case Number:
+      return {
+        type: 'integer',
+        format: 'int64',
+      };
+    case Date:
+      return {
+        type: 'string',
+        format: 'date',
+      };
+    case Boolean:
+      return {
+        type: 'boolean',
+      };
+    case Function:
+      break;
+    case Object:
+      return null;
+  }
 
-  const getModel = function(schema, modelName) {
-    // Define the definition structure.
-    let definitions = {};
+  if (options.type instanceof Object) return null;
+  throw new Error(`Unrecognized type: ${  options.type}`);
+};
 
-    definitions[modelName] = {
+const getModel = function(schema, modelName) {
+  // Define the definition structure.
+  let definitions = {};
+
+  definitions[modelName] = {
 //      required: [],
-      title: modelName,
-      properties: {},
-    };
-    // Iterate through each model schema path.
-    Object.entries(schema.paths).forEach(([name, path]) => {
-      // Set the property for the swagger model.
-      const property = getProperty(path, name);
-      if (name.substr(0, 2) !== '__' && property) {
-        // Add the description if they provided it.
-        if (path.options.description) {
-          property.description = path.options.description;
-        }
-
-        // Add the example if they provided it.
-        if (path.options.example) {
-          property.example = path.options.example;
-        }
-
-        // Add the required params if needed.
-        if (path.options.required) {
-//          definition.required.push(name);
-        }
-
-        // Set enum values if applicable
-        if (path.enumValues && path.enumValues.length > 0) {
-          property.allowableValues = { valueType: 'LIST', values: path.enumValues };
-        }
-
-        // Set allowable values range if min or max is present
-        if (!isNaN(path.options.min) || !isNaN(path.options.max)) {
-          property.allowableValues = { valueType: 'RANGE' };
-        }
-
-        if (!isNaN(path.options.min)) {
-          property.allowableValues.min = path.options.min;
-        }
-
-        if (!isNaN(path.options.max)) {
-          property.allowableValues.max = path.options.max;
-        }
-
-        if (!property.type && !property.$ref) {
-          console.log('Warning: That field type is not yet supported in Swagger definitions, using "string"');
-          console.log('Path name: %s.%s', definition.id, name);
-          console.log('Mongoose type: %s', path.options.type);
-          property.type = 'string';
-        }
-
-        // Allow properties to pass back additional definitions.
-        if (property.definitions) {
-          definitions = Object.assign(definitions, property.definitions);
-          delete property.definitions;
-        }
-
-        // Add this property to the definition.
-        definitions[modelName].properties[name] = property;
-      }
-    });
-
-    return definitions;
+    title: modelName,
+    properties: {},
   };
+  // Iterate through each model schema path.
+  Object.entries(schema.paths).forEach(([name, path]) => {
+    // Set the property for the swagger model.
+    const property = getProperty(path, name);
+    if (name.substr(0, 2) !== '__' && property) {
+      // Add the description if they provided it.
+      if (path.options.description) {
+        property.description = path.options.description;
+      }
+
+      // Add the example if they provided it.
+      if (path.options.example) {
+        property.example = path.options.example;
+      }
+
+      // Add the required params if needed.
+      if (path.options.required) {
+//          definition.required.push(name);
+      }
+
+      // Set enum values if applicable
+      if (path.enumValues && path.enumValues.length > 0) {
+        property.allowableValues = { valueType: 'LIST', values: path.enumValues };
+      }
+
+      // Set allowable values range if min or max is present
+      if (!isNaN(path.options.min) || !isNaN(path.options.max)) {
+        property.allowableValues = { valueType: 'RANGE' };
+      }
+
+      if (!isNaN(path.options.min)) {
+        property.allowableValues.min = path.options.min;
+      }
+
+      if (!isNaN(path.options.max)) {
+        property.allowableValues.max = path.options.max;
+      }
+
+      if (!property.type && !property.$ref) {
+        console.log('Warning: That field type is not yet supported in Swagger definitions, using "string"');
+        console.log('Path name: %s.%s', definition.id, name);
+        console.log('Mongoose type: %s', path.options.type);
+        property.type = 'string';
+      }
+
+      // Allow properties to pass back additional definitions.
+      if (property.definitions) {
+        definitions = Object.assign(definitions, property.definitions);
+        delete property.definitions;
+      }
+
+      // Add this property to the definition.
+      definitions[modelName].properties[name] = property;
+    }
+  });
+
+  return definitions;
+};
+
+module.exports = function(resource) {
+  resource = fixNestedRoutes(resource);
 
   // Build and return a Swagger definition for this model.
 
@@ -465,6 +466,33 @@ module.exports = function(resource) {
     addNestedIdParameter(resource, swagger.paths[itemPath].delete.parameters);
   }
 
+  // VIRTUAL itemPath
+  if (methods.some(e => /^virtual\//.test(e))) {
+    methods.filter((method) => /^virtual\//.test(method)).forEach((method) =>{
+      const virtualpath= `${listPath}/${method}`;
+      swagger.paths[virtualpath] = {};
+      swagger.paths[virtualpath].get = {
+        tags: [resource.name, 'virtual'],
+        summary: `Virtual resource for ${resource.name} named ${method.split('/')[1]}`,
+        description: `get ${resource.modelName} ${method.split('/')[1]}`,
+        operationId: `get ${resource.modelName} ${method.split('/')[1]}`,
+        responses: {
+          500: {
+            description: 'An error has occurred.',
+          },
+          404: {
+            description: 'Resource not found',
+          },
+          401: {
+            description: 'Unauthorized.',
+          },
+          200: {
+            description: 'Resource found',
+          },
+        },
+      };
+    });
+  }
   // Return the swagger definition for this resource.
   return swagger;
 };

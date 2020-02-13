@@ -471,7 +471,7 @@ describe('Build Resources for following tests', () => {
     assert.ok(swaggerio.definitions);
     assert.ok(swaggerio.definitions.resource4);
     assert.equal(swaggerio.definitions.resource4.title, 'resource4');
-    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.equal(Object.values(swaggerio.paths).length, 6);
     assert.deepEqual(swaggerio, resource4Swaggerio);
   });
 
@@ -505,7 +505,7 @@ describe('Build Resources for following tests', () => {
     assert.ok(swaggerio.definitions);
     assert.ok(swaggerio.definitions.skip);
     assert.equal(swaggerio.definitions.skip.title, 'skip');
-    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.equal(Object.values(swaggerio.paths).length, 3);
     assert.deepEqual(swaggerio, skipSwaggerio);
   });
 });

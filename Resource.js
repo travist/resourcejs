@@ -626,7 +626,7 @@ class Resource {
     if (!options || !options.path || !options.before) return this;
     const path = options.path;
     options = Resource.getMethodOptions('virtual', options);
-    this.methods.push('virtual');
+    this.methods.push(`virtual/${path}`);
     this._register('get', `${this.route}/virtual/${path}`, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'virtual';

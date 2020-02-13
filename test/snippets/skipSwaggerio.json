@@ -225,6 +225,31 @@
           }
         ]
       }
+    },
+    "/test/skip/virtual/resource": {
+      "get": {
+        "tags": [
+          "skip",
+          "virtual"
+        ],
+        "summary": "Virtual resource for skip named resource",
+        "description": "get skip resource",
+        "operationId": "get skip resource",
+        "responses": {
+          "200": {
+            "description": "Resource found"
+          },
+          "401": {
+            "description": "Unauthorized."
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "500": {
+            "description": "An error has occurred."
+          }
+        }
+      }
     }
   }
 }
