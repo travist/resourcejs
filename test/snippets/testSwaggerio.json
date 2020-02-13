@@ -1,0 +1,177 @@
+{
+  "definitions": {
+    "ref": {
+      "title": "ref",
+      "properties": {
+        "data": { "type": "string" },
+        "_id": { "type": "string", "description": "ObjectId" }
+      }
+    }
+  },
+  "paths": {
+    "/test/ref": {
+      "get": {
+        "tags": ["ref"],
+        "summary": "List multiple ref resources.",
+        "description": "This operation allows you to list and search for ref resources provided query arguments.",
+        "operationId": "getrefs",
+        "responses": {
+          "200": {
+            "description": "Resource(s) found.  Returned as array.",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/ref" }
+            }
+          },
+          "401": { "description": "Unauthorized." }
+        },
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "description": "How many records to skip when listing. Used for pagination.",
+            "required": false,
+            "type": "integer",
+            "default": 0
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many records to limit the output.",
+            "required": false,
+            "type": "integer",
+            "default": 10
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Which fields to sort the records on.",
+            "type": "string",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "select",
+            "in": "query",
+            "description": "Select which fields will be returned by the query.",
+            "type": "string",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Select which fields will be fully populated with the reference.",
+            "type": "string",
+            "required": false,
+            "default": ""
+          }
+        ]
+      },
+      "post": {
+        "tags": ["ref"],
+        "summary": "Create a new ref",
+        "description": "Create a new ref",
+        "operationId": "createref",
+        "responses": {
+          "201": { "description": "The resource has been created." },
+          "400": {
+            "description": "An error has occured trying to create the resource."
+          },
+          "401": {
+            "description": "Unauthorized.  Note that anonymous submissions are *enabled* by default."
+          }
+        },
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Data used to create a new ref",
+            "required": true,
+            "schema": { "$ref": "#/definitions/ref" }
+          }
+        ]
+      }
+    },
+    "/test/ref/{refId}": {
+      "get": {
+        "tags": ["ref"],
+        "summary": "Return a specific ref instance.",
+        "description": "Return a specific ref instance.",
+        "operationId": "getref",
+        "responses": {
+          "200": {
+            "description": "Resource found",
+            "schema": { "$ref": "#/definitions/ref" }
+          },
+          "401": { "description": "Unauthorized." },
+          "404": { "description": "Resource not found" },
+          "500": { "description": "An error has occurred." }
+        },
+        "parameters": [
+          {
+            "name": "refId",
+            "in": "path",
+            "description": "The ID of the ref that will be retrieved.",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      },
+      "put": {
+        "tags": ["ref"],
+        "summary": "Update a specific ref instance.",
+        "description": "Update a specific ref instance.",
+        "operationId": "updateref",
+        "responses": {
+          "200": {
+            "description": "Resource updated",
+            "schema": { "$ref": "#/definitions/ref" }
+          },
+          "400": { "description": "Resource could not be updated." },
+          "401": { "description": "Unauthorized." },
+          "404": { "description": "Resource not found" },
+          "500": { "description": "An error has occurred." }
+        },
+        "parameters": [
+          {
+            "name": "refId",
+            "in": "path",
+            "description": "The ID of the ref that will be updated.",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Data used to update ref",
+            "required": true,
+            "schema": { "$ref": "#/definitions/ref" }
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["ref"],
+        "summary": "Delete a specific ref",
+        "description": "Delete a specific ref",
+        "operationId": "deleteref",
+        "responses": {
+          "204": { "description": "Resource was deleted" },
+          "400": { "description": "Resource could not be deleted." },
+          "401": { "description": "Unauthorized." },
+          "404": { "description": "Resource not found" },
+          "500": { "description": "An error has occurred." }
+        },
+        "parameters": [
+          {
+            "name": "refId",
+            "in": "path",
+            "description": "The ID of the ref that will be deleted.",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      }
+    }
+  }
+}

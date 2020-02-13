@@ -114,7 +114,15 @@ describe('Build Resources for following tests', () => {
     const RefModel = mongoose.model('ref', RefSchema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'ref', RefModel).rest();
+    const test = Resource(app, '/test', 'ref', RefModel).rest();
+    const testSwaggerio = require('./snippets/testSwaggerio.json');
+    const swaggerio = test.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.ref);
+    assert.equal(swaggerio.definitions.ref.title, 'ref');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, testSwaggerio);
   });
 
   it('Build the /test/resource1 endpoints', () => {
@@ -151,7 +159,7 @@ describe('Build Resources for following tests', () => {
     const Resource1Model = mongoose.model('resource1', Resource1Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'resource1', Resource1Model).rest({
+    const resource1 = Resource(app, '/test', 'resource1', Resource1Model).rest({
       afterDelete(req, res, next) {
         // Check that the delete item is still being returned via resourcejs.
         assert.notEqual(res.resource.item, {});
@@ -161,6 +169,14 @@ describe('Build Resources for following tests', () => {
         next();
       },
     });
+    const resource1Swaggerio = require('./snippets/resource1Swaggerio.json');
+    const swaggerio = resource1.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.resource1);
+    assert.equal(swaggerio.definitions.resource1.title, 'resource1');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource1Swaggerio);
   });
 
   it('Build the /test/resource2 endpoints', () => {
@@ -190,7 +206,7 @@ describe('Build Resources for following tests', () => {
     const Resource2Model = mongoose.model('resource2', Resource2Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'resource2', Resource2Model).rest({
+    const resource2 = Resource(app, '/test', 'resource2', Resource2Model).rest({
       // Register before/after global handlers.
       before(req, res, next) {
         // Store the invoked handler and continue.
@@ -213,6 +229,14 @@ describe('Build Resources for following tests', () => {
         next();
       },
     });
+    const resource2Swaggerio = require('./snippets/resource2Swaggerio.json');
+    const swaggerio = resource2.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.resource2);
+    assert.equal(swaggerio.definitions.resource2.title, 'resource2');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource2Swaggerio);
   });
 
   it('Build the /test/date endpoints and fill it with data', () => {
@@ -225,7 +249,15 @@ describe('Build Resources for following tests', () => {
     // Create the model.
     const Model = mongoose.model('date', Schema);
 
-    Resource(app, '/test', 'date', Model).rest();
+    const date = Resource(app, '/test', 'date', Model).rest();
+    const resource3Swaggerio = require('./snippets/dateSwaggerio.json');
+    const swaggerio = date.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.date);
+    assert.equal(swaggerio.definitions.date.title, 'date');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource3Swaggerio);
     return Promise.all(testDates.map((date) => request(app)
       .post('/test/date')
       .send({
@@ -258,13 +290,21 @@ describe('Build Resources for following tests', () => {
     const Nested1Model = mongoose.model('nested1', Nested1Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test/resource1/:resource1Id', 'nested1', Nested1Model).rest({
+    const nested1 = Resource(app, '/test/resource1/:resource1Id', 'nested1', Nested1Model).rest({
       // Register before global handlers to set the resource1 variable.
       before(req, res, next) {
         req.body.resource1 = req.params.resource1Id;
         next();
       },
     });
+    const nested1Swaggerio = require('./snippets/nested1Swaggerio.json');
+    const swaggerio = nested1.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.nested1);
+    assert.equal(swaggerio.definitions.nested1.title, 'nested1');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, nested1Swaggerio);
   });
 
   it('Build the /test/resource2/:resource2Id/nested2 endpoints', () => {
@@ -292,7 +332,7 @@ describe('Build Resources for following tests', () => {
     const Nested2Model = mongoose.model('nested2', Nested2Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test/resource2/:resource2Id', 'nested2', Nested2Model).rest({
+    const nested2 = Resource(app, '/test/resource2/:resource2Id', 'nested2', Nested2Model).rest({
       // Register before/after global handlers.
       before(req, res, next) {
         req.body.resource2 = req.params.resource2Id;
@@ -308,6 +348,14 @@ describe('Build Resources for following tests', () => {
         next();
       },
     });
+    const nested2Swaggerio = require('./snippets/nested2Swaggerio.json');
+    const swaggerio = nested2.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.nested2);
+    assert.equal(swaggerio.definitions.nested2.title, 'nested2');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, nested2Swaggerio);
   });
 
   it('Build the /test/resource3 endpoints', () => {
@@ -337,7 +385,7 @@ describe('Build Resources for following tests', () => {
     const Resource3Model = mongoose.model('resource3', Resource3Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'resource3', Resource3Model).rest({
+    const resource3 = Resource(app, '/test', 'resource3', Resource3Model).rest({
       before(req, res, next) {
         // This setting should be passed down to the underlying `save()` command
         req.writeOptions = { writeSetting: true };
@@ -345,33 +393,15 @@ describe('Build Resources for following tests', () => {
         next();
       },
     });
-  });
-
-  it('Build the /test/skip endpoints', () => {
-    // Create the schema.
-    const SkipSchema = new mongoose.Schema({
-      title: String,
+    const resource3Swaggerio = require('./snippets/resource3Swaggerio.json');
+    const swaggerio = resource3.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.resource3);
+    assert.equal(swaggerio.definitions.resource3.title, 'resource3');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource3Swaggerio);
      });
-
-    // Create the model.
-    const SkipModel = mongoose.model('skip', SkipSchema);
-
-    // Create the REST resource and continue.
-    Resource(app, '/test', 'skip', SkipModel)
-      .rest({
-        before(req, res, next) {
-          req.skipResource = true;
-          next();
-        },
-      })
-      .virtual({
-        path: 'resource',
-        before: function(req, res, next) {
-          req.skipResource = true;
-          return next();
-        },
-      });
-  });
 
   it('Build the /test/resource4 endpoints', () => {
     // Create the schema.
@@ -387,7 +417,7 @@ describe('Build Resources for following tests', () => {
     doc.save();
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'resource4', Resource4Model)
+    const resource4 = Resource(app, '/test', 'resource4', Resource4Model)
     .rest({
       beforePatch(req, res, next) {
         req.modelQuery = { findOne: function findOne(_,callback) {
@@ -433,6 +463,48 @@ describe('Build Resources for following tests', () => {
         return next();
       },
     });
+    const resource4Swaggerio = require('./snippets/resource4Swaggerio.json');
+    const swaggerio = resource4.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.resource4);
+    assert.equal(swaggerio.definitions.resource4.title, 'resource4');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource4Swaggerio);
+  });
+
+  it('Build the /test/skip endpoints', () => {
+    // Create the schema.
+    const SkipSchema = new mongoose.Schema({
+      title: String,
+     });
+
+    // Create the model.
+    const SkipModel = mongoose.model('skip', SkipSchema);
+
+    // Create the REST resource and continue.
+    const skipResource = Resource(app, '/test', 'skip', SkipModel)
+      .rest({
+        before(req, res, next) {
+          req.skipResource = true;
+          next();
+        },
+      })
+      .virtual({
+        path: 'resource',
+        before: function(req, res, next) {
+          req.skipResource = true;
+          return next();
+        },
+      });
+    const skipSwaggerio = require('./snippets/skipSwaggerio.json');
+    const swaggerio = skipResource.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.skip);
+    assert.equal(swaggerio.definitions.skip.title, 'skip');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, skipSwaggerio);
   });
 });
 
