@@ -72,8 +72,10 @@ class Resource {
       routeStack = [...routeStack, ...after];
     }
 
+    routeStack = [...routeStack, last.bind(this)];
+
     // Add a fallback error handler.
-    this.app.use(path, (err, req, res, next) => {
+    const error = (err, req, res, next) => {
       if (err) {
         res.status(400).json({
           status: 400,
@@ -83,7 +85,9 @@ class Resource {
       else {
         return next();
       }
-    });
+    };
+
+    routeStack = [...routeStack, error.bind(this)]
 
     // Declare the resourcejs object on the app.
     if (!this.app.resourcejs) {
@@ -100,19 +104,19 @@ class Resource {
     // Apply these callbacks to the application.
     switch (method) {
       case 'get':
-        this.app.get(path, routeStack, last.bind(this));
+        this.app.get(path, routeStack);
         break;
       case 'post':
-        this.app.post(path, routeStack, last.bind(this));
+        this.app.post(path, routeStack);
         break;
       case 'put':
-        this.app.put(path, routeStack, last.bind(this));
+        this.app.put(path, routeStack);
         break;
       case 'patch':
-        this.app.patch(path, routeStack, last.bind(this));
+        this.app.patch(path, routeStack);
         break;
       case 'delete':
-        this.app.delete(path, routeStack, last.bind(this));
+        this.app.delete(path, routeStack);
         break;
     }
   }
