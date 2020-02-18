@@ -513,6 +513,13 @@ class Resource {
           reqQuery.skip = pageRange.skip;
         }
 
+        // Add limit and skip to aggregation pipeline if present
+        if ( query.pipeline.length > 0 ) {
+          query.pipeline.unshift({ $limit: reqQuery.limit });
+          query.pipeline.unshift({ $skip: reqQuery.skip });
+          reqQuery.skip = 0; // reset skip
+        }
+
         // Next get the items within the index.
         const queryExec = query
           .find(findQuery)
