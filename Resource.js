@@ -514,7 +514,7 @@ class Resource {
         }
 
         // Add limit and skip to aggregation pipeline if present
-        if ( query.pipeline.length > 0 ) {
+        if ( query.pipeline && query.pipeline.length > 0 ) {
           query.pipeline.unshift({ $limit: reqQuery.limit });
           query.pipeline.unshift({ $skip: reqQuery.skip });
           reqQuery.skip = 0; // reset skip
