@@ -477,7 +477,7 @@ class Resource {
       const query = req.modelQuery || req.model || this.model;
 
       // First get the total count.
-      this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
+      this.countQuery(countQuery.find(findQuery), countQuery.pipeline).countDocuments((err, count) => {
         if (err) {
           debug.index(err);
           return Resource.setResponse(res, { status: 400, error: err }, next);
