@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.0.0
+### Changed
+ - See https://github.com/travist/resourcejs/pull/109. Many changes.
+ - High performance optimization during aggregation
+ - Upgrade mongoose@5.9.2 and mongodb@3.5.4
+
 ## v1.39.0
 ### Changed
  - Upgrade mongoose@5.8.11, mongodb@3.5.3, mocha@7.0.1 
