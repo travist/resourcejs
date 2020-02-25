@@ -28,7 +28,7 @@
     "debug": "^4.1.1",
     "fast-json-patch": "^3.0.0-1",
     "moment": "^2.24.0",
-    "mongodb": "^3.5.3",
+    "mongodb": "^3.5.4",
     "node-paginate-anything": "^1.0.0"
   },
   "devDependencies": {
@@ -39,7 +39,7 @@
     "eslint-config-formio": "^1.1.4",
     "express": "^4.17.1",
     "mocha": "^7.0.1",
-    "mongoose": "^5.8.11",
+    "mongoose": "^5.9.2",
     "nyc": "^15.0.0",
     "supertest": "^4.0.2"
   },
