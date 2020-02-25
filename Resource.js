@@ -1,9 +1,7 @@
 'use strict';
 
-const _ = require('lodash');
 const paginate = require('node-paginate-anything');
 const jsonpatch = require('fast-json-patch');
-const middleware = require('composable-middleware');
 const mongodb = require('mongodb');
 const moment = require('moment');
 const debug = {
@@ -12,9 +10,12 @@ const debug = {
   get: require('debug')('resourcejs:get'),
   put: require('debug')('resourcejs:put'),
   post: require('debug')('resourcejs:post'),
+  patch: require('debug')('resourcejs:patch'),
   delete: require('debug')('resourcejs:delete'),
+  virtual: require('debug')('resourcejs:virtual'),
   respond: require('debug')('resourcejs:respond'),
 };
+const utils = require('./utils');
 
 class Resource {
   constructor(app, route, modelName, model, options) {
@@ -56,26 +57,25 @@ class Resource {
    * @param options
    */
   _register(method, path, callback, last, options) {
-    const mw = middleware();
-
+    let routeStack = [];
     // The before middleware.
     if (options && options.before) {
-      const before = [].concat(options.before);
-      before.forEach((m) => mw.use(m.bind(this)));
+      const before = options.before.map((m) => m.bind(this));
+      routeStack = [...routeStack, ...before];
     }
 
-    mw.use(callback.bind(this));
+    routeStack = [...routeStack, callback.bind(this)];
 
     // The after middleware.
     if (options && options.after) {
-      const after = [].concat(options.after);
-      after.forEach((m) => mw.use(m.bind(this)));
+      const after = options.after.map((m) => m.bind(this));
+      routeStack = [...routeStack, ...after];
     }
 
-    mw.use(last.bind(this));
+    routeStack = [...routeStack, last.bind(this)];
 
     // Add a fallback error handler.
-    mw.use((err, req, res, next) => {
+    const error = (err, req, res, next) => {
       if (err) {
         res.status(400).json({
           status: 400,
@@ -85,7 +85,9 @@ class Resource {
       else {
         return next();
       }
-    });
+    };
+
+    routeStack = [...routeStack, error.bind(this)]
 
     // Declare the resourcejs object on the app.
     if (!this.app.resourcejs) {
@@ -97,10 +99,26 @@ class Resource {
     }
 
     // Add these methods to resourcejs object in the app.
-    this.app.resourcejs[path][method] = mw;
+    this.app.resourcejs[path][method] = routeStack;
 
     // Apply these callbacks to the application.
-    this.app[method](path, mw);
+    switch (method) {
+      case 'get':
+        this.app.get(path, routeStack);
+        break;
+      case 'post':
+        this.app.post(path, routeStack);
+        break;
+      case 'put':
+        this.app.put(path, routeStack);
+        break;
+      case 'patch':
+        this.app.patch(path, routeStack);
+        break;
+      case 'delete':
+        this.app.delete(path, routeStack);
+        break;
+    }
   }
 
   /**
@@ -131,11 +149,10 @@ class Resource {
           res.status(res.resource.status).json({
             status: res.resource.status,
             message: res.resource.error.message,
-            errors: _.mapValues(res.resource.error.errors, (error) => _.pick(error, [
-              'path',
-              'name',
-              'message',
-            ])),
+            errors: res.resource.error.errors ? [].concat(res.resource.error.errors).map((error) => {
+              const { path, name, message } = error;
+              return { path, name, message };
+            }) : [],
           });
           break;
         case 204:
@@ -194,22 +211,22 @@ class Resource {
     const methodOptions = { methodOptions: true };
 
     // Find all of the options that may have been passed to the rest method.
-    const beforeHandlers = options.before || [];
-    const beforeMethodHandlers = options[`before${method}`] || [];
-    methodOptions.before = _.concat(beforeHandlers, beforeMethodHandlers);
+    const beforeHandlers = options.before ?  [options.before] : [];
+    const beforeMethodHandlers = options[`before${method}`] ? [options[`before${method}`]] : [];
+    methodOptions.before = [...beforeHandlers, ...beforeMethodHandlers];
 
-    const afterHandlers = options.after || [];
-    const afterMethodHandlers = options[`after${method}`] || [];
-    methodOptions.after = _.concat(afterHandlers, afterMethodHandlers);
+    const afterHandlers = options.after ?  [options.after] : [];
+    const afterMethodHandlers = options[`after${method}`] ? [options[`after${method}`]] : [];
+    methodOptions.after = [...afterHandlers, ...afterMethodHandlers];
 
     // Expose mongoose hooks for each method.
     ['before', 'after'].forEach((type) => {
       const path = `hooks.${method.toString().toLowerCase()}.${type}`;
 
-      _.set(
+      utils.set(
         methodOptions,
         path,
-        _.get(options, path, (req, res, item, next) => next())
+        utils.get(options, path, (req, res, item, next) => next())
       );
     });
 
@@ -242,7 +259,7 @@ class Resource {
    * @returns {*}
    */
   static getParamQuery(req, name) {
-    if (!req.query.hasOwnProperty(name)) {
+    if (!Object.prototype.hasOwnProperty.call(req.query, name)) {
       switch (name) {
         case 'populate':
           return '';
@@ -251,16 +268,12 @@ class Resource {
       }
     }
 
-    if (name === 'populate' && _.isObjectLike(req.query[name])) {
+    if (name === 'populate' && utils.isObjectLike(req.query[name])) {
       return req.query[name];
     }
     else {
-      return _
-      .chain(req.query[name])
-      .words(/[^, ]+/g)
-      .uniq()
-      .join(' ')
-      .value();
+      // Generate string of spaced unique keys 
+      return [...new Set(req.query[name].match(/[^, ]+/g))].join(' ')
     }
   }
 
@@ -327,59 +340,56 @@ class Resource {
     options = options || this.options;
 
     // Get the filters and omit the limit, skip, select, sort and populate.
-    const filters = _.omit(req.query, 'limit', 'skip', 'select', 'sort', 'populate');
+    const {limit, skip, select, sort, populate, ...filters} = req.query;
 
     // Iterate through each filter.
-    _.forOwn(filters, (value, name) => {
+    Object.entries(filters).forEach(([name, value]) => {
       // Get the filter object.
-      const filter = _.zipObject(['name', 'selector'], name.split('__'));
+      const filter = utils.zipObject(['name', 'selector'], name.split('__'));
 
       // See if this parameter is defined in our model.
       const param = this.model.schema.paths[filter.name.split('.')[0]];
       if (param) {
-        // See if there is a selector.
-        if (filter.selector) {
-          // See if this selector is a regular expression.
-          if (filter.selector === 'regex') {
-            // Set the regular expression for the filter.
-            const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
-            let regex = null;
-            try {
-              regex = new RegExp(parts[1], (parts[2] || 'i'));
-            }
-            catch (err) {
-              debug.query(err);
-              regex = null;
-            }
-            if (regex) {
-              findQuery[filter.name] = regex;
-            }
-            return;
+        // See if this selector is a regular expression.
+        if (filter.selector === 'regex') {
+          // Set the regular expression for the filter.
+          const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
+          let regex = null;
+          try {
+            regex = new RegExp(parts[1], (parts[2] || 'i'));
+          }
+          catch (err) {
+            debug.query(err);
+            regex = null;
+          }
+          if (regex) {
+            findQuery[filter.name] = regex;
+          }
+          return;
+        } // See if there is a selector.
+        else if (filter.selector) {
+          // Init the filter.
+          if (!Object.prototype.hasOwnProperty.call(findQuery, filter.name)) {
+            findQuery[filter.name] = {};
+          }
+
+          if (filter.selector === 'exists') {
+            value = ((value === 'true') || (value === '1')) ? true : value;
+            value = ((value === 'false') || (value === '0')) ? false : value;
+            value = !!value;
+          }
+          // Special case for in filter with multiple values.
+          else if (['in', 'nin'].includes(filter.selector)) {
+            value = Array.isArray(value) ? value : value.split(',');
+            value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options, filter.selector));
           }
           else {
-            // Init the filter.
-            if (!findQuery.hasOwnProperty(filter.name)) {
-              findQuery[filter.name] = {};
-            }
-
-            if (filter.selector === 'exists') {
-              value = ((value === 'true') || (value === '1')) ? true : value;
-              value = ((value === 'false') || (value === '0')) ? false : value;
-              value = !!value;
-            }
-            // Special case for in filter with multiple values.
-            else if (['in', 'nin'].includes(filter.selector)) {
-              value = Array.isArray(value) ? value : value.split(',');
-              value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options, filter.selector));
-            }
-            else {
-              // Set the selector for this filter name.
-              value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
-            }
-
-            findQuery[filter.name][`$${filter.selector}`] = value;
-            return;
+            // Set the selector for this filter name.
+            value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
           }
+
+          findQuery[filter.name][`$${filter.selector}`] = value;
+          return;
         }
         else {
           // Set the find query to this value.
@@ -401,7 +411,7 @@ class Resource {
 
   countQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
-    if (!_.isEmpty(query._mongooseOptions) || !pipeline) {
+    if (query._mongooseOptions.length !== 0 || !pipeline) {
       return query;
     }
     const stages = [
@@ -428,7 +438,7 @@ class Resource {
 
   indexQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
-    if (!_.isEmpty(query._mongooseOptions) || !pipeline) {
+    if (query._mongooseOptions.length !== 0 || !pipeline) {
       return query.lean();
     }
 
@@ -437,16 +447,16 @@ class Resource {
       ...pipeline,
     ];
 
-    if (_.has(query, 'options.sort') && !_.isEmpty(query.options.sort)) {
+    if (query.options && query.options.sort && query.options.sort.length !== 0) {
       stages.push({ $sort: query.options.sort });
     }
-    if (_.has(query, 'options.skip')) {
+    if (query.options && query.options.skip) {
       stages.push({ $skip: query.options.skip });
     }
-    if (_.has(query, 'options.limit')) {
+    if (query.options && query.options.limit) {
       stages.push({ $limit: query.options.limit });
     }
-    if (!_.isEmpty(query._fields)) {
+    if (query._fields.length !== 0) {
       stages.push({ $project: query._fields });
     }
     return query.model.aggregate(stages);
@@ -466,6 +476,7 @@ class Resource {
 
       // Allow before handlers the ability to disable resource CRUD.
       if (req.skipResource) {
+        debug.index('Skipping Resource');
         return next();
       }
 
@@ -485,15 +496,12 @@ class Resource {
 
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
-        const reqQuery = _
-          .chain(req.query)
-          .pick('limit', 'skip')
-          .defaults(defaults)
-          .mapValues((value, key) => {
-            value = parseInt(value, 10);
-            return (isNaN(value) || (value < 0)) ? defaults[key] : value;
-          })
-          .value();
+        let { limit, skip } = req.query
+        limit = parseInt(limit, 10)
+        limit = (isNaN(limit) || (limit < 0)) ? defaults.limit : limit
+        skip = parseInt(skip, 10)
+        skip = (isNaN(skip) || (skip < 0)) ? defaults.skip : skip
+        const reqQuery = { limit, skip };
 
         // If a skip is provided, then set the range headers.
         if (reqQuery.skip && !req.headers.range) {
@@ -578,6 +586,7 @@ class Resource {
       // Store the internal method for response manipulation.
       req.__rMethod = 'get';
       if (req.skipResource) {
+        debug.get('Skipping Resource');
         return next();
       }
 
@@ -618,19 +627,23 @@ class Resource {
   /**
    * Virtual (GET) method. Returns a user-defined projection (typically an aggregate result)
    * derived from this resource
+   * The virtual method expects at least the path and the before option params to be set.
    */
   virtual(options) {
+    if (!options || !options.path || !options.before) return this;
+    const path = options.path;
     options = Resource.getMethodOptions('virtual', options);
-    this.methods.push('virtual');
-    const path = (options.path === undefined) ? this.path : options.path;
+    this.methods.push(`virtual/${path}`);
     this._register('get', `${this.route}/virtual/${path}`, (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'virtual';
 
       if (req.skipResource) {
+        debug.virtual('Skipping Resource');
         return next();
       }
       const query = req.modelQuery || req.model;
+      if (!query) return Resource.setResponse(res, { status: 404 }, next);
       query.exec((err, item) => {
         if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
         if (!item) return Resource.setResponse(res, { status: 404 }, next);
@@ -702,7 +715,7 @@ class Resource {
       }
 
       // Remove __v field
-      const update = _.omit(req.body, '__v');
+      const { __v, ...update} = req.body;
       const query = req.modelQuery || req.model || this.model;
 
       query.findOne({ _id: req.params[`${this.name}Id`] }, (err, item) => {
@@ -754,6 +767,7 @@ class Resource {
       req.__rMethod = 'patch';
 
       if (req.skipResource) {
+        debug.patch('Skipping Resource');
         return next();
       }
       const query = req.modelQuery || req.model || this.model;
@@ -761,14 +775,16 @@ class Resource {
       query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
         if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
         if (!item) return Resource.setResponse(res, { status: 404, error: err }, next);
-        const patches = req.body;
+
+        // Ensure patches is an array
+        const patches = [].concat(req.body);
         let patchFail = null;
         try {
           patches.forEach((patch) => {
             if (patch.op === 'test') {
               patchFail = patch;
-              const success = jsonpatch.applyPatch(item, [].concat(patch), true);
-              if (!success || !success.length) {
+              const success = jsonpatch.applyOperation(item, patch, true);
+              if (!success || !success.test) {
                 return Resource.setResponse(res, {
                   status: 412,
                   name: 'Precondition Failed',
@@ -782,17 +798,41 @@ class Resource {
           jsonpatch.applyPatch(item, patches, true);
         }
         catch (err) {
-          if (err && err.name === 'TEST_OPERATION_FAILED') {
-            return Resource.setResponse(res, {
-              status: 412,
-              name: 'Precondition Failed',
-              message: 'A json-patch test op has failed. No changes have been applied to the document',
-              item,
-              patch: patchFail,
-            }, next);
+          switch (err.name) {
+            // Check whether JSON PATCH error
+            case 'TEST_OPERATION_FAILED':
+              return Resource.setResponse(res, {
+                status: 412,
+                name: 'Precondition Failed',
+                message: 'A json-patch test op has failed. No changes have been applied to the document',
+                item,
+                patch: patchFail,
+              }, next);
+            case 'SEQUENCE_NOT_AN_ARRAY':
+            case 'OPERATION_NOT_AN_OBJECT':
+            case 'OPERATION_OP_INVALID':
+            case 'OPERATION_PATH_INVALID':
+            case 'OPERATION_FROM_REQUIRED':
+            case 'OPERATION_VALUE_REQUIRED':
+            case 'OPERATION_VALUE_CANNOT_CONTAIN_UNDEFINED':
+            case 'OPERATION_PATH_CANNOT_ADD':
+            case 'OPERATION_PATH_UNRESOLVABLE':
+            case 'OPERATION_FROM_UNRESOLVABLE':
+            case 'OPERATION_PATH_ILLEGAL_ARRAY_INDEX':
+            case 'OPERATION_VALUE_OUT_OF_BOUNDS':
+              err.errors = [{
+                name: err.name,
+                message: err.toString(),
+              }];
+              return Resource.setResponse(res, {
+                status: 400,
+                item,
+                error: err,
+              }, next);
+            // Something else than JSON PATCH
+            default:
+              return Resource.setResponse(res, { status: 400, item, error: err }, next);
           }
-
-          if (err) return Resource.setResponse(res, { status: 400, item, error: err }, next);
         }
         item.save(writeOptions, (err, item) => {
           if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
@@ -814,7 +854,7 @@ class Resource {
       req.__rMethod = 'delete';
 
       if (req.skipResource) {
-        debug.delete('SKipping Resource');
+        debug.delete('Skipping Resource');
         return next();
       }
 

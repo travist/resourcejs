@@ -1,0 +1,181 @@
+{
+  "definitions": {
+    "resource2": {
+      "title": "resource2",
+      "properties": {
+        "title": { "type": "string" },
+        "age": { "type": "integer", "format": "int64" },
+        "married": { "type": "boolean" },
+        "updated": { "type": "integer", "format": "int64" },
+        "description": { "type": "string" },
+        "_id": { "type": "string", "description": "ObjectId" }
+      }
+    }
+  },
+  "paths": {
+    "/test/resource2": {
+      "get": {
+        "tags": ["resource2"],
+        "summary": "List multiple resource2 resources.",
+        "description": "This operation allows you to list and search for resource2 resources provided query arguments.",
+        "operationId": "getresource2s",
+        "responses": {
+          "200": {
+            "description": "Resource(s) found.  Returned as array.",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/resource2" }
+            }
+          },
+          "401": { "description": "Unauthorized." }
+        },
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "description": "How many records to skip when listing. Used for pagination.",
+            "required": false,
+            "type": "integer",
+            "default": 0
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many records to limit the output.",
+            "required": false,
+            "type": "integer",
+            "default": 10
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Which fields to sort the records on.",
+            "type": "string",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "select",
+            "in": "query",
+            "description": "Select which fields will be returned by the query.",
+            "type": "string",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Select which fields will be fully populated with the reference.",
+            "type": "string",
+            "required": false,
+            "default": ""
+          }
+        ]
+      },
+      "post": {
+        "tags": ["resource2"],
+        "summary": "Create a new resource2",
+        "description": "Create a new resource2",
+        "operationId": "createresource2",
+        "responses": {
+          "201": { "description": "The resource has been created." },
+          "400": {
+            "description": "An error has occured trying to create the resource."
+          },
+          "401": {
+            "description": "Unauthorized.  Note that anonymous submissions are *enabled* by default."
+          }
+        },
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Data used to create a new resource2",
+            "required": true,
+            "schema": { "$ref": "#/definitions/resource2" }
+          }
+        ]
+      }
+    },
+    "/test/resource2/{resource2Id}": {
+      "get": {
+        "tags": ["resource2"],
+        "summary": "Return a specific resource2 instance.",
+        "description": "Return a specific resource2 instance.",
+        "operationId": "getresource2",
+        "responses": {
+          "200": {
+            "description": "Resource found",
+            "schema": { "$ref": "#/definitions/resource2" }
+          },
+          "401": { "description": "Unauthorized." },
+          "404": { "description": "Resource not found" },
+          "500": { "description": "An error has occurred." }
+        },
+        "parameters": [
+          {
+            "name": "resource2Id",
+            "in": "path",
+            "description": "The ID of the resource2 that will be retrieved.",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      },
+      "put": {
+        "tags": ["resource2"],
+        "summary": "Update a specific resource2 instance.",
+        "description": "Update a specific resource2 instance.",
+        "operationId": "updateresource2",
+        "responses": {
+          "200": {
+            "description": "Resource updated",
+            "schema": { "$ref": "#/definitions/resource2" }
+          },
+          "400": { "description": "Resource could not be updated." },
+          "401": { "description": "Unauthorized." },
+          "404": { "description": "Resource not found" },
+          "500": { "description": "An error has occurred." }
+        },
+        "parameters": [
+          {
+            "name": "resource2Id",
+            "in": "path",
+            "description": "The ID of the resource2 that will be updated.",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Data used to update resource2",
+            "required": true,
+            "schema": { "$ref": "#/definitions/resource2" }
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["resource2"],
+        "summary": "Delete a specific resource2",
+        "description": "Delete a specific resource2",
+        "operationId": "deleteresource2",
+        "responses": {
+          "204": { "description": "Resource was deleted" },
+          "400": { "description": "Resource could not be deleted." },
+          "401": { "description": "Unauthorized." },
+          "404": { "description": "Resource not found" },
+          "500": { "description": "An error has occurred." }
+        },
+        "parameters": [
+          {
+            "name": "resource2Id",
+            "in": "path",
+            "description": "The ID of the resource2 that will be deleted.",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      }
+    }
+  }
+}

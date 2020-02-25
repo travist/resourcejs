@@ -1,6 +1,14 @@
-[![Build Status](https://travis-ci.org/travist/resourcejs.svg?branch=master)](https://travis-ci.org/travist/resourcejs)
 Resource.js - A simple Express library to reflect Mongoose models to a REST interface with a splash of Swagger.io love.
 ==============================================================
+[![NPM version][npm-image]][npm-url]
+[![NPM download][download-image]][download-url]
+[![Build Status](https://travis-ci.org/travist/resourcejs.svg?branch=master)](https://travis-ci.org/travist/resourcejs)
+[![Coverage Status](https://coveralls.io/repos/github/Sefriol/resourcejs/badge.svg?branch=master)](https://coveralls.io/github/Sefriol/resourcejs?branch=master)
+
+[npm-image]: https://img.shields.io/npm/v/resourcejs.svg?style=flat-square
+[npm-url]: https://npmjs.org/package/resourcejs
+[download-image]: https://img.shields.io/npm/dm/resourcejs.svg?style=flat-square
+[download-url]: https://npmjs.org/package/resourcejs
 
 Resource.js is designed to be a minimalistic Express library that reflects a Mongoose
 model to a RESTful interface. It does this through a very simple and extensible interface.
