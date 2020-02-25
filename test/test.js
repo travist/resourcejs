@@ -1,3 +1,4 @@
+/* eslint-disable no-prototype-builtins */
 'use strict';
 
 const express = require('express');
@@ -89,12 +90,16 @@ function wasInvoked(entity, sequence, method) {
 
 describe('Connect to MongoDB', () => {
   it('Connect to MongoDB', () => mongoose.connect('mongodb://localhost:27017/test', {
+    useCreateIndex: true,
+    useUnifiedTopology: true,
     useNewUrlParser: true,
   }));
 
   it('Drop test database', () => mongoose.connection.db.dropDatabase());
 
   it('Should connect MongoDB without mongoose', () => MongoClient.connect('mongodb://localhost:27017', {
+    useCreateIndex: true,
+    useUnifiedTopology: true,
     useNewUrlParser: true,
   })
     .then((client) => db = client.db('test')));
@@ -111,7 +116,15 @@ describe('Build Resources for following tests', () => {
     const RefModel = mongoose.model('ref', RefSchema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'ref', RefModel).rest();
+    const test = Resource(app, '/test', 'ref', RefModel).rest();
+    const testSwaggerio = require('./snippets/testSwaggerio.json');
+    const swaggerio = test.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.ref);
+    assert.equal(swaggerio.definitions.ref.title, 'ref');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, testSwaggerio);
   });
 
   it('Build the /test/resource1 endpoints', () => {
@@ -148,7 +161,7 @@ describe('Build Resources for following tests', () => {
     const Resource1Model = mongoose.model('resource1', Resource1Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'resource1', Resource1Model).rest({
+    const resource1 = Resource(app, '/test', 'resource1', Resource1Model).rest({
       afterDelete(req, res, next) {
         // Check that the delete item is still being returned via resourcejs.
         assert.notEqual(res.resource.item, {});
@@ -158,6 +171,14 @@ describe('Build Resources for following tests', () => {
         next();
       },
     });
+    const resource1Swaggerio = require('./snippets/resource1Swaggerio.json');
+    const swaggerio = resource1.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.resource1);
+    assert.equal(swaggerio.definitions.resource1.title, 'resource1');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource1Swaggerio);
   });
 
   it('Build the /test/resource2 endpoints', () => {
@@ -172,11 +193,11 @@ describe('Build Resources for following tests', () => {
       },
       married: {
         type: Boolean,
-        default: false
+        default: false,
       },
       updated: {
         type: Number,
-        default: null
+        default: null,
       },
       description: {
         type: String,
@@ -187,7 +208,7 @@ describe('Build Resources for following tests', () => {
     const Resource2Model = mongoose.model('resource2', Resource2Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'resource2', Resource2Model).rest({
+    const resource2 = Resource(app, '/test', 'resource2', Resource2Model).rest({
       // Register before/after global handlers.
       before(req, res, next) {
         // Store the invoked handler and continue.
@@ -210,6 +231,14 @@ describe('Build Resources for following tests', () => {
         next();
       },
     });
+    const resource2Swaggerio = require('./snippets/resource2Swaggerio.json');
+    const swaggerio = resource2.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.resource2);
+    assert.equal(swaggerio.definitions.resource2.title, 'resource2');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource2Swaggerio);
   });
 
   it('Build the /test/date endpoints and fill it with data', () => {
@@ -222,7 +251,15 @@ describe('Build Resources for following tests', () => {
     // Create the model.
     const Model = mongoose.model('date', Schema);
 
-    Resource(app, '/test', 'date', Model).rest();
+    const date = Resource(app, '/test', 'date', Model).rest();
+    const resource3Swaggerio = require('./snippets/dateSwaggerio.json');
+    const swaggerio = date.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.date);
+    assert.equal(swaggerio.definitions.date.title, 'date');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource3Swaggerio);
     return Promise.all(testDates.map((date) => request(app)
       .post('/test/date')
       .send({
@@ -255,13 +292,21 @@ describe('Build Resources for following tests', () => {
     const Nested1Model = mongoose.model('nested1', Nested1Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test/resource1/:resource1Id', 'nested1', Nested1Model).rest({
+    const nested1 = Resource(app, '/test/resource1/:resource1Id', 'nested1', Nested1Model).rest({
       // Register before global handlers to set the resource1 variable.
       before(req, res, next) {
         req.body.resource1 = req.params.resource1Id;
         next();
       },
     });
+    const nested1Swaggerio = require('./snippets/nested1Swaggerio.json');
+    const swaggerio = nested1.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.nested1);
+    assert.equal(swaggerio.definitions.nested1.title, 'nested1');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, nested1Swaggerio);
   });
 
   it('Build the /test/resource2/:resource2Id/nested2 endpoints', () => {
@@ -289,7 +334,7 @@ describe('Build Resources for following tests', () => {
     const Nested2Model = mongoose.model('nested2', Nested2Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test/resource2/:resource2Id', 'nested2', Nested2Model).rest({
+    const nested2 = Resource(app, '/test/resource2/:resource2Id', 'nested2', Nested2Model).rest({
       // Register before/after global handlers.
       before(req, res, next) {
         req.body.resource2 = req.params.resource2Id;
@@ -305,6 +350,14 @@ describe('Build Resources for following tests', () => {
         next();
       },
     });
+    const nested2Swaggerio = require('./snippets/nested2Swaggerio.json');
+    const swaggerio = nested2.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.nested2);
+    assert.equal(swaggerio.definitions.nested2.title, 'nested2');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, nested2Swaggerio);
   });
 
   it('Build the /test/resource3 endpoints', () => {
@@ -334,7 +387,7 @@ describe('Build Resources for following tests', () => {
     const Resource3Model = mongoose.model('resource3', Resource3Schema);
 
     // Create the REST resource and continue.
-    Resource(app, '/test', 'resource3', Resource3Model).rest({
+    const resource3 = Resource(app, '/test', 'resource3', Resource3Model).rest({
       before(req, res, next) {
         // This setting should be passed down to the underlying `save()` command
         req.writeOptions = { writeSetting: true };
@@ -342,7 +395,246 @@ describe('Build Resources for following tests', () => {
         next();
       },
     });
+    const resource3Swaggerio = require('./snippets/resource3Swaggerio.json');
+    const swaggerio = resource3.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.resource3);
+    assert.equal(swaggerio.definitions.resource3.title, 'resource3');
+    assert.equal(Object.values(swaggerio.paths).length, 2);
+    assert.deepEqual(swaggerio, resource3Swaggerio);
   });
+
+  it('Build the /test/resource4 endpoints', () => {
+    // Create the schema.
+    const Resource4Schema = new mongoose.Schema({
+      title: String,
+      writeOption: String,
+     });
+
+    // Create the model.
+    const Resource4Model = mongoose.model('resource4', Resource4Schema);
+
+    const doc = new Resource4Model({ title: 'Foo' });
+    doc.save();
+
+    // Create the REST resource and continue.
+    const resource4 = Resource(app, '/test', 'resource4', Resource4Model)
+    .rest({
+      beforePatch(req, res, next) {
+        req.modelQuery = { findOne: function findOne(_,callback) {
+          callback(new Error('failed'), undefined);
+          },
+        };
+        next();
+      },
+    })
+    .virtual({
+      path: 'undefined_query',
+      before: function(req, res, next) {
+        req.modelQuery = undefined;
+        return next();
+      },
+    })
+    .virtual({
+      path: 'defined',
+      before: function(req, res, next) {
+        req.modelQuery = Resource4Model.aggregate([
+          { $group: { _id: null, titles: { $sum: '$title' } } },
+        ]);
+        return next();
+      },
+    })
+    .virtual({
+      path: 'error',
+      before: function(req, res, next) {
+        req.modelQuery = { exec: function exec(callback) {
+          callback(new Error('Failed'), undefined);
+          },
+        };
+        return next();
+      },
+    })
+    .virtual({
+      path: 'empty',
+      before: function(req, res, next) {
+        req.modelQuery = { exec: function exec(callback) {
+          callback(undefined, undefined);
+          },
+        };
+        return next();
+      },
+    });
+    const resource4Swaggerio = require('./snippets/resource4Swaggerio.json');
+    const swaggerio = resource4.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.resource4);
+    assert.equal(swaggerio.definitions.resource4.title, 'resource4');
+    assert.equal(Object.values(swaggerio.paths).length, 6);
+    assert.deepEqual(swaggerio, resource4Swaggerio);
+  });
+
+  it('Build the /test/skip endpoints', () => {
+    // Create the schema.
+    const SkipSchema = new mongoose.Schema({
+      title: String,
+     });
+
+    // Create the model.
+    const SkipModel = mongoose.model('skip', SkipSchema);
+
+    // Create the REST resource and continue.
+    const skipResource = Resource(app, '/test', 'skip', SkipModel)
+      .rest({
+        before(req, res, next) {
+          req.skipResource = true;
+          next();
+        },
+      })
+      .virtual({
+        path: 'resource',
+        before: function(req, res, next) {
+          req.skipResource = true;
+          return next();
+        },
+      });
+    const skipSwaggerio = require('./snippets/skipSwaggerio.json');
+    const swaggerio = skipResource.swagger();
+    assert.equal(Object.values(swaggerio).length,2);
+    assert.ok(swaggerio.definitions);
+    assert.ok(swaggerio.definitions.skip);
+    assert.equal(swaggerio.definitions.skip.title, 'skip');
+    assert.equal(Object.values(swaggerio.paths).length, 3);
+    assert.deepEqual(swaggerio, skipSwaggerio);
+  });
+});
+
+describe('Test skipResource', () => {
+  const resource = {};
+  it('/GET empty list', () => request(app)
+    .get('/test/skip')
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = 'Cannot GET /test/skip';
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/POST Create new resource', () => request(app)
+    .post('/test/skip')
+    .send({
+      title: 'Test1',
+      description: '12345678',
+    })
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = 'Cannot POST /test/skip';
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/GET The new resource', () => request(app)
+    .get(`/test/skip/${resource._id}`)
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = `Cannot GET /test/skip/${resource._id}`;
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/PUT Change data on the resource', () => request(app)
+    .put(`/test/skip/${resource._id}`)
+    .send({
+      title: 'Test2',
+    })
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = `Cannot PUT /test/skip/${resource._id}`;
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/PATCH Change data on the resource', () => request(app)
+    .patch(`/test/skip/${resource._id}`)
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = `Cannot PATCH /test/skip/${resource._id}`;
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/DELETE the resource', () => request(app)
+    .delete(`/test/skip/${resource._id}`)
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = `Cannot DELETE /test/skip/${resource._id}`;
+      assert(response.includes(expected), 'Response not found.');
+    }));
+
+  it('/VIRTUAL the resource', () => request(app)
+    .get('/test/skip/virtual/resource')
+    .expect('Content-Type', /text\/html/)
+    .expect(404)
+    .then((res) => {
+      const response = res.text;
+      const expected = 'Cannot GET /test/skip/virtual/resource';
+      assert(response.includes(expected), 'Response not found.');
+    }));
+});
+
+describe('Test Virtual resource and Patch errors', () => {
+  it('/VIRTUAL undefined resource query', () => request(app)
+    .get('/test/resource4/virtual/undefined_query')
+    .expect('Content-Type', /json/)
+    .expect(404)
+    .then((res) => {
+      assert.equal(res.body.errors[0], 'Resource not found');
+    }));
+
+  it('/VIRTUAL resource query', () => request(app)
+    .get('/test/resource4/virtual/defined')
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response[0]._id, null);
+      assert.equal(response[0].titles, 0);
+    }));
+
+  it('/VIRTUAL errorous resource query', () => request(app)
+    .get('/test/resource4/virtual/error')
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.message, 'Failed');
+    }));
+
+  it('/VIRTUAL empty resource response', () => request(app)
+    .get('/test/resource4/virtual/empty')
+    .expect('Content-Type', /json/)
+    .expect(404)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.errors[0], 'Resource not found');
+    }));
+
+  it('/PATCH with errorous modelquery', () => request(app)
+    .patch('/test/resource4/1234')
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.message, 'failed');
+    }));
 });
 
 describe('Test single resource CRUD capabilities', () => {
@@ -418,6 +710,105 @@ describe('Test single resource CRUD capabilities', () => {
     .then((res) => {
       assert.equal(res.body.title, 'Test3');
       resource = res.body;
+    }));
+
+  it('/PATCH Reject update due to incorrect patch operation', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'does-not-exist', 'path': '/title', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_OP_INVALID');
+    }));
+
+  it('/PATCH Should not care whether patch is array or not', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send({ 'op': 'test', 'path': '/title', 'value': 'Test3' })
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      assert.equal(res.body.title, 'Test3');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch object', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send(['invalid-patch'])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_NOT_AN_OBJECT');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch value', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'replace', 'path': '/title', 'value': undefined }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_VALUE_REQUIRED');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch add path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'add', 'path': '/path/does/not/exist', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_CANNOT_ADD');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'replace', 'path': '/path/does/not/exist', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_UNRESOLVABLE');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'replace', 'path': 1, 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_INVALID');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'add', 'path': '/path/does/not/exist', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_CANNOT_ADD');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch path', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'move', 'from': '/path/does/not/exist', 'path': '/path/does/not/exist', 'value': 'Test4' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_FROM_UNRESOLVABLE');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch array', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'add', 'path': '/list/invalidindex', 'value': '2' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_PATH_ILLEGAL_ARRAY_INDEX');
+    }));
+
+  it('/PATCH Reject update due to incorrect patch array', () => request(app)
+    .patch(`/test/resource1/${resource._id}`)
+    .send([{ 'op': 'add', 'path': '/list/9999', 'value': '2' }])
+    .expect('Content-Type', /json/)
+    .expect(400)
+    .then((res) => {
+      assert.equal(res.body.errors[0].name, 'OPERATION_VALUE_OUT_OF_BOUNDS');
     }));
 
   it('/GET The changed resource', () => request(app)
@@ -621,6 +1012,7 @@ describe('Test single resource CRUD capabilities', () => {
 let refDoc1Content = null;
 let refDoc1Response = null;
 const resourceNames = [];
+// eslint-disable-next-line max-statements
 function testSearch(testPath) {
   it('Should populate', () => request(app)
     .get(`${testPath}?name=noage&populate=list.data`)
@@ -1428,7 +1820,7 @@ describe('Handle native data formats', () => {
     .send({
       title: 'null',
       description: 'false',
-      married: true
+      married: true,
     })
     .expect('Content-Type', /json/)
     .expect(201)
@@ -1446,8 +1838,8 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
     }));
 
   it('Should find the record when filtering the description as "false"', () => request(app)
@@ -1457,9 +1849,9 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].description, 'false');
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].description, 'false');
     }));
 
   it('Should find the record when filtering the description as "true"', () => request(app)
@@ -1469,7 +1861,7 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 0);
+      assert.equal(response.length, 0);
     }));
 
   it('Should find the record when filtering the updated property as null with strict equality', () => request(app)
@@ -1479,21 +1871,44 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].updated, null);
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].updated, null);
     }));
 
-  it('Should find the boolean values based on equality', () => request(app)
+  it('Should still find the null values based on string if explicitely provided "null"', () => request(app)
+  .get('/test/resource2?title__eq="null"')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+    }));
+
+  it('Should find the boolean false values based on equality', () => request(app)
+    .get('/test/resource2?description__eq=false')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].married, true);
+    }));
+
+  it('Should find the boolean true values based on equality', () => request(app)
     .get('/test/resource2?married__eq=true')
     .send()
     .expect('Content-Type', /json/)
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].married, true);
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].married, true);
     }));
 
   it('Should still find the boolean values based on string if explicitely provided', () => request(app)
@@ -1503,9 +1918,21 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].married, true);
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].married, true);
+    }));
+
+  it('Should still find the boolean values based on string if explicitely provided', () => request(app)
+    .get('/test/resource2?married__eq=%22true%22')
+    .send()
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].married, true);
     }));
 
   it('Should CAST a boolean to find the boolean values based on equals', () => request(app)
@@ -1515,9 +1942,9 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 1);
-      assert.equal(res.body[0].title, 'null');
-      assert.equal(res.body[0].married, true);
+      assert.equal(response.length, 1);
+      assert.equal(response[0].title, 'null');
+      assert.equal(response[0].married, true);
     }));
 
   it('Should CAST a boolean to find the boolean values based on equals', () => request(app)
@@ -1527,7 +1954,7 @@ describe('Handle native data formats', () => {
     .expect(200)
     .then((res) => {
       const response = res.body;
-      assert.equal(res.body.length, 0);
+      assert.equal(response.length, 0);
     }));
 });
 
@@ -1920,6 +2347,11 @@ describe('Test mount variations', () => {
     .send([{ 'op': 'replace', 'path': '/title', 'value': 'Test3' }])
     .expect(404));
 
+  it('/VIRTUAL should be 404', () => request(app)
+    .get('/testindex/234234234/virtual')
+    .send()
+    .expect(404));
+
   it('/DELETE the resource', () => request(app)
     .delete('/testindex/234234234')
     .expect(404));
@@ -2180,4 +2612,8 @@ describe('Test before hooks', () => {
         assert.equal(calls[1], 'after');
       }));
   });
+});
+
+describe('Test Swagger.io', () => {
+
 });

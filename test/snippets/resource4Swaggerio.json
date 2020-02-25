@@ -1,0 +1,334 @@
+{
+    "definitions": {
+      "resource4": {
+        "title": "resource4",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "writeOption": {
+            "type": "string"
+          },
+          "_id": {
+            "type": "string",
+            "description": "ObjectId"
+          }
+        }
+      }
+    },
+    "paths": {
+      "/test/resource4": {
+        "get": {
+          "tags": [
+            "resource4"
+          ],
+          "summary": "List multiple resource4 resources.",
+          "description": "This operation allows you to list and search for resource4 resources provided query arguments.",
+          "operationId": "getresource4s",
+          "responses": {
+            "200": {
+              "description": "Resource(s) found.  Returned as array.",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/resource4"
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized."
+            }
+          },
+          "parameters": [
+            {
+              "name": "skip",
+              "in": "query",
+              "description": "How many records to skip when listing. Used for pagination.",
+              "required": false,
+              "type": "integer",
+              "default": 0
+            },
+            {
+              "name": "limit",
+              "in": "query",
+              "description": "How many records to limit the output.",
+              "required": false,
+              "type": "integer",
+              "default": 10
+            },
+            {
+              "name": "sort",
+              "in": "query",
+              "description": "Which fields to sort the records on.",
+              "type": "string",
+              "required": false,
+              "default": ""
+            },
+            {
+              "name": "select",
+              "in": "query",
+              "description": "Select which fields will be returned by the query.",
+              "type": "string",
+              "required": false,
+              "default": ""
+            },
+            {
+              "name": "populate",
+              "in": "query",
+              "description": "Select which fields will be fully populated with the reference.",
+              "type": "string",
+              "required": false,
+              "default": ""
+            }
+          ]
+        },
+        "post": {
+          "tags": [
+            "resource4"
+          ],
+          "summary": "Create a new resource4",
+          "description": "Create a new resource4",
+          "operationId": "createresource4",
+          "responses": {
+            "201": {
+              "description": "The resource has been created."
+            },
+            "400": {
+              "description": "An error has occured trying to create the resource."
+            },
+            "401": {
+              "description": "Unauthorized.  Note that anonymous submissions are *enabled* by default."
+            }
+          },
+          "parameters": [
+            {
+              "in": "body",
+              "name": "body",
+              "description": "Data used to create a new resource4",
+              "required": true,
+              "schema": {
+                "$ref": "#/definitions/resource4"
+              }
+            }
+          ]
+        }
+      },
+      "/test/resource4/{resource4Id}": {
+        "get": {
+          "tags": [
+            "resource4"
+          ],
+          "summary": "Return a specific resource4 instance.",
+          "description": "Return a specific resource4 instance.",
+          "operationId": "getresource4",
+          "responses": {
+            "200": {
+              "description": "Resource found",
+              "schema": {
+                "$ref": "#/definitions/resource4"
+              }
+            },
+            "401": {
+              "description": "Unauthorized."
+            },
+            "404": {
+              "description": "Resource not found"
+            },
+            "500": {
+              "description": "An error has occurred."
+            }
+          },
+          "parameters": [
+            {
+              "name": "resource4Id",
+              "in": "path",
+              "description": "The ID of the resource4 that will be retrieved.",
+              "required": true,
+              "type": "string"
+            }
+          ]
+        },
+        "put": {
+          "tags": [
+            "resource4"
+          ],
+          "summary": "Update a specific resource4 instance.",
+          "description": "Update a specific resource4 instance.",
+          "operationId": "updateresource4",
+          "responses": {
+            "200": {
+              "description": "Resource updated",
+              "schema": {
+                "$ref": "#/definitions/resource4"
+              }
+            },
+            "400": {
+              "description": "Resource could not be updated."
+            },
+            "401": {
+              "description": "Unauthorized."
+            },
+            "404": {
+              "description": "Resource not found"
+            },
+            "500": {
+              "description": "An error has occurred."
+            }
+          },
+          "parameters": [
+            {
+              "name": "resource4Id",
+              "in": "path",
+              "description": "The ID of the resource4 that will be updated.",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "in": "body",
+              "name": "body",
+              "description": "Data used to update resource4",
+              "required": true,
+              "schema": {
+                "$ref": "#/definitions/resource4"
+              }
+            }
+          ]
+        },
+        "delete": {
+          "tags": [
+            "resource4"
+          ],
+          "summary": "Delete a specific resource4",
+          "description": "Delete a specific resource4",
+          "operationId": "deleteresource4",
+          "responses": {
+            "204": {
+              "description": "Resource was deleted"
+            },
+            "400": {
+              "description": "Resource could not be deleted."
+            },
+            "401": {
+              "description": "Unauthorized."
+            },
+            "404": {
+              "description": "Resource not found"
+            },
+            "500": {
+              "description": "An error has occurred."
+            }
+          },
+          "parameters": [
+            {
+              "name": "resource4Id",
+              "in": "path",
+              "description": "The ID of the resource4 that will be deleted.",
+              "required": true,
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "/test/resource4/virtual/undefined_query": {
+        "get": {
+          "tags": [
+            "resource4",
+            "virtual"
+          ],
+          "summary": "Virtual resource for resource4 named undefined_query",
+          "description": "get resource4 undefined_query",
+          "operationId": "get resource4 undefined_query",
+          "responses": {
+            "200": {
+              "description": "Resource found"
+            },
+            "401": {
+              "description": "Unauthorized."
+            },
+            "404": {
+              "description": "Resource not found"
+            },
+            "500": {
+              "description": "An error has occurred."
+            }
+          }
+        }
+      },
+      "/test/resource4/virtual/defined": {
+        "get": {
+          "tags": [
+            "resource4",
+            "virtual"
+          ],
+          "summary": "Virtual resource for resource4 named defined",
+          "description": "get resource4 defined",
+          "operationId": "get resource4 defined",
+          "responses": {
+            "200": {
+              "description": "Resource found"
+            },
+            "401": {
+              "description": "Unauthorized."
+            },
+            "404": {
+              "description": "Resource not found"
+            },
+            "500": {
+              "description": "An error has occurred."
+            }
+          }
+        }
+      },
+      "/test/resource4/virtual/error": {
+        "get": {
+          "tags": [
+            "resource4",
+            "virtual"
+          ],
+          "summary": "Virtual resource for resource4 named error",
+          "description": "get resource4 error",
+          "operationId": "get resource4 error",
+          "responses": {
+            "200": {
+              "description": "Resource found"
+            },
+            "401": {
+              "description": "Unauthorized."
+            },
+            "404": {
+              "description": "Resource not found"
+            },
+            "500": {
+              "description": "An error has occurred."
+            }
+          }
+        }
+      },
+      "/test/resource4/virtual/empty": {
+        "get": {
+          "tags": [
+            "resource4",
+            "virtual"
+          ],
+          "summary": "Virtual resource for resource4 named empty",
+          "description": "get resource4 empty",
+          "operationId": "get resource4 empty",
+          "responses": {
+            "200": {
+              "description": "Resource found"
+            },
+            "401": {
+              "description": "Unauthorized."
+            },
+            "404": {
+              "description": "Resource not found"
+            },
+            "500": {
+              "description": "An error has occurred."
+            }
+          }
+        }
+      }
+    }
+  }
+  
