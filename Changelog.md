@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  - Problems where _.isEmpty() was replaced with array length checks which does not work to check if objects are empty.
  - The resourcejs middleware paths to be able to be processed outside of Express.
 
+### Changed
+ - Upgrade mocha@7.1.0 
+
 ## v2.0.0
 ### Changed
  - See https://github.com/travist/resourcejs/pull/109. Many changes.
