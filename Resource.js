@@ -478,7 +478,7 @@ class Resource {
   }
 
   isEmpty(obj) {
-    return Object.entries(obj).length === 0 && obj.constructor === Object
+    return !obj || (Object.entries(obj).length === 0 && obj.constructor === Object);
   }
 
   countQuery(query, pipeline) {
