@@ -48,6 +48,53 @@ class Resource {
   }
 
   /**
+   * Add a stack processor to be able to execute the middleware independently of ExpressJS.
+   * Taken from https://github.com/randymized/composable-middleware/blob/master/lib/composable-middleware.js#L27
+   *
+   * @param stack
+   * @return {function(...[*]=)}
+   */
+  stackProcessor(stack) {
+    return (req, res, done) => {
+      let layer = 0;
+      (function next(err) {
+        const fn = stack[layer++];
+        if (fn == null) {
+          done(err);
+        }
+        else {
+          if (err) {
+            switch (fn.length) {
+              case 4:
+                fn(err, req, res, next);
+                break;
+              case 2:
+                fn(err, next);
+                break;
+              default:
+                next(err);
+                break;
+            }
+          }
+          else {
+            switch (fn.length) {
+              case 3:
+                fn(req, res, next);
+                break;
+              case 1:
+                fn(next);
+                break;
+              default:
+                next();
+                break;
+            }
+          }
+        }
+      })();
+    };
+  }
+
+  /**
    * Register a new callback but add before and after options to the middleware.
    *
    * @param method
@@ -98,8 +145,8 @@ class Resource {
       this.app.resourcejs[path] = {};
     }
 
-    // Add these methods to resourcejs object in the app.
-    this.app.resourcejs[path][method] = routeStack;
+    // Add a stack processor so this stack can be executed independently of Express.
+    this.app.resourcejs[path][method] = this.stackProcessor(routeStack);
 
     // Apply these callbacks to the application.
     switch (method) {
@@ -146,13 +193,18 @@ class Resource {
           break;
         case 400:
         case 500:
+          const errors = {};
+          for (let property in res.resource.error.errors) {
+            if (res.resource.error.errors.hasOwnProperty(property)) {
+              const error = res.resource.error.errors[property];
+              const { path, name, message } = error;
+              res.resource.error.errors[property] = { path, name, message };
+            }
+          }
           res.status(res.resource.status).json({
             status: res.resource.status,
             message: res.resource.error.message,
-            errors: res.resource.error.errors ? [].concat(res.resource.error.errors).map((error) => {
-              const { path, name, message } = error;
-              return { path, name, message };
-            }) : [],
+            errors: res.resource.error.errors,
           });
           break;
         case 204:
@@ -211,12 +263,28 @@ class Resource {
     const methodOptions = { methodOptions: true };
 
     // Find all of the options that may have been passed to the rest method.
-    const beforeHandlers = options.before ?  [options.before] : [];
-    const beforeMethodHandlers = options[`before${method}`] ? [options[`before${method}`]] : [];
+    const beforeHandlers = options.before ?
+      (
+        Array.isArray(options.before) ? options.before : [options.before]
+      ) :
+      [];
+    const beforeMethodHandlers = options[`before${method}`] ?
+      (
+        Array.isArray(options[`before${method}`]) ? options[`before${method}`] : [options[`before${method}`]]
+      ) :
+      [];
     methodOptions.before = [...beforeHandlers, ...beforeMethodHandlers];
 
-    const afterHandlers = options.after ?  [options.after] : [];
-    const afterMethodHandlers = options[`after${method}`] ? [options[`after${method}`]] : [];
+    const afterHandlers = options.after ?
+      (
+        Array.isArray(options.after) ? options.after : [options.after]
+      ) :
+      [];
+    const afterMethodHandlers = options[`after${method}`] ?
+      (
+        Array.isArray(options[`after${method}`]) ? options[`after${method}`] : [options[`after${method}`]]
+      ) :
+      [];
     methodOptions.after = [...afterHandlers, ...afterMethodHandlers];
 
     // Expose mongoose hooks for each method.
@@ -272,7 +340,7 @@ class Resource {
       return req.query[name];
     }
     else {
-      // Generate string of spaced unique keys 
+      // Generate string of spaced unique keys
       return [...new Set(req.query[name].match(/[^, ]+/g))].join(' ')
     }
   }
