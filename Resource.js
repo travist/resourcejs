@@ -477,9 +477,13 @@ class Resource {
     return findQuery;
   }
 
+  isEmpty(obj) {
+    return Object.entries(obj).length === 0 && obj.constructor === Object
+  }
+
   countQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
-    if (query._mongooseOptions.length !== 0 || !pipeline) {
+    if (!this.isEmpty(query._mongooseOptions) || !pipeline) {
       return query;
     }
     const stages = [
@@ -506,7 +510,7 @@ class Resource {
 
   indexQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
-    if (query._mongooseOptions.length !== 0 || !pipeline) {
+    if (!this.isEmpty(query._mongooseOptions) || !pipeline) {
       return query.lean();
     }
 
@@ -515,7 +519,7 @@ class Resource {
       ...pipeline,
     ];
 
-    if (query.options && query.options.sort && query.options.sort.length !== 0) {
+    if (query.options && query.options.sort && !this.isEmpty(query.options.sort)) {
       stages.push({ $sort: query.options.sort });
     }
     if (query.options && query.options.skip) {
@@ -524,7 +528,7 @@ class Resource {
     if (query.options && query.options.limit) {
       stages.push({ $limit: query.options.limit });
     }
-    if (query._fields.length !== 0) {
+    if (!this.isEmpty(query._fields)) {
       stages.push({ $project: query._fields });
     }
     return query.model.aggregate(stages);
