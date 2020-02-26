@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.0.1
+### Fixed
+ - Problems where _.isEmpty() was replaced with array length checks which does not work to check if objects are empty.
+ - The resourcejs middleware paths to be able to be processed outside of Express.
+
 ## v2.0.0
 ### Changed
  - See https://github.com/travist/resourcejs/pull/109. Many changes.
