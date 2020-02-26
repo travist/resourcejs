@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.0.2
+### Changed
+ - Moved the isEmpty method to the utils.
+
 ## v2.0.1
 ### Fixed
  - Problems where _.isEmpty() was replaced with array length checks which does not work to check if objects are empty.

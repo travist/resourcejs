@@ -22,4 +22,8 @@ const set = (obj, path, value) => {
     return obj;
 };
 
-module.exports = { zipObject, isObjectLike, get, set };
+const isEmpty = (obj) => {
+  return !obj || (Object.entries(obj).length === 0 && obj.constructor === Object);
+};
+
+module.exports = { zipObject, isObjectLike, isEmpty, get, set };
