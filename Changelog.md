@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.0.3
+### Changed
+ - Upgrade dependencies.
+
 ## v2.0.2
 ### Changed
  - Moved the isEmpty method to the utils.
