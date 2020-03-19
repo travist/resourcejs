@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.0.4
+### Changed
+ - Upgraded mongodb@3.5.5, coveralls@3.0.10, mocha@7.1.1, mongoose@5.9.5
+
 ## v2.0.3
 ### Changed
  - Upgrade dependencies.
