@@ -683,7 +683,25 @@ class Resource {
               req,
               res,
               item,
-              Resource.setResponse.bind(Resource, res, { status: 200, item: item }, next)
+              () => {
+                // Allow them to only return specified fields.
+                const select = Resource.getParamQuery(req, 'select');
+                if (select) {
+                  const newItem = {};
+                  // Always include the _id.
+                  if (item._id) {
+                    newItem._id = item._id;
+                  }
+                  select.split(',').map(key => {
+                    key = key.trim();
+                    if (item.hasOwnProperty(key)) {
+                      newItem[key] = item[key];
+                    }
+                  });
+                  item = newItem;
+                }
+                Resource.setResponse(res, { status: 200, item: item }, next)
+              }
             );
           });
         }

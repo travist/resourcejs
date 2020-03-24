@@ -1758,6 +1758,16 @@ describe('Test single resource handlers capabilities', () => {
       resource = response;
     }));
 
+  it('Should allow you to use select to select certain fields.', () => request(app)
+    .get(`/test/resource2/${resource._id}?select=title`)
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.title, 'Test1');
+      assert.equal(response.description, undefined);
+    }));
+
   it('A PUT request should invoke the global handlers', () => request(app)
     .put(`/test/resource2/${resource._id}`)
     .send({
