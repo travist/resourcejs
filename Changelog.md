@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.1.0
+### Added
+ - The ability to select certain fields within a single resource using the ?select= query parameter.
+
+### Changed
+ - Upgrade mongoose@5.9.6, coveralls@3.0.11
+
 ## v2.0.4
 ### Changed
  - Upgraded mongodb@3.5.5, coveralls@3.0.10, mocha@7.1.1, mongoose@5.9.5
