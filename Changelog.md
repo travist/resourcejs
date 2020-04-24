@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.2.0
+### Changed
+ - Upgrade dependencies.
+
 ## v2.1.0
 ### Added
  - The ability to select certain fields within a single resource using the ?select= query parameter.
