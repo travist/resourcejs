@@ -694,7 +694,7 @@ class Resource {
                   if (item._id) {
                     newItem._id = item._id;
                   }
-                  select.split(',').map(key => {
+                  select.split(' ').map(key => {
                     key = key.trim();
                     if (item.hasOwnProperty(key)) {
                       newItem[key] = item[key];
