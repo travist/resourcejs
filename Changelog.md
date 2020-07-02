@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.3.0
+### Fixed
+ - Issue where a crash could occur with the getQueryParam method.
+
+### Changed
+ - Upgrade dependencies.
+
 ## v2.2.0
 ### Changed
  - Upgrade dependencies.
