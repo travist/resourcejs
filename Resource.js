@@ -339,12 +339,10 @@ class Resource {
     if (name === 'populate' && utils.isObjectLike(req.query[name])) {
       return req.query[name];
     }
-    else if (req.query[name] && (typeof req.query[name] === 'string')) {
-      // Generate string of spaced unique keys
-      return [...new Set(req.query[name].match(/[^, ]+/g))].join(' ')
-    }
     else {
-      return null;
+      const query = ( Array.isArray(req.query[name]) ? req.query[name].join(',') : req.query[name] );
+      // Generate string of spaced unique keys
+      return (query && typeof query === 'string') ? [...new Set(query.match(/[^, ]+/g))].join(' ') : null;
     }
   }
 
@@ -695,7 +693,7 @@ class Resource {
                   if (item._id) {
                     newItem._id = item._id;
                   }
-                  select.split(',').map(key => {
+                  select.split(' ').map(key => {
                     key = key.trim();
                     if (item.hasOwnProperty(key)) {
                       newItem[key] = item[key];

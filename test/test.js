@@ -1248,6 +1248,23 @@ function testSearch(testPath) {
       });
     }));
 
+  it('Should be able to select fields with multiple select queries', () => request(app)
+    .get(`${testPath}?limit=10&skip=10&select=title&select=age`)
+    .expect('Content-Type', /json/)
+    .expect('Content-Range', '10-19/26')
+    .expect(206)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 10);
+      let age = 10;
+      response.forEach((resource) => {
+        assert.equal(resource.title, `Test Age ${age}`);
+        assert.equal(resource.description, undefined);
+        assert.equal(resource.age, age);
+        age++;
+      });
+    }));
+
   it('Should be able to sort', () => request(app)
     .get(`${testPath}?select=age&sort=-age`)
     .expect('Content-Type', /json/)
