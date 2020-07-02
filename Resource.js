@@ -341,9 +341,8 @@ class Resource {
     }
     else {
       const query = ( Array.isArray(req.query[name]) ? req.query[name].join(',') : req.query[name] );
-
       // Generate string of spaced unique keys
-      return [...new Set(query.match(/[^, ]+/g))].join(' ');
+      return (query && typeof query === 'string') ? [...new Set(query.match(/[^, ]+/g))].join(' ') : null;
     }
   }
 
