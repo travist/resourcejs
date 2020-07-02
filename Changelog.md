@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
  - Issue where a crash could occur with the getQueryParam method.
 
+### Added
+ - Support for multiple select query params
+
 ### Changed
  - Upgrade dependencies.
 
