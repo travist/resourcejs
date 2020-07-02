@@ -339,9 +339,12 @@ class Resource {
     if (name === 'populate' && utils.isObjectLike(req.query[name])) {
       return req.query[name];
     }
-    else {
+    else if (req.query[name] && (typeof req.query[name] === 'string')) {
       // Generate string of spaced unique keys
       return [...new Set(req.query[name].match(/[^, ]+/g))].join(' ')
+    }
+    else {
+      return null;
     }
   }
 
