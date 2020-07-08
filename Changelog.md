@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.3.1
+### Changed
+ - Upgrade mongoose@5.9.22, eslint@7.4.0
+ - Revert "High performance optimization during aggregation"
+
 ## v2.3.0
 ### Fixed
  - Issue where a crash could occur with the getQueryParam method.
