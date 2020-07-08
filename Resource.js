@@ -557,7 +557,7 @@ class Resource {
       const query = req.modelQuery || req.model || this.model;
 
       // First get the total count.
-      this.countQuery(countQuery.find(findQuery), countQuery.pipeline).countDocuments((err, count) => {
+      this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
         if (err) {
           debug.index(err);
           return Resource.setResponse(res, { status: 400, error: err }, next);
@@ -588,13 +588,6 @@ class Resource {
         if (req.headers.range) {
           reqQuery.limit = pageRange.limit;
           reqQuery.skip = pageRange.skip;
-        }
-
-        // Add limit and skip to aggregation pipeline if present
-        if ( query.pipeline && query.pipeline.length > 0 ) {
-          query.pipeline.unshift({ $limit: reqQuery.limit });
-          query.pipeline.unshift({ $skip: reqQuery.skip });
-          reqQuery.skip = 0; // reset skip
         }
 
         // Next get the items within the index.
