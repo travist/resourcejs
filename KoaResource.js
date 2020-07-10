@@ -32,20 +32,6 @@ class Resource {
     this._swagger = null;
   }
 
-  /**
-   * Maintain reverse compatibility.
-   *
-   * @param app
-   * @param method
-   * @param path
-   * @param callback
-   * @param last
-   * @param options
-   */
-  register(app, method, path, callback, last, options) {
-    this.app = app;
-    return this._register(method, path, callback, last, options);
-  }
 
   /**
    * Add a stack processor to be able to execute the middleware independently of ExpressJS.
