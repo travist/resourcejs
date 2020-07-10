@@ -1,5 +1,8 @@
 'use strict';
 
+const compose = require('koa-compose');
+const Router = require('@koa/router');
+
 const paginate = require('node-paginate-anything');
 const jsonpatch = require('fast-json-patch');
 const mongodb = require('mongodb');
@@ -20,6 +23,7 @@ const utils = require('./utils');
 class Resource {
   constructor(app, route, modelName, model, options) {
     this.app = app;
+    this.router = new Router();
     this.options = options || {};
     if (this.options.convertIds === true) {
       this.options.convertIds = /(^|\.)_id$/;
@@ -32,7 +36,6 @@ class Resource {
     this._swagger = null;
   }
 
-
   /**
    * Add a stack processor to be able to execute the middleware independently of ExpressJS.
    * Taken from https://github.com/randymized/composable-middleware/blob/master/lib/composable-middleware.js#L27
@@ -41,7 +44,7 @@ class Resource {
    * @return {function(...[*]=)}
    */
   stackProcessor(stack) {
-    return (req, res, done) => {
+    return (ctx, done) => {
       let layer = 0;
       (function next(err) {
         const fn = stack[layer++];
@@ -52,26 +55,24 @@ class Resource {
           if (err) {
             switch (fn.length) {
               case 4:
-                fn(err, req, res, next);
+                fn(err, ctx, next);
                 break;
               case 2:
                 fn(err, next);
                 break;
               default:
-                next(err);
-                break;
+                throw err;
             }
           }
           else {
             switch (fn.length) {
               case 3:
-                fn(req, res, next);
+                fn(ctx, next);
                 break;
               case 1:
                 fn(next);
                 break;
               default:
-                next();
                 break;
             }
           }
@@ -83,8 +84,8 @@ class Resource {
   /**
    * Register a new callback but add before and after options to the middleware.
    *
-   * @param method
-   * @param path
+   * @param method, string, GET, POST, PUT, PATCH, DEL
+   * @param path, string, url path to the resource
    * @param callback
    * @param last
    * @param options
@@ -108,48 +109,43 @@ class Resource {
     routeStack = [...routeStack, last.bind(this)];
 
     // Add a fallback error handler.
-    const error = (err, req, res, next) => {
-      if (err) {
-        res.status(400).json({
-          status: 400,
-          message: err.message || err,
-        });
+  /* const error = async (ctx, next) => {
+      try {
+          await next()
+      } catch (err) {
+          ctx.status = 400
+          ctx.body = err.message || err
+          ctx.app.emit('error', err, ctx);
       }
-      else {
-        return next();
-      }
-    };
-
-    routeStack = [...routeStack, error.bind(this)]
-
+  } */
     // Declare the resourcejs object on the app.
-    if (!this.app.resourcejs) {
-      this.app.resourcejs = {};
+    if (!this.app.context.resourcejs) {
+      this.app.context.resourcejs = {};
     }
 
-    if (!this.app.resourcejs[path]) {
-      this.app.resourcejs[path] = {};
+    if (!this.app.context.resourcejs[path]) {
+      this.app.context.resourcejs[path] = {};
     }
 
     // Add a stack processor so this stack can be executed independently of Express.
-    this.app.resourcejs[path][method] = this.stackProcessor(routeStack);
+    this.app.context.resourcejs[path][method] = this.stackProcessor(routeStack);
 
     // Apply these callbacks to the application.
     switch (method) {
       case 'get':
-        this.app.get(path, routeStack);
+        this.router.get(path, routeStack);
         break;
       case 'post':
-        this.app.post(path, routeStack);
+        this.router.post(path, routeStack);
         break;
       case 'put':
-        this.app.put(path, routeStack);
+        this.router.put(path, routeStack);
         break;
       case 'patch':
-        this.app.patch(path, routeStack);
+        this.router.patch(path, routeStack);
         break;
       case 'delete':
-        this.app.delete(path, routeStack);
+        this.router.delete(path, routeStack);
         break;
     }
   }
@@ -163,56 +159,59 @@ class Resource {
    * @param next
    *   The next middleware
    */
-  static respond(req, res, next) {
-    if (req.noResponse || res.headerSent || res.headersSent) {
+  static respond(ctx, next) {
+    if (ctx.headerSent) {
       debug.respond('Skipping');
       return next();
     }
 
-    if (res.resource) {
-      switch (res.resource.status) {
+    if (ctx.resource) {
+      switch (ctx.resource.status) {
         case 404:
-          res.status(404).json({
+          ctx.status = 404;
+          ctx.body = {
             status: 404,
             errors: ['Resource not found'],
-          });
+          };
           break;
         case 400:
         case 500:
-          const errors = {};
-          for (let property in res.resource.error.errors) {
-            if (res.resource.error.errors.hasOwnProperty(property)) {
-              const error = res.resource.error.errors[property];
+          for (const property in ctx.resource.error.errors) {
+            // eslint-disable-next-line max-depth
+            if (Object.prototype.hasOwnProperty.call(ctx.resource.error.errors, property)) {
+              const error = ctx.resource.error.errors[property];
               const { path, name, message } = error;
-              res.resource.error.errors[property] = { path, name, message };
+              ctx.resource.error.errors[property] = { path, name, message };
             }
           }
-          res.status(res.resource.status).json({
-            status: res.resource.status,
-            message: res.resource.error.message,
-            errors: res.resource.error.errors,
-          });
+          ctx.status = ctx.resource.status;
+          ctx.body = {
+            status: ctx.resource.status,
+            message: ctx.resource.error.message,
+            errors: ctx.resource.error.errors,
+          };
           break;
         case 204:
           // Convert 204 into 200, to preserve the empty result set.
           // Update the empty response body based on request method type.
-          debug.respond(`204 -> ${req.__rMethod}`);
-          switch (req.__rMethod) {
+          debug.respond(`204 -> ${ctx.__rMethod}`);
+          switch (ctx.__rMethod) {
             case 'index':
-              res.status(200).json([]);
+              ctx.status = 200;
+              ctx.body = [];
               break;
             default:
-              res.status(200).json({});
+              ctx.status = 200;
+              ctx.body = {};
               break;
           }
           break;
         default:
-          res.status(res.resource.status).json(res.resource.item);
+          ctx.status = ctx.resource.status;
+          ctx.body = ctx.resource.item;
           break;
       }
     }
-
-    next();
   }
 
   /**
@@ -280,7 +279,7 @@ class Resource {
       utils.set(
         methodOptions,
         path,
-        utils.get(options, path, (req, res, item, next) => next())
+        utils.get(options, path, (ctx, item, next) => next())
       );
     });
 
@@ -312,8 +311,8 @@ class Resource {
    * @param name
    * @returns {*}
    */
-  static getParamQuery(req, name) {
-    if (!Object.prototype.hasOwnProperty.call(req.query, name)) {
+  static getParamQuery(ctx, name) {
+    if (!Object.prototype.hasOwnProperty.call(ctx.query, name)) {
       switch (name) {
         case 'populate':
           return '';
@@ -322,11 +321,11 @@ class Resource {
       }
     }
 
-    if (name === 'populate' && utils.isObjectLike(req.query[name])) {
-      return req.query[name];
+    if (name === 'populate' && utils.isObjectLike(ctx.query[name])) {
+      return ctx.query[name];
     }
     else {
-      const query = ( Array.isArray(req.query[name]) ? req.query[name].join(',') : req.query[name] );
+      const query = ( Array.isArray(ctx.query[name]) ? ctx.query[name].join(',') : ctx.query[name] );
       // Generate string of spaced unique keys
       return (query && typeof query === 'string') ? [...new Set(query.match(/[^, ]+/g))].join(' ') : null;
     }
@@ -390,12 +389,12 @@ class Resource {
    * @param req
    * @returns {Object}
    */
-  getFindQuery(req, options) {
+  getFindQuery(ctx, options) {
     const findQuery = {};
     options = options || this.options;
 
     // Get the filters and omit the limit, skip, select, sort and populate.
-    const {limit, skip, select, sort, populate, ...filters} = req.query;
+    const { limit, skip, select, sort, populate, ...filters } = ctx.query;
 
     // Iterate through each filter.
     Object.entries(filters).forEach(([name, value]) => {
@@ -525,53 +524,53 @@ class Resource {
   index(options) {
     options = Resource.getMethodOptions('index', options);
     this.methods.push('index');
-    this._register('get', this.route, (req, res, next) => {
+    this._register('get', this.route, (ctx, next) => {
       // Store the internal method for response manipulation.
-      req.__rMethod = 'index';
+      ctx.__rMethod = 'index';
 
       // Allow before handlers the ability to disable resource CRUD.
-      if (req.skipResource) {
+      if (ctx.skipResource) {
         debug.index('Skipping Resource');
         return next();
       }
 
       // Get the find query.
-      const findQuery = this.getFindQuery(req);
+      const findQuery = this.getFindQuery(ctx);
 
       // Get the query object.
-      const countQuery = req.countQuery || req.modelQuery || req.model || this.model;
-      const query = req.modelQuery || req.model || this.model;
+      const countQuery = ctx.countQuery || ctx.modelQuery || ctx.model || this.model;
+      const query = ctx.modelQuery || ctx.model || this.model;
 
       // First get the total count.
       this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
         if (err) {
           debug.index(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
+          return Resource.setResponse(ctx, { status: 400, error: err }, next);
         }
 
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
-        let { limit, skip } = req.query
-        limit = parseInt(limit, 10)
-        limit = (isNaN(limit) || (limit < 0)) ? defaults.limit : limit
-        skip = parseInt(skip, 10)
-        skip = (isNaN(skip) || (skip < 0)) ? defaults.skip : skip
+        let { limit, skip } = ctx.query;
+        limit = parseInt(limit, 10);
+        limit = (isNaN(limit) || (limit < 0)) ? defaults.limit : limit;
+        skip = parseInt(skip, 10);
+        skip = (isNaN(skip) || (skip < 0)) ? defaults.skip : skip;
         const reqQuery = { limit, skip };
 
         // If a skip is provided, then set the range headers.
-        if (reqQuery.skip && !req.headers.range) {
-          req.headers['range-unit'] = 'items';
-          req.headers.range = `${reqQuery.skip}-${reqQuery.skip + (reqQuery.limit - 1)}`;
+        if (reqQuery.skip && !ctx.headers.range) {
+          ctx.headers['range-unit'] = 'items';
+          ctx.headers.range = `${reqQuery.skip}-${reqQuery.skip + (reqQuery.limit - 1)}`;
         }
 
         // Get the page range.
-        const pageRange = paginate(req, res, count, reqQuery.limit) || {
+        const pageRange = paginate(ctx, count, reqQuery.limit) || {
           limit: reqQuery.limit,
           skip: reqQuery.skip,
         };
 
         // Make sure that if there is a range provided in the headers, it takes precedence.
-        if (req.headers.range) {
+        if (ctx.headers.range) {
           reqQuery.limit = pageRange.limit;
           reqQuery.skip = pageRange.skip;
         }
@@ -581,11 +580,11 @@ class Resource {
           .find(findQuery)
           .limit(reqQuery.limit)
           .skip(reqQuery.skip)
-          .select(Resource.getParamQuery(req, 'select'))
-          .sort(Resource.getParamQuery(req, 'sort'));
+          .select(Resource.getParamQuery(ctx, 'select'))
+          .sort(Resource.getParamQuery(ctx, 'sort'));
 
         // Only call populate if they provide a populate query.
-        const populate = Resource.getParamQuery(req, 'populate');
+        const populate = Resource.getParamQuery(ctx, 'populate');
         if (populate) {
           debug.index(`Populate: ${populate}`);
           queryExec.populate(populate);
@@ -593,8 +592,7 @@ class Resource {
 
         options.hooks.index.before.call(
           this,
-          req,
-          res,
+          ctx,
           findQuery,
           () => this.indexQuery(queryExec, query.pipeline).exec((err, items) => {
             if (err) {
@@ -606,16 +604,15 @@ class Resource {
                 debug.index(err.message);
               }
 
-              return Resource.setResponse(res, { status: 400, error: err }, next);
+              return Resource.setResponse(ctx, { status: 400, error: err }, next);
             }
 
             debug.index(items);
             options.hooks.index.after.call(
               this,
-              req,
-              res,
+              ctx,
               items,
-              Resource.setResponse.bind(Resource, res, { status: res.statusCode, item: items }, next)
+              Resource.setResponse.bind(Resource, ctx, { status: ctx.statusCode, item: items }, next)
             );
           })
         );
@@ -630,19 +627,19 @@ class Resource {
   get(options) {
     options = Resource.getMethodOptions('get', options);
     this.methods.push('get');
-    this._register('get', `${this.route}/:${this.name}Id`, (req, res, next) => {
+    this._register('get', `${this.route}/:${this.name}Id`, (ctx, next) => {
       // Store the internal method for response manipulation.
-      req.__rMethod = 'get';
-      if (req.skipResource) {
+      ctx.__rMethod = 'get';
+      if (ctx.skipResource) {
         debug.get('Skipping Resource');
         return next();
       }
 
-      const query = (req.modelQuery || req.model || this.model).findOne();
-      const search = { '_id': req.params[`${this.name}Id`] };
+      const query = (ctx.modelQuery || ctx.model || this.model).findOne();
+      const search = { '_id': ctx.params[`${this.name}Id`] };
 
       // Only call populate if they provide a populate query.
-      const populate = Resource.getParamQuery(req, 'populate');
+      const populate = Resource.getParamQuery(ctx, 'populate');
       if (populate) {
         debug.get(`Populate: ${populate}`);
         query.populate(populate);
@@ -650,22 +647,20 @@ class Resource {
 
       options.hooks.get.before.call(
         this,
-        req,
-        res,
+        ctx,
         search,
         () => {
           query.where(search).lean().exec((err, item) => {
-            if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
-            if (!item) return Resource.setResponse(res, { status: 404 }, next);
+            if (err) return Resource.setResponse(ctx, { status: 400, error: err }, next);
+            if (!item) return Resource.setResponse(ctx, { status: 404 }, next);
 
             return options.hooks.get.after.call(
               this,
-              req,
-              res,
+              ctx,
               item,
               () => {
                 // Allow them to only return specified fields.
-                const select = Resource.getParamQuery(req, 'select');
+                const select = Resource.getParamQuery(ctx, 'select');
                 if (select) {
                   const newItem = {};
                   // Always include the _id.
@@ -674,13 +669,13 @@ class Resource {
                   }
                   select.split(' ').map(key => {
                     key = key.trim();
-                    if (item.hasOwnProperty(key)) {
+                    if (Object.prototype.hasOwnProperty.call(item,key)) {
                       newItem[key] = item[key];
                     }
                   });
                   item = newItem;
                 }
-                Resource.setResponse(res, { status: 200, item: item }, next)
+                Resource.setResponse(ctx, { status: 200, item: item }, next);
               }
             );
           });
@@ -700,20 +695,20 @@ class Resource {
     const path = options.path;
     options = Resource.getMethodOptions('virtual', options);
     this.methods.push(`virtual/${path}`);
-    this._register('get', `${this.route}/virtual/${path}`, (req, res, next) => {
+    this._register('get', `${this.route}/virtual/${path}`, (ctx, next) => {
       // Store the internal method for response manipulation.
-      req.__rMethod = 'virtual';
+      ctx.__rMethod = 'virtual';
 
-      if (req.skipResource) {
+      if (ctx.skipResource) {
         debug.virtual('Skipping Resource');
         return next();
       }
-      const query = req.modelQuery || req.model;
-      if (!query) return Resource.setResponse(res, { status: 404 }, next);
+      const query = ctx.modelQuery || ctx.model;
+      if (!query) return Resource.setResponse(ctx, { status: 404 }, next);
       query.exec((err, item) => {
-        if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
-        if (!item) return Resource.setResponse(res, { status: 404 }, next);
-        return Resource.setResponse(res, { status: 200, item }, next);
+        if (err) return Resource.setResponse(ctx, { status: 400, error: err }, next);
+        if (!item) return Resource.setResponse(ctx, { status: 404 }, next);
+        return Resource.setResponse(ctx, { status: 200, item }, next);
       });
     }, Resource.respond, options);
     return this;
@@ -725,38 +720,36 @@ class Resource {
   post(options) {
     options = Resource.getMethodOptions('post', options);
     this.methods.push('post');
-    this._register('post', this.route, (req, res, next) => {
+    this._register('post', this.route, (ctx, next) => {
       // Store the internal method for response manipulation.
-      req.__rMethod = 'post';
+      ctx.__rMethod = 'post';
 
-      if (req.skipResource) {
+      if (ctx.skipResource) {
         debug.post('Skipping Resource');
         return next();
       }
 
-      const Model = req.model || this.model;
-      const model = new Model(req.body);
+      const Model = ctx.model || this.model;
+      const model = new Model(ctx.request.body);
       options.hooks.post.before.call(
         this,
-        req,
-        res,
-        req.body,
+        ctx,
+        ctx.request.body,
         () => {
-          const writeOptions = req.writeOptions || {};
+          const writeOptions = ctx.writeOptions || {};
           model.save(writeOptions, (err, item) => {
             if (err) {
               debug.post(err);
-              return Resource.setResponse(res, { status: 400, error: err }, next);
+              return Resource.setResponse(ctx, { status: 400, error: err }, next);
             }
 
             debug.post(item);
             // Trigger any after hooks before responding.
             return options.hooks.post.after.call(
               this,
-              req,
-              res,
+              ctx,
               item,
-              Resource.setResponse.bind(Resource, res, { status: 201, item }, next)
+              Resource.setResponse.bind(Resource, ctx, { status: 201, item }, next)
             );
           });
         }
@@ -771,49 +764,47 @@ class Resource {
   put(options) {
     options = Resource.getMethodOptions('put', options);
     this.methods.push('put');
-    this._register('put', `${this.route}/:${this.name}Id`, (req, res, next) => {
+    this._register('put', `${this.route}/:${this.name}Id`, (ctx, next) => {
       // Store the internal method for response manipulation.
-      req.__rMethod = 'put';
+      ctx.__rMethod = 'put';
 
-      if (req.skipResource) {
+      if (ctx.skipResource) {
         debug.put('Skipping Resource');
         return next();
       }
 
       // Remove __v field
-      const { __v, ...update} = req.body;
-      const query = req.modelQuery || req.model || this.model;
+      const { __v, ...update } = ctx.request.body;
+      const query = ctx.modelQuery || ctx.model || this.model;
 
-      query.findOne({ _id: req.params[`${this.name}Id`] }, (err, item) => {
+      query.findOne({ _id: ctx.params[`${this.name}Id`] }, (err, item) => {
         if (err) {
           debug.put(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
+          return Resource.setResponse(ctx, { status: 400, error: err }, next);
         }
         if (!item) {
-          debug.put(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
-          return Resource.setResponse(res, { status: 404 }, next);
+          debug.put(`No ${this.name} found with ${this.name}Id: ${ctx.params[`${this.name}Id`]}`);
+          return Resource.setResponse(ctx, { status: 404 }, next);
         }
 
         item.set(update);
         options.hooks.put.before.call(
           this,
-          req,
-          res,
+          ctx,
           item,
           () => {
-          const writeOptions = req.writeOptions || {};
+          const writeOptions = ctx.writeOptions || {};
           item.save(writeOptions, (err, item) => {
             if (err) {
               debug.put(err);
-              return Resource.setResponse(res, { status: 400, error: err }, next);
+              return Resource.setResponse(ctx, { status: 400, error: err }, next);
             }
 
             return options.hooks.put.after.call(
               this,
-              req,
-              res,
+              ctx,
               item,
-              Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
+              Resource.setResponse.bind(Resource, ctx, { status: 200, item }, next)
             );
           });
         });
@@ -828,22 +819,22 @@ class Resource {
   patch(options) {
     options = Resource.getMethodOptions('patch', options);
     this.methods.push('patch');
-    this._register('patch', `${this.route}/:${this.name}Id`, (req, res, next) => {
+    this._register('patch', `${this.route}/:${this.name}Id`, (ctx, next) => {
       // Store the internal method for response manipulation.
-      req.__rMethod = 'patch';
+      ctx.__rMethod = 'patch';
 
-      if (req.skipResource) {
+      if (ctx.skipResource) {
         debug.patch('Skipping Resource');
         return next();
       }
-      const query = req.modelQuery || req.model || this.model;
-      const writeOptions = req.writeOptions || {};
-      query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
-        if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
-        if (!item) return Resource.setResponse(res, { status: 404, error: err }, next);
+      const query = ctx.modelQuery || ctx.model || this.model;
+      const writeOptions = ctx.writeOptions || {};
+      query.findOne({ '_id': ctx.params[`${this.name}Id`] }, (err, item) => {
+        if (err) return Resource.setResponse(ctx, { status: 400, error: err }, next);
+        if (!item) return Resource.setResponse(ctx, { status: 404, error: err }, next);
 
         // Ensure patches is an array
-        const patches = [].concat(req.body);
+        const patches = [].concat(ctx.request.body);
         let patchFail = null;
         try {
           patches.forEach((patch) => {
@@ -851,7 +842,7 @@ class Resource {
               patchFail = patch;
               const success = jsonpatch.applyOperation(item, patch, true);
               if (!success || !success.test) {
-                return Resource.setResponse(res, {
+                return Resource.setResponse(ctx, {
                   status: 412,
                   name: 'Precondition Failed',
                   message: 'A json-patch test op has failed. No changes have been applied to the document',
@@ -867,7 +858,7 @@ class Resource {
           switch (err.name) {
             // Check whether JSON PATCH error
             case 'TEST_OPERATION_FAILED':
-              return Resource.setResponse(res, {
+              return Resource.setResponse(ctx, {
                 status: 412,
                 name: 'Precondition Failed',
                 message: 'A json-patch test op has failed. No changes have been applied to the document',
@@ -890,19 +881,19 @@ class Resource {
                 name: err.name,
                 message: err.toString(),
               }];
-              return Resource.setResponse(res, {
+              return Resource.setResponse(ctx, {
                 status: 400,
                 item,
                 error: err,
               }, next);
             // Something else than JSON PATCH
             default:
-              return Resource.setResponse(res, { status: 400, item, error: err }, next);
+              return Resource.setResponse(ctx, { status: 400, item, error: err }, next);
           }
         }
         item.save(writeOptions, (err, item) => {
-          if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
-          return Resource.setResponse(res, { status: 200, item }, next);
+          if (err) return Resource.setResponse(ctx, { status: 400, error: err }, next);
+          return Resource.setResponse(ctx, { status: 200, item }, next);
         });
       });
     }, Resource.respond, options);
@@ -915,49 +906,47 @@ class Resource {
   delete(options) {
     options = Resource.getMethodOptions('delete', options);
     this.methods.push('delete');
-    this._register('delete', `${this.route}/:${this.name}Id`, (req, res, next) => {
+    this._register('delete', `${this.route}/:${this.name}Id`, (ctx, next) => {
       // Store the internal method for response manipulation.
-      req.__rMethod = 'delete';
+      ctx.__rMethod = 'delete';
 
-      if (req.skipResource) {
+      if (ctx.skipResource) {
         debug.delete('Skipping Resource');
         return next();
       }
 
-      const query = req.modelQuery || req.model || this.model;
-      query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
+      const query = ctx.modelQuery || ctx.model || this.model;
+      query.findOne({ '_id': ctx.params[`${this.name}Id`] }, (err, item) => {
         if (err) {
           debug.delete(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
+          return Resource.setResponse(ctx, { status: 400, error: err }, next);
         }
         if (!item) {
-          debug.delete(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
-          return Resource.setResponse(res, { status: 404, error: err }, next);
+          debug.delete(`No ${this.name} found with ${this.name}Id: ${ctx.params[`${this.name}Id`]}`);
+          return Resource.setResponse(ctx, { status: 404, error: err }, next);
         }
-        if (req.skipDelete) {
-          return Resource.setResponse(res, { status: 204, item, deleted: true }, next);
+        if (ctx.skipDelete) {
+          return Resource.setResponse(ctx, { status: 204, item, deleted: true }, next);
         }
 
         options.hooks.delete.before.call(
           this,
-          req,
-          res,
+          ctx,
           item,
           () => {
-            const writeOptions = req.writeOptions || {};
+            const writeOptions = ctx.writeOptions || {};
             item.remove(writeOptions, (err) => {
               if (err) {
                 debug.delete(err);
-                return Resource.setResponse(res, { status: 400, error: err }, next);
+                return Resource.setResponse(ctx, { status: 400, error: err }, next);
               }
 
               debug.delete(item);
               options.hooks.delete.after.call(
                 this,
-                req,
-                res,
+                ctx,
                 item,
-                Resource.setResponse.bind(Resource, res, { status: 204, item, deleted: true }, next)
+                Resource.setResponse.bind(Resource, ctx, { status: 204, item, deleted: true }, next)
               );
             });
           }
