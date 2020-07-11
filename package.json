@@ -25,8 +25,12 @@
   },
   "homepage": "https://github.com/travist/resourcejs",
   "dependencies": {
+    "@koa/router": "^9.3.1",
     "debug": "^4.1.1",
     "fast-json-patch": "^3.0.0-1",
+    "koa": "^2.13.0",
+    "koa-bodyparser": "^4.3.0",
+    "koa-compose": "^4.1.0",
     "moment": "^2.28.0",
     "mongodb": "^3.6.2",
     "node-paginate-anything": "^1.0.0",
