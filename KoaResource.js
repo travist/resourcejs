@@ -129,6 +129,7 @@ class Resource {
 
     // Add a stack processor so this stack can be executed independently of Express.
     this.app.context.resourcejs[path][method] = this.stackProcessor(routeStack);
+    routeStack = compose(routeStack);
 
     // Apply these callbacks to the application.
     switch (method) {
@@ -148,6 +149,7 @@ class Resource {
         this.router.delete(path, routeStack);
         break;
     }
+    this.app.use(this.router.routes(), this.router.allowedMethods());
   }
 
   /**
