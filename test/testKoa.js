@@ -1,14 +1,14 @@
 /* eslint-disable no-prototype-builtins */
 'use strict';
 
-const express = require('express');
-const bodyParser = require('body-parser');
+const Koa = require('koa');
+const bodyParser = require('koa-bodyparser');
 const request = require('supertest');
 const assert = require('assert');
 const moment = require('moment');
 const mongoose = require('mongoose');
 const Resource = require('../Resource');
-const app = express();
+const app = new Koa();
 const _ = require('lodash');
 const MongoClient = require('mongodb').MongoClient;
 const ObjectId = require('mongodb').ObjectID;
@@ -23,8 +23,7 @@ const testDates = [
 ];
 
 // Use the body parser.
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(bodyParser());
 
 // An object to store handler events.
 let handlers = {};
