@@ -152,6 +152,17 @@ class Resource {
     this.app.use(this.router.routes(), this.router.allowedMethods());
   }
 
+  _generateMiddleware(options, position) {
+    let routeStack = [];
+
+    if (options && options[position]) {
+      const before = options[position].map((m) => m.bind(this));
+      routeStack = [...routeStack, ...before];
+    }
+    console.log(routeStack)
+    return compose(routeStack);
+  }
+
   /**
    * Sets the different responses and calls the next middleware for
    * execution.
@@ -226,7 +237,7 @@ class Resource {
    */
   static setResponse(res, resource, next) {
     res.resource = resource;
-    next();
+    // next();
   }
 
   /**
@@ -248,7 +259,7 @@ class Resource {
     // Uppercase the method.
     method = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
     const methodOptions = { methodOptions: true };
-
+    console.log(options.before?.toString())
     // Find all of the options that may have been passed to the rest method.
     const beforeHandlers = options.before ?
       (
@@ -629,61 +640,110 @@ class Resource {
   get(options) {
     options = Resource.getMethodOptions('get', options);
     this.methods.push('get');
-    this._register('get', `${this.route}/:${this.name}Id`, (ctx, next) => {
-      // Store the internal method for response manipulation.
-      ctx.__rMethod = 'get';
-      if (ctx.skipResource) {
-        debug.get('Skipping Resource');
-        return next();
-      }
-
-      const query = (ctx.modelQuery || ctx.model || this.model).findOne();
-      const search = { '_id': ctx.params[`${this.name}Id`] };
-
-      // Only call populate if they provide a populate query.
-      const populate = Resource.getParamQuery(ctx, 'populate');
-      if (populate) {
-        debug.get(`Populate: ${populate}`);
-        query.populate(populate);
-      }
-
-      options.hooks.get.before.call(
-        this,
-        ctx,
-        search,
-        () => {
-          query.where(search).lean().exec((err, item) => {
-            if (err) return Resource.setResponse(ctx, { status: 400, error: err }, next);
-            if (!item) return Resource.setResponse(ctx, { status: 404 }, next);
-
-            return options.hooks.get.after.call(
-              this,
-              ctx,
-              item,
-              () => {
-                // Allow them to only return specified fields.
-                const select = Resource.getParamQuery(ctx, 'select');
-                if (select) {
-                  const newItem = {};
-                  // Always include the _id.
-                  if (item._id) {
-                    newItem._id = item._id;
-                  }
-                  select.split(' ').map(key => {
-                    key = key.trim();
-                    if (Object.prototype.hasOwnProperty.call(item,key)) {
-                      newItem[key] = item[key];
-                    }
-                  });
-                  item = newItem;
-                }
-                Resource.setResponse(ctx, { status: 200, item: item }, next);
-              }
-            );
-          });
+    const middlewares = compose([
+      async(ctx, next) => {
+        console.log('test1')
+        return await next();
+        // Store the internal method for response manipulation.
+        ctx.__rMethod = 'get';
+        if (ctx.skipResource) {
+          debug.get('Skipping Resource');
+          return await next();
         }
-      );
-    }, Resource.respond, options);
+        ctx.modelQuery = (ctx.modelQuery || ctx.model || this.model).findOne();
+        ctx.search = { '_id': ctx.params[`${this.name}Id`] };
+
+        // Only call populate if they provide a populate query.
+        const populate = Resource.getParamQuery(ctx, 'populate');
+        if (populate) {
+          debug.get(`Populate: ${populate}`);
+          ctx.modelQuery.populate(populate);
+        }
+        return await next();
+      },
+      this._generateMiddleware.call(this, 'get', `${this.route}/:${this.name}Id`, options, 'before'),
+      async(ctx, next) => {
+        console.log('test2')
+        return await next();
+        ctx.item = await ctx.modelQuery.where(ctx.search).lean().exec();
+        if (!ctx.item) {
+          Resource.setResponse(ctx, { status: 404 }, next);
+        }
+        return await next();
+      },
+      this._generateMiddleware.call(this, 'get', `${this.route}/:${this.name}Id`, options, 'after'),
+      async(ctx, next) => {
+        console.log('test3')
+        return await next();
+        // Allow them to only return specified fields.
+        const select = Resource.getParamQuery(ctx, 'select');
+        if (select) {
+          const newItem = {};
+          // Always include the _id.
+          if (ctx.item._id) {
+            newItem._id = ctx.item._id;
+          }
+          select.split(' ').map(key => {
+            key = key.trim();
+            if (Object.prototype.hasOwnProperty.call(ctx.item,key)) {
+              newItem[key] = ctx.item[key];
+            }
+          });
+          ctx.item = newItem;
+        }
+        Resource.setResponse(ctx, { status: 200, item: ctx.item }, next);
+        return await next();
+      },
+      Resource.respond,
+    ]);
+    console.log(middlewares.toString())
+    this.router.get(`${this.route}/:${this.name}Id`, middlewares);
+    this.app.use(this.router.routes(), this.router.allowedMethods());
+/*     this._register('get', `${this.route}/:${this.name}Id`, async(ctx, next) => {
+      try {
+        // Store the internal method for response manipulation.
+        ctx.__rMethod = 'get';
+        if (ctx.skipResource) {
+          debug.get('Skipping Resource');
+          return next();
+        }
+
+        const query = (ctx.modelQuery || ctx.model || this.model).findOne();
+        ctx.search = { '_id': ctx.params[`${this.name}Id`] };
+
+        // Only call populate if they provide a populate query.
+        const populate = Resource.getParamQuery(ctx, 'populate');
+        if (populate) {
+          debug.get(`Populate: ${populate}`);
+          query.populate(populate);
+        }
+        await next(); // options.hooks.get.before.call(this, ctx, search),
+
+        let item = await query.where(ctx.search).lean().exec();
+        if (!item) return Resource.setResponse(ctx, { status: 404 }, next);
+
+        await next(); // options.hooks.get.after.call(this, ctx, item);
+        // Allow them to only return specified fields.
+        const select = Resource.getParamQuery(ctx, 'select');
+        if (select) {
+          const newItem = {};
+          // Always include the _id.
+          if (item._id) {
+            newItem._id = item._id;
+          }
+          select.split(' ').map(key => {
+            key = key.trim();
+            if (Object.prototype.hasOwnProperty.call(item,key)) {
+              newItem[key] = item[key];
+            }
+          });
+          item = newItem;
+        }
+        Resource.setResponse(ctx, { status: 200, item: item }, next);
+      } catch (error) {
+        return Resource.setResponse(ctx, { status: 400, error }, next);
+      }
+    }, Resource.respond, options); */
     return this;
   }
 

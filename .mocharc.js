@@ -14,5 +14,5 @@ module.exports = {
   slow: 75,
   timeout: 2000,
   ui: 'bdd',
-  'watch-files': ['test/**/*.js']
+  'watch-files': ['test/**/testKoa.js']
 };

@@ -4,7 +4,8 @@
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
-    "test": "mocha --exit",
+    "test": "nyc mocha --exit",
+    "test:koa": "nyc mocha ./test/testKoa.js --exit",
     "coverage": "nyc --reporter=lcov --report-dir=./coverage npm run test",
     "lint": "eslint Resource.js"
   },
