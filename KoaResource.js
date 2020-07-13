@@ -86,38 +86,37 @@ class Resource {
    *
    * @param method, string, GET, POST, PUT, PATCH, DEL
    * @param path, string, url path to the resource
-   * @param callback
-   * @param last
-   * @param options
+   * @param middlewares, object, contains beforeQuery, afterQuery and select middlewares
+   * @param options, object, contains before, after and hook handlers
    */
-  _register(method, path, callback, last, options) {
-    let routeStack = [];
-    // The before middleware.
-    if (options && options.before) {
-      const before = options.before.map((m) => m.bind(this));
-      routeStack = [...routeStack, ...before];
-    }
+  _register(method, path, middlewares, options) {
+    const { beforeQueryMW, afterQueryMW, selectMW } = middlewares;
 
-    routeStack = [...routeStack, callback.bind(this)];
-
-    // The after middleware.
-    if (options && options.after) {
-      const after = options.after.map((m) => m.bind(this));
-      routeStack = [...routeStack, ...after];
-    }
-
-    routeStack = [...routeStack, last.bind(this)];
-
-    // Add a fallback error handler.
-  /* const error = async (ctx, next) => {
+    // The fallback error handler.
+    const errorMW = async(ctx, next) => {
       try {
-          await next()
-      } catch (err) {
-          ctx.status = 400
-          ctx.body = err.message || err
-          ctx.app.emit('error', err, ctx);
+        return await next();
+    }
+      catch (err) {
+        console.log('errorrr', err)
+        err.status = err.statusCode || err.status || 500;
+        return await Resource.respond(ctx);
       }
-  } */
+    };
+
+    // The before middleware.
+    const beforeMW = this._generateMiddleware.call(this, options, 'before');
+
+    const routeStack = compose([
+      errorMW,
+      beforeMW,
+      beforeQueryMW,
+      options.hooks.get.before.bind(this),
+      afterQueryMW,
+      options.hooks.get.after.bind(this),
+      selectMW,
+    ]);
+
     // Declare the resourcejs object on the app.
     if (!this.app.context.resourcejs) {
       this.app.context.resourcejs = {};
@@ -128,8 +127,7 @@ class Resource {
     }
 
     // Add a stack processor so this stack can be executed independently of Express.
-    this.app.context.resourcejs[path][method] = this.stackProcessor(routeStack);
-    routeStack = compose(routeStack);
+    // this.app.context.resourcejs[path][method] = this.stackProcessor(routeStack);
 
     // Apply these callbacks to the application.
     switch (method) {
@@ -159,8 +157,11 @@ class Resource {
       const before = options[position].map((m) => m.bind(this));
       routeStack = [...routeStack, ...before];
     }
-    console.log(routeStack)
-    return compose(routeStack);
+    routeStack = routeStack.length ? compose(routeStack) : async(ctx, next) => {
+      console.log(`generated ${position} MW`)
+      return await next();
+    };
+    return routeStack;
   }
 
   /**
@@ -172,14 +173,15 @@ class Resource {
    * @param next
    *   The next middleware
    */
-  static respond(ctx, next) {
+  static async respond(ctx) {
+    console.log('test4 respond')
     if (ctx.headerSent) {
       debug.respond('Skipping');
-      return next();
+      return;
     }
 
-    if (ctx.resource) {
-      switch (ctx.resource.status) {
+    if (ctx.state.resource) {
+      switch (ctx.state.resource.status) {
         case 404:
           ctx.status = 404;
           ctx.body = {
@@ -189,26 +191,26 @@ class Resource {
           break;
         case 400:
         case 500:
-          for (const property in ctx.resource.error.errors) {
+          for (const property in ctx.state.resource.error.errors) {
             // eslint-disable-next-line max-depth
-            if (Object.prototype.hasOwnProperty.call(ctx.resource.error.errors, property)) {
-              const error = ctx.resource.error.errors[property];
+            if (Object.prototype.hasOwnProperty.call(ctx.state.resource.error.errors, property)) {
+              const error = ctx.state.resource.error.errors[property];
               const { path, name, message } = error;
-              ctx.resource.error.errors[property] = { path, name, message };
+              ctx.state.resource.error.errors[property] = { path, name, message };
             }
           }
-          ctx.status = ctx.resource.status;
+          ctx.status = ctx.state.resource.status;
           ctx.body = {
-            status: ctx.resource.status,
-            message: ctx.resource.error.message,
-            errors: ctx.resource.error.errors,
+            status: ctx.state.resource.status,
+            message: ctx.state.resource.error.message,
+            errors: ctx.state.resource.error.errors,
           };
           break;
         case 204:
           // Convert 204 into 200, to preserve the empty result set.
           // Update the empty response body based on request method type.
-          debug.respond(`204 -> ${ctx.__rMethod}`);
-          switch (ctx.__rMethod) {
+          debug.respond(`204 -> ${ctx.state.__rMethod}`);
+          switch (ctx.state.__rMethod) {
             case 'index':
               ctx.status = 200;
               ctx.body = [];
@@ -220,11 +222,12 @@ class Resource {
           }
           break;
         default:
-          ctx.status = ctx.resource.status;
-          ctx.body = ctx.resource.item;
+          ctx.status = ctx.state.resource.status;
+          ctx.body = ctx.state.resource.item;
           break;
       }
     }
+    console.log(ctx.state.resource, ctx.status, ctx.body)
   }
 
   /**
@@ -236,7 +239,7 @@ class Resource {
    * @param next
    */
   static setResponse(res, resource, next) {
-    res.resource = resource;
+    res.state.resource = resource;
     // next();
   }
 
@@ -292,7 +295,10 @@ class Resource {
       utils.set(
         methodOptions,
         path,
-        utils.get(options, path, (ctx, item, next) => next())
+        utils.get(options, path, async(ctx, next) => {
+          console.log(`${type} hook`)
+          return await next();
+        })
       );
     });
 
@@ -640,110 +646,67 @@ class Resource {
   get(options) {
     options = Resource.getMethodOptions('get', options);
     this.methods.push('get');
-    const middlewares = compose([
-      async(ctx, next) => {
+    const afterMW = compose([this._generateMiddleware.call(this, options, 'after'), Resource.respond]);
+    const beforeQueryMW = async(ctx, next) => { // Callback
         console.log('test1')
-        return await next();
         // Store the internal method for response manipulation.
-        ctx.__rMethod = 'get';
-        if (ctx.skipResource) {
+      ctx.state.__rMethod = 'get';
+      if (ctx.state.skipResource) {
+        console.log('test1 skip', ctx.state.skipResource)
           debug.get('Skipping Resource');
-          return await next();
+        return await afterMW(ctx);
         }
-        ctx.modelQuery = (ctx.modelQuery || ctx.model || this.model).findOne();
-        ctx.search = { '_id': ctx.params[`${this.name}Id`] };
-
+      console.log('test1 model')
+      ctx.state.modelQuery = (ctx.state.modelQuery || ctx.state.model || this.model).findOne();
+      ctx.state.search = { '_id': ctx.params[`${this.name}Id`] };
+      console.log('test1 populate', ctx.state.search, ctx.params)
         // Only call populate if they provide a populate query.
         const populate = Resource.getParamQuery(ctx, 'populate');
         if (populate) {
           debug.get(`Populate: ${populate}`);
           ctx.modelQuery.populate(populate);
         }
+      console.log('test1 next')
         return await next();
-      },
-      this._generateMiddleware.call(this, 'get', `${this.route}/:${this.name}Id`, options, 'before'),
-      async(ctx, next) => {
+    };
+    const afterQueryMW = async(ctx, next) => { // Callback
         console.log('test2')
-        return await next();
-        ctx.item = await ctx.modelQuery.where(ctx.search).lean().exec();
-        if (!ctx.item) {
+      ctx.state.item = await ctx.state.modelQuery.where(ctx.state.search).lean().exec();
+      if (!ctx.state.item) {
+        console.log('test2 no item')
           Resource.setResponse(ctx, { status: 404 }, next);
         }
         return await next();
-      },
-      this._generateMiddleware.call(this, 'get', `${this.route}/:${this.name}Id`, options, 'after'),
-      async(ctx, next) => {
+    };
+    const selectMW = async(ctx, next) => {
         console.log('test3')
-        return await next();
         // Allow them to only return specified fields.
         const select = Resource.getParamQuery(ctx, 'select');
         if (select) {
+        console.log('test3 select')
           const newItem = {};
           // Always include the _id.
-          if (ctx.item._id) {
+        if (ctx.state.item._id) {
             newItem._id = ctx.item._id;
           }
           select.split(' ').map(key => {
             key = key.trim();
-            if (Object.prototype.hasOwnProperty.call(ctx.item,key)) {
+          if (Object.prototype.hasOwnProperty.call(ctx.state.item, key)) {
               newItem[key] = ctx.item[key];
             }
           });
-          ctx.item = newItem;
+        ctx.state.item = newItem;
         }
-        Resource.setResponse(ctx, { status: 200, item: ctx.item }, next);
+      console.log('test3 response')
+      Resource.setResponse(ctx, { status: 200, item: ctx.state.item }, next);
         return await next();
-      },
-      Resource.respond,
-    ]);
-    console.log(middlewares.toString())
-    this.router.get(`${this.route}/:${this.name}Id`, middlewares);
-    this.app.use(this.router.routes(), this.router.allowedMethods());
-/*     this._register('get', `${this.route}/:${this.name}Id`, async(ctx, next) => {
-      try {
-        // Store the internal method for response manipulation.
-        ctx.__rMethod = 'get';
-        if (ctx.skipResource) {
-          debug.get('Skipping Resource');
-          return next();
-        }
-
-        const query = (ctx.modelQuery || ctx.model || this.model).findOne();
-        ctx.search = { '_id': ctx.params[`${this.name}Id`] };
-
-        // Only call populate if they provide a populate query.
-        const populate = Resource.getParamQuery(ctx, 'populate');
-        if (populate) {
-          debug.get(`Populate: ${populate}`);
-          query.populate(populate);
-        }
-        await next(); // options.hooks.get.before.call(this, ctx, search),
-
-        let item = await query.where(ctx.search).lean().exec();
-        if (!item) return Resource.setResponse(ctx, { status: 404 }, next);
-
-        await next(); // options.hooks.get.after.call(this, ctx, item);
-        // Allow them to only return specified fields.
-        const select = Resource.getParamQuery(ctx, 'select');
-        if (select) {
-          const newItem = {};
-          // Always include the _id.
-          if (item._id) {
-            newItem._id = item._id;
-          }
-          select.split(' ').map(key => {
-            key = key.trim();
-            if (Object.prototype.hasOwnProperty.call(item,key)) {
-              newItem[key] = item[key];
-            }
-          });
-          item = newItem;
-        }
-        Resource.setResponse(ctx, { status: 200, item: item }, next);
-      } catch (error) {
-        return Resource.setResponse(ctx, { status: 400, error }, next);
-      }
-    }, Resource.respond, options); */
+    };
+    const middlewares = {
+      beforeQueryMW,
+      afterQueryMW,
+      selectMW,
+    };
+    this._register('get',`${this.route}/:${this.name}Id`, middlewares, options);
     return this;
   }
 

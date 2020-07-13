@@ -89,13 +89,19 @@ function wasInvoked(entity, sequence, method) {
 }
 
 describe('Connect to MongoDB', () => {
-    it('Connect to MongoDB', () => mongoose.connect('mongodb://localhost:27017/test', {
+    it('Connect to MongoDB', async() => {
+        const connection = await mongoose.connect('mongodb://localhost:27017/test', {
         useCreateIndex: true,
         useUnifiedTopology: true,
         useNewUrlParser: true,
-    }));
+        });
+        assert.ok(connection);
+    });
 
-    it('Drop test database', () => mongoose.connection.db.dropDatabase());
+    it('Drop test database', async() => {
+        const result = await mongoose.connection.db.dropDatabase();
+        assert.ok(result);
+    });
 
     it('Should connect MongoDB without mongoose', () => MongoClient.connect('mongodb://localhost:27017', {
         useCreateIndex: true,
@@ -490,7 +496,7 @@ describe('Build Resources for following tests', () => {
         // Create the REST resource and continue.
         const skipResource = Resource(app, '/test', 'skip', SkipModel)
             .rest({
-                before: async (ctx, next) => {
+                before: async(ctx, next) => {
                     console.log(ctx, 'test1.1')
                     ctx.skipResource = true;
                     return await next();
@@ -498,9 +504,9 @@ describe('Build Resources for following tests', () => {
             })
             .virtual({
                 path: 'resource',
-                before: (ctx, next) => {
+                before: async(ctx, next) => {
                     ctx.skipResource = true;
-                    // return next();
+                    return await next();
                 },
             });
         const skipSwaggerio = require('./snippets/skipSwaggerio.json');
@@ -2408,12 +2414,12 @@ describe('Test before hooks', () => {
         Resource(app, '', 'hook', hookModel).rest({
             hooks: {
                 post: {
-                    before(ctx, item, next) {
+                    before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
                         next();
                     },
-                    after(ctx, item, next) {
+                    after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
@@ -2421,12 +2427,12 @@ describe('Test before hooks', () => {
                     },
                 },
                 get: {
-                    before(ctx, item, next) {
+                    before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
                         next();
                     },
-                    after(ctx, item, next) {
+                    after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
@@ -2434,12 +2440,12 @@ describe('Test before hooks', () => {
                     },
                 },
                 put: {
-                    before(ctx, item, next) {
+                    before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
                         next();
                     },
-                    after(ctx, item, next) {
+                    after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
@@ -2447,12 +2453,12 @@ describe('Test before hooks', () => {
                     },
                 },
                 delete: {
-                    before(ctx, item, next) {
+                    before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
                         next();
                     },
-                    after(ctx, item, next) {
+                    after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
@@ -2460,12 +2466,12 @@ describe('Test before hooks', () => {
                     },
                 },
                 index: {
-                    before(ctx, item, next) {
+                    before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
                         next();
                     },
-                    after(ctx, item, next) {
+                    after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
