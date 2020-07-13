@@ -170,9 +170,9 @@ describe('Build Resources for following tests', () => {
         const resource1 = Resource(app, '/test', 'resource1', Resource1Model).rest({
             afterDelete(ctx, next) {
                 // Check that the delete item is still being returned via resourcejs.
-                assert.notEqual(ctx.resource.item, {});
-                assert.notEqual(ctx.resource.item, []);
-                assert.equal(ctx.resource.status, 204);
+                assert.notEqual(ctx.state.resource.item, {});
+                assert.notEqual(ctx.state.resource.item, []);
+                assert.equal(ctx.state.resource.status, 204);
                 assert.equal(ctx.statusCode, 200);
                 // next();
             },
@@ -344,7 +344,7 @@ describe('Build Resources for following tests', () => {
             // Register before/after global handlers.
             before(ctx, next) {
                 ctx.request.body.resource2 = ctx.params.resource2Id;
-                ctx.modelQuery = this.model.where('resource2', ctx.params.resource2Id);
+                ctx.state.modelQuery = this.model.where('resource2', ctx.params.resource2Id);
 
                 // Store the invoked handler and continue.
                 setInvoked('nested2', 'before', ctx);
@@ -396,7 +396,7 @@ describe('Build Resources for following tests', () => {
         const resource3 = Resource(app, '/test', 'resource3', Resource3Model).rest({
             before(ctx, next) {
                 // This setting should be passed down to the underlying `save()` command
-                ctx.writeOptions = { writeSetting: true };
+                ctx.state.writeOptions = { writeSetting: true };
 
                 next();
             },
@@ -428,9 +428,9 @@ describe('Build Resources for following tests', () => {
         const resource4 = Resource(app, '/test', 'resource4', Resource4Model)
             .rest({
                 beforePatch(ctx, next) {
-                    ctx.modelQuery = {
-                        findOne: function findOne(_, callback) {
-                            callback(new Error('failed'), undefined);
+                    ctx.state.modelQuery = {
+                        findOne: async function findOne() {
+                            throw new Error('failed');
                         },
                     };
                     next();
@@ -439,14 +439,14 @@ describe('Build Resources for following tests', () => {
             .virtual({
                 path: 'undefined_query',
                 before: function(ctx, next) {
-                    ctx.modelQuery = undefined;
+                    ctx.state.modelQuery = undefined;
                     return next();
                 },
             })
             .virtual({
                 path: 'defined',
                 before: function(ctx, next) {
-                    ctx.modelQuery = Resource4Model.aggregate([
+                    ctx.state.modelQuery = Resource4Model.aggregate([
                         { $group: { _id: null, titles: { $sum: '$title' } } },
                     ]);
                     return next();
@@ -455,9 +455,9 @@ describe('Build Resources for following tests', () => {
             .virtual({
                 path: 'error',
                 before: function(ctx, next) {
-                    ctx.modelQuery = {
-                        exec: function exec(callback) {
-                            callback(new Error('Failed'), undefined);
+                    ctx.state.modelQuery = {
+                        exec: async function exec() {
+                            throw new Error('Failed');
                         },
                     };
                     return next();
@@ -466,9 +466,9 @@ describe('Build Resources for following tests', () => {
             .virtual({
                 path: 'empty',
                 before: function(ctx, next) {
-                    ctx.modelQuery = {
-                        exec: function exec(callback) {
-                            callback(undefined, undefined);
+                    ctx.state.modelQuery = {
+                        exec: async function exec() {
+                            return;
                         },
                     };
                     return next();
@@ -497,15 +497,15 @@ describe('Build Resources for following tests', () => {
         const skipResource = Resource(app, '/test', 'skip', SkipModel)
             .rest({
                 before: async(ctx, next) => {
-                    console.log(ctx, 'test1.1')
-                    ctx.skipResource = true;
+                    console.log(ctx, 'test1.1');
+                    ctx.state.skipResource = true;
                     return await next();
                 },
             })
             .virtual({
                 path: 'resource',
                 before: async(ctx, next) => {
-                    ctx.skipResource = true;
+                    ctx.state.skipResource = true;
                     return await next();
                 },
             });
@@ -1598,8 +1598,8 @@ describe('Test single resource search capabilities', () => {
     it('Create an aggregation path', () => {
         Resource(app, '', 'aggregation', mongoose.model('resource1')).rest({
             beforeIndex(ctx, next) {
-                ctx.modelQuery = mongoose.model('resource1');
-                ctx.modelQuery.pipeline = [];
+                ctx.state.modelQuery = mongoose.model('resource1');
+                ctx.state.modelQuery.pipeline = [];
                 next();
             },
         });

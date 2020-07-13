@@ -3,7 +3,6 @@
 const compose = require('koa-compose');
 const Router = require('@koa/router');
 
-const paginate = require('node-paginate-anything');
 const jsonpatch = require('fast-json-patch');
 const mongodb = require('mongodb');
 const moment = require('moment');
@@ -90,7 +89,7 @@ class Resource {
    * @param options, object, contains before, after and hook handlers
    */
   _register(method, path, middlewares, options) {
-    const { beforeQueryMW, QueryMW, afterQueryMW, lastMW } = middlewares;
+    const { beforeQueryMW, queryMW, afterQueryMW, lastMW } = middlewares;
 
     // The fallback error handler.
     const errorMW = async(ctx, next) => {
@@ -98,9 +97,10 @@ class Resource {
         return await next();
     }
       catch (err) {
-        console.log('errorrr', err)
-        err.status = err.statusCode || err.status || 500;
-        return await Resource.respond(ctx);
+        ctx.status = 400;
+        ctx.body = {
+          message: err.message || err,
+        };
       }
     };
 
@@ -112,7 +112,7 @@ class Resource {
       beforeMW,
       beforeQueryMW,
       options.hooks[method].before.bind(this),
-      QueryMW,
+      queryMW,
       options.hooks[method].after.bind(this),
       afterQueryMW,
       lastMW,
@@ -231,19 +231,6 @@ class Resource {
       }
     }
     console.log(ctx.state.resource, ctx.status, ctx.body)
-  }
-
-  /**
-   * Sets the response that needs to be made and calls the next middleware for
-   * execution.
-   *
-   * @param res
-   * @param resource
-   * @param next
-   */
-  static setResponse(res, resource, next) {
-    res.state.resource = resource;
-    // next();
   }
 
   /**
@@ -546,8 +533,9 @@ class Resource {
     options = Resource.getMethodOptions('index', options);
     this.methods.push('index');
     const lastMW = compose([this._generateMiddleware.call(this, options, 'after'), Resource.respond]);
+    // eslint-disable-next-line max-statements
     const beforeQueryMW = async(ctx, next) => { // Callback
-      console.log('index: beforeQueryMW')
+      console.log('index: beforeQueryMW');
       // Store the internal method for response manipulation.
       ctx.state.__rMethod = 'index';
 
@@ -565,7 +553,15 @@ class Resource {
       ctx.state.query = ctx.state.modelQuery || ctx.state.model || this.model;
 
       // First get the total count.
-      const count = await this.countQuery(countQuery.find(ctx.state.findQuery),ctx.state.query.pipeline).countDocuments();
+      let count;
+      try {
+        count = await this.countQuery(countQuery.find(ctx.state.findQuery), ctx.state.query.pipeline).countDocuments();
+      }
+      catch (err) {
+        debug.index(err);
+        ctx.resource = { status: 400, error: err };
+        return await lastMW(ctx);
+      }
 
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
@@ -583,7 +579,7 @@ class Resource {
         }
 
         // Get the page range.
-        const pageRange = paginate(ctx, count, reqQuery.limit) || {
+      const pageRange = utils.paginate(ctx, count, reqQuery.limit) || {
           limit: reqQuery.limit,
           skip: reqQuery.skip,
         };
@@ -612,9 +608,9 @@ class Resource {
       return await next();
     };
     const queryMW = async(ctx, next) => { // Callback
-      console.log('index:afterQueryMW')
+      console.log('index:afterQueryMW');
       try {
-        const items = await this.indexQuery(ctx.state.queryExec, ctx.state.query.pipeline)
+        const items = await this.indexQuery(ctx.state.queryExec, ctx.state.query.pipeline);
         debug.index(items);
         ctx.state.item = items;
       }
@@ -627,14 +623,14 @@ class Resource {
                 debug.index(err.message);
               }
 
-        Resource.setResponse(ctx, { status: 400, error: err });
-        throw err;
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
             }
       return await next();
     };
     const setMW = async(ctx, next) => {
-      console.log('index:setMW')
-      Resource.setResponse.bind(Resource, ctx, { status: ctx.statusCode, item: ctx.state.items });
+      console.log('index:setMW');
+      ctx.state.resource =  { status: ctx.statusCode, item: ctx.state.items };
       return await next();
     };
     const middlewares = {
@@ -655,8 +651,9 @@ class Resource {
     options = Resource.getMethodOptions('get', options);
     this.methods.push('get');
     const lastMW = compose([this._generateMiddleware.call(this, options, 'after'), Resource.respond]);
+
     const beforeQueryMW = async(ctx, next) => { // Callback
-      console.log('get:beforeQueryMW')
+      console.log('get:beforeQueryMW');
         // Store the internal method for response manipulation.
       ctx.state.__rMethod = 'get';
       if (ctx.state.skipResource) {
@@ -675,15 +672,23 @@ class Resource {
         return await next();
     };
     const queryMW = async(ctx, next) => { // Callback
-      console.log('get:queryMW')
+      console.log('get:queryMW');
+      try {
       ctx.state.item = await ctx.state.modelQuery.where(ctx.state.search).lean().exec();
+      }
+      catch (err) {
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
+      }
       if (!ctx.state.item) {
-          Resource.setResponse(ctx, { status: 404 }, next);
+        ctx.state.resource = { status: 404 };
+        return await lastMW(ctx);
         }
         return await next();
     };
+
     const selectMW = async(ctx, next) => {
-      console.log('get:selectMW')
+      console.log('get:selectMW');
         // Allow them to only return specified fields.
         const select = Resource.getParamQuery(ctx, 'select');
         if (select) {
@@ -700,7 +705,7 @@ class Resource {
           });
         ctx.state.item = newItem;
         }
-      Resource.setResponse(ctx, { status: 200, item: ctx.state.item }, next);
+      ctx.state.resource = { status: 200, item: ctx.state.item };
         return await next();
     };
     const middlewares = {
@@ -723,22 +728,39 @@ class Resource {
     const path = options.path;
     options = Resource.getMethodOptions('virtual', options);
     this.methods.push(`virtual/${path}`);
-    this._register('get', `${this.route}/virtual/${path}`, (ctx, next) => {
+    const lastMW = compose([this._generateMiddleware.call(this, options, 'after'), Resource.respond]);
+    const beforeQueryMW = async(ctx, next) => await next();
+    const queryMW = async(ctx, next) => {
+      console.log('virtual:queryMW');
       // Store the internal method for response manipulation.
-      ctx.__rMethod = 'virtual';
+      ctx.state.__rMethod = 'virtual';
 
-      if (ctx.skipResource) {
+      if (ctx.state.skipResource) {
         debug.virtual('Skipping Resource');
-        return next();
+        return await lastMW(ctx);
       }
-      const query = ctx.modelQuery || ctx.model;
-      if (!query) return Resource.setResponse(ctx, { status: 404 }, next);
-      query.exec((err, item) => {
-        if (err) return Resource.setResponse(ctx, { status: 400, error: err }, next);
-        if (!item) return Resource.setResponse(ctx, { status: 404 }, next);
-        return Resource.setResponse(ctx, { status: 200, item }, next);
-      });
-    }, Resource.respond, options);
+      const query = ctx.state.modelQuery || ctx.state.model;
+      if (!query) {
+        ctx.state.resource = {  status: 404 };
+        return await next();
+      }
+      try {
+        const item = await query.exec();
+        if (!item) ctx.state.resource = { status: 404 };
+        else ctx.state.resource = {  status: 200, item };
+      }
+      catch (err) {
+        ctx.state.resource = {  status: 400, error: err };
+      }
+      return await next();
+    };
+    const middlewares = {
+      beforeQueryMW,
+      queryMW,
+      afterQueryMW: beforeQueryMW,
+      lastMW,
+    };
+    this._register('virtual', `${this.route}/virtual/${path}`, middlewares, options);
     return this;
   }
 
@@ -748,41 +770,49 @@ class Resource {
   post(options) {
     options = Resource.getMethodOptions('post', options);
     this.methods.push('post');
-    this._register('post', this.route, (ctx, next) => {
-      // Store the internal method for response manipulation.
-      ctx.__rMethod = 'post';
+    const lastMW = compose([this._generateMiddleware.call(this, options, 'after'), Resource.respond]);
 
-      if (ctx.skipResource) {
+    const beforeQueryMW = async(ctx, next) => {
+      // Store the internal method for response manipulation.
+      ctx.state.__rMethod = 'post';
+
+      if (ctx.state.skipResource) {
         debug.post('Skipping Resource');
-        return next();
+        return await lastMW(ctx);
       }
 
-      const Model = ctx.model || this.model;
-      const model = new Model(ctx.request.body);
-      options.hooks.post.before.call(
-        this,
-        ctx,
-        ctx.request.body,
-        () => {
-          const writeOptions = ctx.writeOptions || {};
-          model.save(writeOptions, (err, item) => {
-            if (err) {
-              debug.post(err);
-              return Resource.setResponse(ctx, { status: 400, error: err }, next);
-            }
+      const Model = ctx.state.model || this.model;
+      ctx.state.model = new Model(ctx.request.body);
+      console.log('postmodel', ctx.state.model);
+      return await next();
+    };
 
-            debug.post(item);
-            // Trigger any after hooks before responding.
-            return options.hooks.post.after.call(
-              this,
-              ctx,
-              item,
-              Resource.setResponse.bind(Resource, ctx, { status: 201, item }, next)
-            );
-          });
-        }
-      );
-    }, Resource.respond, options);
+    const queryMW = async(ctx, next) => {
+      const writeOptions = ctx.state.writeOptions || {};
+      try {
+        ctx.state.item = await ctx.state.model.save(writeOptions);
+        debug.post(ctx.state.item);
+      }
+      catch (err) {
+              debug.post(err);
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
+            }
+      return await next();
+    };
+
+    const afterQueryMW = async(ctx, next) => {
+      ctx.state.resource = {  status: 201, item: ctx.state.item };
+      return await next();
+    };
+
+    const middlewares = {
+      beforeQueryMW,
+      queryMW,
+      afterQueryMW,
+      lastMW,
+    };
+    this._register('post', this.route, middlewares, options);
     return this;
   }
 
@@ -792,52 +822,62 @@ class Resource {
   put(options) {
     options = Resource.getMethodOptions('put', options);
     this.methods.push('put');
-    this._register('put', `${this.route}/:${this.name}Id`, (ctx, next) => {
+    const lastMW = compose([this._generateMiddleware.call(this, options, 'after'), Resource.respond]);
+    const beforeQueryMW = async(ctx, next) => {
       // Store the internal method for response manipulation.
-      ctx.__rMethod = 'put';
+      ctx.state.__rMethod = 'put';
 
-      if (ctx.skipResource) {
+      if (ctx.state.skipResource) {
         debug.put('Skipping Resource');
-        return next();
+        return await lastMW(ctx);
       }
 
       // Remove __v field
       const { __v, ...update } = ctx.request.body;
-      const query = ctx.modelQuery || ctx.model || this.model;
-
-      query.findOne({ _id: ctx.params[`${this.name}Id`] }, (err, item) => {
-        if (err) {
+      ctx.state.query = ctx.state.modelQuery || ctx.state.model || this.model;
+      try {
+        ctx.state.item = await ctx.state.query.findOne({ _id: ctx.params[`${this.name}Id`] }).exec();
+      }
+      catch (err) {
           debug.put(err);
-          return Resource.setResponse(ctx, { status: 400, error: err }, next);
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
         }
-        if (!item) {
+      if (!ctx.state.item) {
           debug.put(`No ${this.name} found with ${this.name}Id: ${ctx.params[`${this.name}Id`]}`);
-          return Resource.setResponse(ctx, { status: 404 }, next);
+        ctx.state.resource = { status: 404 };
+        return await lastMW(ctx);
         }
+      ctx.state.item.set(update);
+      return await next();
+    };
 
-        item.set(update);
-        options.hooks.put.before.call(
-          this,
-          ctx,
-          item,
-          () => {
-          const writeOptions = ctx.writeOptions || {};
-          item.save(writeOptions, (err, item) => {
-            if (err) {
+    const queryMW = async(ctx, next) => {
+      const writeOptions = ctx.state.writeOptions || {};
+      try {
+        ctx.state.item = await ctx.state.item.save(writeOptions);
+        debug.put(ctx.state.item);
+      }
+      catch (err) {
               debug.put(err);
-              return Resource.setResponse(ctx, { status: 400, error: err }, next);
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
             }
+      return await next();
+    };
 
-            return options.hooks.put.after.call(
-              this,
-              ctx,
-              item,
-              Resource.setResponse.bind(Resource, ctx, { status: 200, item }, next)
-            );
-          });
-        });
-      });
-    }, Resource.respond, options);
+    const afterQueryMW = async(ctx, next) => {
+      ctx.state.resource = { status: 200, item: ctx.state.item };
+      return await next();
+    };
+
+    const middlewares = {
+      beforeQueryMW,
+      queryMW,
+      afterQueryMW,
+      lastMW,
+    };
+    this._register('put', `${this.route}/:${this.name}Id`, middlewares, options);
     return this;
   }
 
@@ -847,52 +887,63 @@ class Resource {
   patch(options) {
     options = Resource.getMethodOptions('patch', options);
     this.methods.push('patch');
-    this._register('patch', `${this.route}/:${this.name}Id`, (ctx, next) => {
+    const lastMW = compose([this._generateMiddleware.call(this, options, 'after'), Resource.respond]);
+    const beforeQueryMW = async(ctx, next) => {
       // Store the internal method for response manipulation.
-      ctx.__rMethod = 'patch';
+      ctx.state.__rMethod = 'patch';
 
-      if (ctx.skipResource) {
+      if (ctx.state.skipResource) {
         debug.patch('Skipping Resource');
-        return next();
+        return await lastMW(ctx);
       }
-      const query = ctx.modelQuery || ctx.model || this.model;
-      const writeOptions = ctx.writeOptions || {};
-      query.findOne({ '_id': ctx.params[`${this.name}Id`] }, (err, item) => {
-        if (err) return Resource.setResponse(ctx, { status: 400, error: err }, next);
-        if (!item) return Resource.setResponse(ctx, { status: 404, error: err }, next);
+      ctx.state.query = ctx.state.modelQuery || ctx.model || this.model;
+      try {
+        ctx.state.item = await ctx.state.query.findOne({ '_id': ctx.params[`${this.name}Id`] });
+      }
+      catch (err) {
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
+      }
+
+      if (!ctx.state.item ) {
+        ctx.state.resource = { status: 404, error: '' };
+        return await lastMW(ctx);
+      }
 
         // Ensure patches is an array
         const patches = [].concat(ctx.request.body);
         let patchFail = null;
         try {
-          patches.forEach((patch) => {
+        patches.forEach(async(patch) => {
             if (patch.op === 'test') {
               patchFail = patch;
-              const success = jsonpatch.applyOperation(item, patch, true);
+            const success = jsonpatch.applyOperation(ctx.state.item, patch, true);
               if (!success || !success.test) {
-                return Resource.setResponse(ctx, {
+              ctx.state.resource = {
                   status: 412,
                   name: 'Precondition Failed',
                   message: 'A json-patch test op has failed. No changes have been applied to the document',
-                  item,
+                item: ctx.state.item,
                   patch,
-                }, next);
+              };
+              return await lastMW(ctx);
               }
             }
           });
-          jsonpatch.applyPatch(item, patches, true);
+        jsonpatch.applyPatch(ctx.state.item, patches, true);
         }
         catch (err) {
           switch (err.name) {
             // Check whether JSON PATCH error
             case 'TEST_OPERATION_FAILED':
-              return Resource.setResponse(ctx, {
+            ctx.state.resource = {
                 status: 412,
                 name: 'Precondition Failed',
                 message: 'A json-patch test op has failed. No changes have been applied to the document',
-                item,
+              item: ctx.state.item,
                 patch: patchFail,
-              }, next);
+            };
+            return await lastMW(ctx);
             case 'SEQUENCE_NOT_AN_ARRAY':
             case 'OPERATION_NOT_AN_OBJECT':
             case 'OPERATION_OP_INVALID':
@@ -909,22 +960,45 @@ class Resource {
                 name: err.name,
                 message: err.toString(),
               }];
-              return Resource.setResponse(ctx, {
+            ctx.state.resource = {
                 status: 400,
-                item,
+              item: ctx.state.item,
                 error: err,
-              }, next);
+            };
+            return await lastMW(ctx);
             // Something else than JSON PATCH
             default:
-              return Resource.setResponse(ctx, { status: 400, item, error: err }, next);
-          }
+            ctx.state.resource = { status: 400, item: ctx.state.item, error: err };
+            return await lastMW(ctx);
         }
-        item.save(writeOptions, (err, item) => {
-          if (err) return Resource.setResponse(ctx, { status: 400, error: err }, next);
-          return Resource.setResponse(ctx, { status: 200, item }, next);
-        });
-      });
-    }, Resource.respond, options);
+      }
+      return await next();
+    };
+
+    const queryMW = async(ctx, next) => {
+      const writeOptions = ctx.state.writeOptions || {};
+      try {
+        ctx.state.item = await ctx.state.item.save(writeOptions);
+          }
+      catch (err) {
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
+        }
+      return await next();
+    };
+
+    const afterQueryMW = async(ctx, next) => {
+      ctx.state.resource = { status: 200, item: ctx.state.item };
+      return await next();
+    };
+
+    const middlewares = {
+      beforeQueryMW,
+      queryMW,
+      afterQueryMW,
+      lastMW,
+    };
+    this._register('patch', `${this.route}/:${this.name}Id`, middlewares, options);
     return this;
   }
 
@@ -934,53 +1008,64 @@ class Resource {
   delete(options) {
     options = Resource.getMethodOptions('delete', options);
     this.methods.push('delete');
-    this._register('delete', `${this.route}/:${this.name}Id`, (ctx, next) => {
+    const lastMW = compose([this._generateMiddleware.call(this, options, 'after'), Resource.respond]);
+    const beforeQueryMW = async(ctx, next) => {
       // Store the internal method for response manipulation.
-      ctx.__rMethod = 'delete';
+      ctx.state.__rMethod = 'delete';
 
-      if (ctx.skipResource) {
+      if (ctx.state.skipResource) {
         debug.delete('Skipping Resource');
-        return next();
+        return await lastMW(ctx);
       }
 
-      const query = ctx.modelQuery || ctx.model || this.model;
-      query.findOne({ '_id': ctx.params[`${this.name}Id`] }, (err, item) => {
-        if (err) {
+      ctx.state.query = ctx.state.modelQuery || ctx.state.model || this.model;
+
+      try {
+        ctx.state.item = await ctx.state.query.findOne({ '_id': ctx.params[`${this.name}Id`] });
+      }
+      catch (err) {
           debug.delete(err);
-          return Resource.setResponse(ctx, { status: 400, error: err }, next);
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
         }
-        if (!item) {
+      if (!ctx.state.item) {
           debug.delete(`No ${this.name} found with ${this.name}Id: ${ctx.params[`${this.name}Id`]}`);
-          return Resource.setResponse(ctx, { status: 404, error: err }, next);
+        ctx.state.resource = { status: 404, error: '' };
+        return await lastMW(ctx);
         }
         if (ctx.skipDelete) {
-          return Resource.setResponse(ctx, { status: 204, item, deleted: true }, next);
+        ctx.state.resource = { status: 204, item: ctx.state.item, deleted: true };
+        return await lastMW(ctx);
         }
+      return await next();
+    };
 
-        options.hooks.delete.before.call(
-          this,
-          ctx,
-          item,
-          () => {
-            const writeOptions = ctx.writeOptions || {};
-            item.remove(writeOptions, (err) => {
-              if (err) {
+    const queryMW = async(ctx, next) => {
+      const writeOptions = ctx.state.writeOptions || {};
+      try {
+        ctx.state.item = await ctx.state.item.remove(writeOptions);
+      }
+      catch (err) {
                 debug.delete(err);
-                return Resource.setResponse(ctx, { status: 400, error: err }, next);
+        ctx.state.resource = { status: 400, error: err };
+        return await lastMW(ctx);
               }
+      debug.delete(ctx.state.item );
+      return await next();
+    };
 
-              debug.delete(item);
-              options.hooks.delete.after.call(
-                this,
-                ctx,
-                item,
-                Resource.setResponse.bind(Resource, ctx, { status: 204, item, deleted: true }, next)
-              );
-            });
-          }
-        );
-      });
-    }, Resource.respond, options);
+    const afterQueryMW = async(ctx, next) => {
+      ctx.state.resource = { status: 204, item: ctx.state.item, deleted: true };
+      return await next();
+    };
+
+    const middlewares = {
+      beforeQueryMW,
+      queryMW,
+      afterQueryMW,
+      lastMW,
+    };
+    this._register('delete', `${this.route}/:${this.name}Id`, middlewares, options);
     return this;
   }
 

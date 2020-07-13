@@ -27,6 +27,7 @@ const isEmpty = (obj) => {
 };
 
 /**
+ * Fork of https://github.com/polo2ro/node-paginate-anything
  * Modify the http response for pagination, return 2 properties to use in a query
  *
  * @url https://github.com/begriffs/clean_pagination
@@ -34,19 +35,20 @@ const isEmpty = (obj) => {
  * @url http://nodejs.org/api/http.html#http_class_http_serverresponse
  *
  *
- * @param	{http.ClientRequest}	req				http request to get headers from
- * @param	{http.ServerResponse}	res				http response to complete
- * @param	{int}					totalItems 	    total number of items available, can be Infinity
- * @param	{int}					maxRangeSize
+ * @param	{Koa.Context}	        ctx				      A Koa Context encapsulates node's request and response objects into a single object
+ * @param	{int}					        totalItems 	    total number of items available, can be Infinity
+ * @param	{int}					        maxRangeSize
  *
  * @return {Object}
  * 			.limit	Number of items to return
  * 			.skip	Zero based position for the first item to return
  */
-const paginate = function(req, res, totalItems, maxRangeSize) {
-  /**
-   * Parse requested range
-   */
+
+// eslint-disable-next-line max-statements
+const paginate = function(ctx, totalItems, maxRangeSize) {
+	/**
+	 * Parse requested range
+	 */
   function parseRange(hdr) {
     var m = hdr && hdr.match(/^(\d+)-(\d*)$/);
     if (!m) {
@@ -58,9 +60,9 @@ const paginate = function(req, res, totalItems, maxRangeSize) {
     };
   }
 
-  res.setHeader('Accept-Ranges', 'items');
-  res.setHeader('Range-Unit', 'items');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Range-Unit');
+  ctx.set('Accept-Ranges', 'items');
+  ctx.set('Range-Unit', 'items');
+  ctx.set('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Range-Unit');
 
   maxRangeSize = parseInt(maxRangeSize);
 
@@ -69,8 +71,8 @@ const paginate = function(req, res, totalItems, maxRangeSize) {
     to: (totalItems - 1),
   };
 
-  if ('items' === req.headers['range-unit']) {
-    var parsedRange = parseRange(req.headers.range);
+  if ('items' === ctx.headers['range-unit']) {
+    var parsedRange = parseRange(ctx.headers.range);
     if (parsedRange) {
       range = parsedRange;
     }
@@ -78,12 +80,12 @@ const paginate = function(req, res, totalItems, maxRangeSize) {
 
   if ((null !== range.to && range.from > range.to) || (range.from > 0 && range.from >= totalItems)) {
     if (totalItems > 0 || range.from !== 0) {
-      res.statusCode = 416; // Requested range unsatisfiable
+      ctx.statusCode = 416; // Requested range unsatisfiable
     }
- else {
-      res.statusCode = 204; // No content
+    else {
+      ctx.statusCode = 204; // No content
     }
-    res.setHeader('Content-Range', `*/${  totalItems}`);
+    ctx.set('Content-Range', `*/${totalItems}`);
     return;
   }
 
@@ -99,7 +101,7 @@ const paginate = function(req, res, totalItems, maxRangeSize) {
 
     reportTotal = totalItems;
   }
- else {
+  else {
     availableTo = Math.min(
       range.to,
       range.from + maxRangeSize - 1
@@ -108,27 +110,27 @@ const paginate = function(req, res, totalItems, maxRangeSize) {
     reportTotal = '*';
   }
 
-  res.setHeader('Content-Range', `${range.from  }-${  availableTo  }/${  reportTotal}`);
+  ctx.set('Content-Range', `${range.from}-${availableTo}/${reportTotal}`);
 
   var availableLimit = availableTo - range.from + 1;
 
   if (0 === availableLimit) {
-    res.statusCode = 204; // no content
-    res.setHeader('Content-Range', '*/0');
+    ctx.statusCode = 204; // no content
+    ctx.set('Content-Range', '*/0');
     return;
   }
 
   if (availableLimit < totalItems) {
-    res.statusCode = 206; // Partial contents
+    ctx.statusCode = 206; // Partial contents
   }
- else {
-    res.statusCode = 200; // OK (all items)
+  else {
+    ctx.statusCode = 200; // OK (all items)
   }
 
   // Links
   function buildLink(rel, itemsFrom, itemsTo) {
     var to = itemsTo < Infinity ? itemsTo : '';
-    return `<${  req.url  }>; rel="${  rel  }"; items="${  itemsFrom  }-${  to  }"`;
+    return `<${ctx.url}>; rel="${rel}"; items="${itemsFrom}-${to}"`;
   }
 
   var requestedLimit = range.to - range.from + 1;
@@ -163,7 +165,7 @@ const paginate = function(req, res, totalItems, maxRangeSize) {
     ));
   }
 
-  res.setHeader('Link', links.join(', '));
+  ctx.set('Link', links.join(', '));
 
   // return values named from mongoose methods
   return {
