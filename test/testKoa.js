@@ -91,9 +91,9 @@ function wasInvoked(entity, sequence, method) {
 describe('Connect to MongoDB', () => {
     it('Connect to MongoDB', async() => {
         const connection = await mongoose.connect('mongodb://localhost:27017/test', {
-        useCreateIndex: true,
-        useUnifiedTopology: true,
-        useNewUrlParser: true,
+            useCreateIndex: true,
+            useUnifiedTopology: true,
+            useNewUrlParser: true,
         });
         assert.ok(connection);
     });
@@ -168,13 +168,13 @@ describe('Build Resources for following tests', () => {
 
         // Create the REST resource and continue.
         const resource1 = Resource(app, '/test', 'resource1', Resource1Model).rest({
-            afterDelete(ctx, next) {
+            async afterDelete(ctx, next) {
                 // Check that the delete item is still being returned via resourcejs.
                 assert.notEqual(ctx.state.resource.item, {});
                 assert.notEqual(ctx.state.resource.item, []);
                 assert.equal(ctx.state.resource.status, 204);
-                assert.equal(ctx.statusCode, 200);
-                // next();
+                assert.equal(ctx.status, 404); // In Koa the ctx status is changed in respond
+                return await next();
             },
         });
         const resource1Swaggerio = require('./snippets/resource1Swaggerio.json');
@@ -216,25 +216,25 @@ describe('Build Resources for following tests', () => {
         // Create the REST resource and continue.
         const resource2 = Resource(app, '/test', 'resource2', Resource2Model).rest({
             // Register before/after global handlers.
-            before(ctx, next) {
+            async before(ctx, next) {
                 // Store the invoked handler and continue.
                 setInvoked('resource2', 'before', ctx);
-                next();
+                return await next();
             },
-            beforePost(ctx, next) {
+            async beforePost(ctx, next) {
                 // Store the invoked handler and continue.
                 setInvoked('resource2', 'beforePost', ctx);
-                next();
+                return await next();
             },
-            after(ctx, next) {
+            async after(ctx, next) {
                 // Store the invoked handler and continue.
                 setInvoked('resource2', 'after', ctx);
-                next();
+                return await next();
             },
-            afterPost(ctx, next) {
+            async afterPost(ctx, next) {
                 // Store the invoked handler and continue.
                 setInvoked('resource2', 'afterPost', ctx);
-                next();
+                return await next();
             },
         });
         const resource2Swaggerio = require('./snippets/resource2Swaggerio.json');
@@ -300,9 +300,9 @@ describe('Build Resources for following tests', () => {
         // Create the REST resource and continue.
         const nested1 = Resource(app, '/test/resource1/:resource1Id', 'nested1', Nested1Model).rest({
             // Register before global handlers to set the resource1 variable.
-            before(ctx, next) {
+            async before(ctx, next) {
                 ctx.request.body.resource1 = ctx.params.resource1Id;
-                next();
+                return await next();
             },
         });
         const nested1Swaggerio = require('./snippets/nested1Swaggerio.json');
@@ -342,18 +342,18 @@ describe('Build Resources for following tests', () => {
         // Create the REST resource and continue.
         const nested2 = Resource(app, '/test/resource2/:resource2Id', 'nested2', Nested2Model).rest({
             // Register before/after global handlers.
-            before(ctx, next) {
+            async before(ctx, next) {
                 ctx.request.body.resource2 = ctx.params.resource2Id;
                 ctx.state.modelQuery = this.model.where('resource2', ctx.params.resource2Id);
 
                 // Store the invoked handler and continue.
                 setInvoked('nested2', 'before', ctx);
-                next();
+                return await next();
             },
-            after(ctx, next) {
+            async after(ctx, next) {
                 // Store the invoked handler and continue.
                 setInvoked('nested2', 'after', ctx);
-                next();
+                return await next();
             },
         });
         const nested2Swaggerio = require('./snippets/nested2Swaggerio.json');
@@ -394,11 +394,11 @@ describe('Build Resources for following tests', () => {
 
         // Create the REST resource and continue.
         const resource3 = Resource(app, '/test', 'resource3', Resource3Model).rest({
-            before(ctx, next) {
+            async before(ctx, next) {
                 // This setting should be passed down to the underlying `save()` command
                 ctx.state.writeOptions = { writeSetting: true };
 
-                next();
+                return await next();
             },
         });
         const resource3Swaggerio = require('./snippets/resource3Swaggerio.json');
@@ -427,51 +427,51 @@ describe('Build Resources for following tests', () => {
         // Create the REST resource and continue.
         const resource4 = Resource(app, '/test', 'resource4', Resource4Model)
             .rest({
-                beforePatch(ctx, next) {
+                async beforePatch(ctx, next) {
                     ctx.state.modelQuery = {
                         findOne: async function findOne() {
                             throw new Error('failed');
                         },
                     };
-                    next();
+                    return await next();
                 },
             })
             .virtual({
                 path: 'undefined_query',
-                before: function(ctx, next) {
+                before: async function(ctx, next) {
                     ctx.state.modelQuery = undefined;
-                    return next();
+                    return await next();
                 },
             })
             .virtual({
                 path: 'defined',
-                before: function(ctx, next) {
+                before: async function(ctx, next) {
                     ctx.state.modelQuery = Resource4Model.aggregate([
                         { $group: { _id: null, titles: { $sum: '$title' } } },
                     ]);
-                    return next();
+                    return await next();
                 },
             })
             .virtual({
                 path: 'error',
-                before: function(ctx, next) {
+                before: async function(ctx, next) {
                     ctx.state.modelQuery = {
                         exec: async function exec() {
                             throw new Error('Failed');
                         },
                     };
-                    return next();
+                    return await next();
                 },
             })
             .virtual({
                 path: 'empty',
-                before: function(ctx, next) {
+                before: async function(ctx, next) {
                     ctx.state.modelQuery = {
                         exec: async function exec() {
                             return;
                         },
                     };
-                    return next();
+                    return await next();
                 },
             });
         const resource4Swaggerio = require('./snippets/resource4Swaggerio.json');
@@ -524,12 +524,10 @@ describe('Test skipResource', () => {
     const resource = {};
     it('/GET empty list', () => request(server)
         .get('/test/skip')
-        //.expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = 'Cannot GET /test/skip';
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 
     it('/POST Create new resource', () => request(server)
@@ -538,22 +536,18 @@ describe('Test skipResource', () => {
             title: 'Test1',
             description: '12345678',
         })
-        .expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = 'Cannot POST /test/skip';
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 
     it('/GET The new resource', () => request(server)
         .get(`/test/skip/${resource._id}`)
-        .expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = `Cannot GET /test/skip/${resource._id}`;
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 
     it('/PUT Change data on the resource', () => request(server)
@@ -561,42 +555,34 @@ describe('Test skipResource', () => {
         .send({
             title: 'Test2',
         })
-        .expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = `Cannot PUT /test/skip/${resource._id}`;
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 
     it('/PATCH Change data on the resource', () => request(server)
         .patch(`/test/skip/${resource._id}`)
-        .expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = `Cannot PATCH /test/skip/${resource._id}`;
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 
     it('/DELETE the resource', () => request(server)
         .delete(`/test/skip/${resource._id}`)
-        .expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = `Cannot DELETE /test/skip/${resource._id}`;
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 
     it('/VIRTUAL the resource', () => request(server)
         .get('/test/skip/virtual/resource')
-        .expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = 'Cannot GET /test/skip/virtual/resource';
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 });
 
@@ -845,12 +831,10 @@ describe('Test single resource CRUD capabilities', () => {
 
     it('Cannot /POST to an existing resource', () => request(server)
         .post(`/test/resource1/${resource._id}`)
-        .expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = `Cannot POST /test/resource1/${resource._id}`;
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 
     it('/DELETE the resource', () => request(server)
@@ -1087,6 +1071,7 @@ function testSearch(testPath) {
 
     it('Should populate with options', () => request(server)
         .get(`${testPath}?name=noage&populate[path]=list.data`)
+        .expect(200)
         .then((res) => {
             const response = res.body;
 
@@ -1597,10 +1582,10 @@ describe('Test single resource search capabilities', () => {
 
     it('Create an aggregation path', () => {
         Resource(app, '', 'aggregation', mongoose.model('resource1')).rest({
-            beforeIndex(ctx, next) {
+            async beforeIndex(ctx, next) {
                 ctx.state.modelQuery = mongoose.model('resource1');
                 ctx.state.modelQuery.pipeline = [];
-                next();
+                return await next();
             },
         });
     });
@@ -2186,12 +2171,10 @@ describe('Test nested resource CRUD capabilities', () => {
 
     it('Cannot /POST to an existing nested resource', () => request(server)
         .post(`/test/resource1/${resource._id}/nested1/${nested._id}`)
-        .expect('Content-Type', /text\/html/)
+        .expect('Content-Type', /text\/plain/)
         .expect(404)
         .then((res) => {
-            const response = res.text;
-            const expected = `Cannot POST /test/resource1/${resource._id}/nested1/${nested._id}`;
-            assert(response.includes(expected), 'Response not found.');
+            assert.equal(res.text, 'Not Found');
         }));
 
     it('/DELETE the nested resource', () => request(server)
@@ -2414,68 +2397,68 @@ describe('Test before hooks', () => {
         Resource(app, '', 'hook', hookModel).rest({
             hooks: {
                 post: {
-                    before(ctx, next) {
+                    async before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
-                        next();
+                        return await next();
                     },
-                    after(ctx, next) {
+                    async after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
-                        next();
+                        return await next();
                     },
                 },
                 get: {
-                    before(ctx, next) {
+                    async before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
-                        next();
+                        return await next();
                     },
-                    after(ctx, next) {
+                    async after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
-                        next();
+                        return await next();
                     },
                 },
                 put: {
-                    before(ctx, next) {
+                    async before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
-                        next();
+                        return await next();
                     },
-                    after(ctx, next) {
+                    async after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
-                        next();
+                        return await next();
                     },
                 },
                 delete: {
-                    before(ctx, next) {
+                    async before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
-                        next();
+                        return await next();
                     },
-                    after(ctx, next) {
+                    async after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
-                        next();
+                        return await next();
                     },
                 },
                 index: {
-                    before(ctx, next) {
+                    async before(ctx, next) {
                         assert.equal(calls.length, 0);
                         calls.push('before');
-                        next();
+                        return await next();
                     },
-                    after(ctx, next) {
+                    async after(ctx, next) {
                         assert.equal(calls.length, 1);
                         assert.deepEqual(calls, ['before']);
                         calls.push('after');
-                        next();
+                        return await next();
                     },
                 },
             },

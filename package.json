@@ -5,6 +5,7 @@
   "main": "Resource.js",
   "scripts": {
     "test": "nyc mocha --exit",
+    "test:express": "nyc mocha ./test/test.js --exit",
     "test:koa": "nyc mocha ./test/testKoa.js --exit",
     "coverage": "nyc --reporter=lcov --report-dir=./coverage npm run test",
     "lint": "eslint Resource.js"
@@ -27,6 +28,7 @@
   "homepage": "https://github.com/travist/resourcejs",
   "dependencies": {
     "@koa/router": "^9.3.1",
+    "koa-qs": "^3.0.0",
     "debug": "^4.1.1",
     "fast-json-patch": "^3.0.0-1",
     "koa": "^2.13.0",

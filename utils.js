@@ -80,10 +80,10 @@ const paginate = function(ctx, totalItems, maxRangeSize) {
 
   if ((null !== range.to && range.from > range.to) || (range.from > 0 && range.from >= totalItems)) {
     if (totalItems > 0 || range.from !== 0) {
-      ctx.statusCode = 416; // Requested range unsatisfiable
+      ctx.status = 416; // Requested range unsatisfiable
     }
     else {
-      ctx.statusCode = 204; // No content
+      ctx.status = 204; // No content
     }
     ctx.set('Content-Range', `*/${totalItems}`);
     return;
@@ -115,16 +115,16 @@ const paginate = function(ctx, totalItems, maxRangeSize) {
   var availableLimit = availableTo - range.from + 1;
 
   if (0 === availableLimit) {
-    ctx.statusCode = 204; // no content
+    ctx.status = 204; // no content
     ctx.set('Content-Range', '*/0');
     return;
   }
 
   if (availableLimit < totalItems) {
-    ctx.statusCode = 206; // Partial contents
+    ctx.status = 206; // Partial contents
   }
   else {
-    ctx.statusCode = 200; // OK (all items)
+    ctx.status = 200; // OK (all items)
   }
 
   // Links
