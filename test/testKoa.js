@@ -497,7 +497,6 @@ describe('Build Resources for following tests', () => {
         const skipResource = Resource(app, '/test', 'skip', SkipModel)
             .rest({
                 before: async(ctx, next) => {
-                    console.log(ctx, 'test1.1');
                     ctx.state.skipResource = true;
                     return await next();
                 },

@@ -536,7 +536,7 @@ class Resource {
       // Allow before handlers the ability to disable resource CRUD.
       if (ctx.state.skipResource) {
         debug.index('Skipping Resource');
-        return await Resource.respond(ctx);
+        return await lastMW(ctx);
       }
 
       // Get the find query.
@@ -653,7 +653,7 @@ class Resource {
       ctx.state.__rMethod = 'get';
       if (ctx.state.skipResource) {
         debug.get('Skipping Resource');
-        return await Resource.respond(ctx);
+        return await lastMW(ctx);
       }
       ctx.state.modelQuery = (ctx.state.modelQuery || ctx.state.model || this.model).findOne();
       ctx.state.search = { '_id': ctx.params[`${this.name}Id`] };
@@ -734,7 +734,7 @@ class Resource {
 
       if (ctx.state.skipResource) {
         debug.virtual('Skipping Resource');
-        return await Resource.respond(ctx);
+        return await lastMW(ctx);
       }
       const query = ctx.state.modelQuery || ctx.state.model;
       if (!query) {
@@ -776,7 +776,7 @@ class Resource {
 
       if (ctx.state.skipResource) {
         debug.post('Skipping Resource');
-        return await Resource.respond(ctx);
+        return await lastMW(ctx);
       }
 
       const Model = ctx.state.model || this.model;
@@ -829,7 +829,7 @@ class Resource {
 
       if (ctx.state.skipResource) {
         debug.put('Skipping Resource');
-        return await Resource.respond(ctx);
+        return await lastMW(ctx);
       }
 
       // Remove __v field
@@ -897,7 +897,7 @@ class Resource {
 
       if (ctx.state.skipResource) {
         debug.patch('Skipping Resource');
-        return await Resource.respond(ctx);
+        return await lastMW(ctx);
       }
       ctx.state.query = ctx.state.modelQuery || ctx.state.model || this.model;
       try {
@@ -1021,7 +1021,7 @@ class Resource {
 
       if (ctx.state.skipResource) {
         debug.delete('Skipping Resource');
-        return await Resource.respond(ctx);
+        return await lastMW(ctx);
       }
 
       ctx.state.query = ctx.state.modelQuery || ctx.state.model || this.model;
