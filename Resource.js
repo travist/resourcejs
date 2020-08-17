@@ -411,7 +411,7 @@ class Resource {
     options = options || this.options;
 
     // Get the filters and omit the limit, skip, select, sort and populate.
-    const {limit, skip, select, sort, populate, ...filters} = req.query;
+    const {limit, skip, select, sort, populate, validationForm, ...filters} = req.query;
 
     // Iterate through each filter.
     Object.entries(filters).forEach(([name, values]) => {
