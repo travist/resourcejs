@@ -714,7 +714,14 @@ class Resource {
       const select = Resource.getParamQuery(req, 'select');
       if (select) {
         debug.get(`Select: ${select}`);
-        query.select(select);
+        const selectSet = new Set(select.split(" "));
+        selectSet.forEach((element, index) => {
+          const dataArray = element.split(".data.");
+          if ( dataArray.length > 1 ) {
+            selectSet.add(`${dataArray[0]}._id`);
+          }
+        });
+        query.select(Array.from(selectSet).join(" "));
       }
 
       options.hooks.get.before.call(
