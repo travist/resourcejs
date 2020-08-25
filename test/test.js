@@ -1443,6 +1443,17 @@ function testSearch(testPath) {
       });
     }));
 
+  it('multiple lt search selector', () => request(app)
+    .get(`${testPath}?age__lt=5&age__lt=3`)
+    .expect('Content-Range', '0-2/3')
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 3);
+      response.forEach((resource) => {
+        assert.ok(resource.age < 5 && resource.age < 3);
+      });
+    }));
+
   it('lte search selector', () => request(app)
     .get(`${testPath}?age__lte=5`)
     .expect('Content-Range', '0-5/6')
@@ -1451,6 +1462,17 @@ function testSearch(testPath) {
       assert.equal(response.length, 6);
       response.forEach((resource) => {
         assert.ok(resource.age <= 5);
+      });
+    }));
+
+  it('multiple lte search selector', () => request(app)
+    .get(`${testPath}?age__lte=5&age__lte=10`)
+    .expect('Content-Range', '0-5/6')
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 6);
+      response.forEach((resource) => {
+        assert.ok(resource.age <= 5 && resource.age <= 10);
       });
     }));
 
@@ -1465,6 +1487,17 @@ function testSearch(testPath) {
       });
     }));
 
+  it('multiple gt search selector', () => request(app)
+    .get(`${testPath}?age__gt=5&age__gt=10`)
+    .expect('Content-Range', '0-9/14')
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 10);
+      response.forEach((resource) => {
+        assert.ok(resource.age > 5 && resource.age > 10);
+      });
+    }));
+
   it('gte search selector', () => request(app)
     .get(`${testPath}?age__gte=5`)
     .expect('Content-Range', '0-9/20')
@@ -1473,6 +1506,17 @@ function testSearch(testPath) {
       assert.equal(response.length, 10);
       response.forEach((resource) => {
         assert.ok(resource.age >= 5);
+      });
+    }));
+
+  it('multiple gte search selector', () => request(app)
+    .get(`${testPath}?age__gte=5&age__gte=10`)
+    .expect('Content-Range', '0-9/15')
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 10);
+      response.forEach((resource) => {
+        assert.ok(resource.age >= 5 && resource.age >= 10);
       });
     }));
 
@@ -1485,6 +1529,16 @@ function testSearch(testPath) {
       assert.equal(response.length, valid.length);
       response.forEach((resource) => {
         assert.ok(valid.includes(resource.age));
+      });
+    }));
+
+  it('multiple regex search selector', () => request(app)
+    .get(`${testPath}?limit=1000&description__regex=/^Descr.*$/&description__regex=/1/`)
+    .expect('Content-Range', '0-11/12')
+    .then((res) => {
+      const response = res.body;
+      response.forEach((resource) => {
+        assert.ok(resource.description.startsWith('Descr') && resource.description.indexOf('1') !== -1);
       });
     }));
 

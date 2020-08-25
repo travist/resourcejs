@@ -405,77 +405,117 @@ class Resource {
    * @returns {Object}
    */
   getFindQuery(req, options) {
-    const findQuery = {};
+    const finalQuery = {"$and": []};
+    let findQuery = { };
     options = options || this.options;
 
     // Get the filters and omit the limit, skip, select, sort and populate.
-    const {limit, skip, select, sort, populate, ...filters} = req.query;
+    const {limit, skip, select, sort, populate, validationForm, ...filters} = req.query;
 
     // Iterate through each filter.
-    Object.entries(filters).forEach(([name, value]) => {
+    Object.entries(filters).forEach(([name, values]) => {
+
+      if ( !Array.isArray(values) ) {
+        values = [values];
+      }
+
       // Get the filter object.
       const filter = utils.zipObject(['name', 'selector'], name.split('__'));
 
-      // See if this parameter is defined in our model.
-      const param = this.model.schema.paths[filter.name.split('.')[0]];
-      if (param) {
-        // See if this selector is a regular expression.
-        if (filter.selector === 'regex') {
-          // Set the regular expression for the filter.
-          const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
-          let regex = null;
-          try {
-            regex = new RegExp(parts[1], (parts[2] || 'i'));
-          }
-          catch (err) {
-            debug.query(err);
-            regex = null;
-          }
-          if (regex) {
-            findQuery[filter.name] = regex;
-          }
-          return;
-        } // See if there is a selector.
-        else if (filter.selector) {
-          // Init the filter.
-          if (!Object.prototype.hasOwnProperty.call(findQuery, filter.name)) {
-            findQuery[filter.name] = {};
-          }
+      for(let value of values) {
+        if ( !utils.isEmpty(findQuery) ) {
+          finalQuery.$and.push(findQuery);
+          findQuery = { };
+        }
 
-          if (filter.selector === 'exists') {
-            value = ((value === 'true') || (value === '1')) ? true : value;
-            value = ((value === 'false') || (value === '0')) ? false : value;
-            value = !!value;
-          }
-          // Special case for in filter with multiple values.
-          else if (['in', 'nin'].includes(filter.selector)) {
-            value = Array.isArray(value) ? value : value.split(',');
-            value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options, filter.selector));
+        // OR condition from reference
+        if ( name === "$or" ) {
+          findQuery = {
+            $or: values
+          };
+          break;
+        }
+        // AND condition from recursive reference
+        else if ( name === "$and" ) {
+          finalQuery.$and = values;
+          findQuery = { };
+          break;
+        }
+
+        // See if this parameter is defined in our model.
+        const param = this.model.schema.paths[filter.name.split('.')[0]];
+        if (param) {
+          // See if there is a selector.
+          if (filter.selector) {
+            // See if this selector is a regular expression.
+            if (filter.selector === 'regex') {
+              // Set the regular expression for the filter.
+              const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
+              let regex = null;
+              try {
+                regex = new RegExp(parts[1], (parts[2] || 'i'));
+              }
+              catch (err) {
+                debug.query(err);
+                regex = null;
+              }
+              if (regex) {
+                findQuery[filter.name] = regex;
+              }
+              continue;
+            } // See if there is a selector.
+            else if (filter.selector) {
+              // Init the filter.
+              if (!Object.prototype.hasOwnProperty.call(findQuery, filter.name)) {
+                findQuery[filter.name] = {};
+              }
+
+              if (filter.selector === 'exists') {
+                value = ((value === 'true') || (value === '1')) ? true : value;
+                value = ((value === 'false') || (value === '0')) ? false : value;
+                value = !!value;
+              }
+              // Special case for in filter with multiple values.
+              else if (['in', 'nin'].includes(filter.selector)) {
+                value = Array.isArray(value) ? value : value.split(',');
+                value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options, filter.selector));
+              }
+              else {
+                // Set the selector for this filter name.
+                value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
+              }
+
+
+              findQuery[filter.name][`$${filter.selector}`] = value;
+              continue;
+            }
           }
           else {
-            // Set the selector for this filter name.
+            // Set the find query to this value.
             value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
+            findQuery[filter.name] = value;
+            continue;
           }
-
-          findQuery[filter.name][`$${filter.selector}`] = value;
-          return;
         }
-        else {
+
+        if (!options.queryFilter) {
           // Set the find query to this value.
-          value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
           findQuery[filter.name] = value;
-          return;
         }
-      }
-
-      if (!options.queryFilter) {
-        // Set the find query to this value.
-        findQuery[filter.name] = value;
       }
     });
 
+    if ( !utils.isEmpty(findQuery) ) {
+      finalQuery.$and.push(findQuery);
+      findQuery = { };
+    }
+
+    if ( finalQuery.$and.length <= 0 ) {
+      return { };
+    }
+
     // Return the findQuery.
-    return findQuery;
+    return finalQuery;
   }
 
   countQuery(query, pipeline) {
@@ -565,11 +605,11 @@ class Resource {
 
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
-        let { limit, skip } = req.query
-        limit = parseInt(limit, 10)
-        limit = (isNaN(limit) || (limit < 0)) ? defaults.limit : limit
-        skip = parseInt(skip, 10)
-        skip = (isNaN(skip) || (skip < 0)) ? defaults.skip : skip
+        let { limit, skip } = req.query;
+        limit = parseInt(limit, 10);
+        limit = (isNaN(limit) || (limit < 0)) ? defaults.limit : limit;
+        skip = parseInt(skip, 10);
+        skip = (isNaN(skip) || (skip < 0)) ? defaults.skip : skip;
         const reqQuery = { limit, skip };
 
         // If a skip is provided, then set the range headers.
@@ -661,6 +701,20 @@ class Resource {
         debug.get(`Populate: ${populate}`);
         query.populate(populate);
       }
+      
+      // Filter specific attributes
+      const select = Resource.getParamQuery(req, 'select');
+      if (select) {
+        debug.get(`Select: ${select}`);
+        const selectSet = new Set(select.split(" "));
+        selectSet.forEach((element, index) => {
+          const dataArray = element.split(".data.");
+          if ( dataArray.length > 1 ) {
+            selectSet.add(`${dataArray[0]}._id`);
+          }
+        });
+        query.select(Array.from(selectSet).join(" "));
+      }
 
       options.hooks.get.before.call(
         this,
@@ -678,22 +732,6 @@ class Resource {
               res,
               item,
               () => {
-                // Allow them to only return specified fields.
-                const select = Resource.getParamQuery(req, 'select');
-                if (select) {
-                  const newItem = {};
-                  // Always include the _id.
-                  if (item._id) {
-                    newItem._id = item._id;
-                  }
-                  select.split(' ').map(key => {
-                    key = key.trim();
-                    if (item.hasOwnProperty(key)) {
-                      newItem[key] = item[key];
-                    }
-                  });
-                  item = newItem;
-                }
                 Resource.setResponse(res, { status: 200, item: item }, next)
               }
             );
@@ -815,22 +853,22 @@ class Resource {
           res,
           item,
           () => {
-          const writeOptions = req.writeOptions || {};
-          item.save(writeOptions, (err, item) => {
-            if (err) {
-              debug.put(err);
-              return Resource.setResponse(res, { status: 400, error: err }, next);
-            }
+            const writeOptions = req.writeOptions || {};
+            item.save(writeOptions, (err, item) => {
+              if (err) {
+                debug.put(err);
+                return Resource.setResponse(res, { status: 400, error: err }, next);
+              }
 
-            return options.hooks.put.after.call(
-              this,
-              req,
-              res,
-              item,
-              Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
-            );
+              return options.hooks.put.after.call(
+                this,
+                req,
+                res,
+                item,
+                Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
+              );
+            });
           });
-        });
       });
     }, Resource.respond, options);
     return this;
