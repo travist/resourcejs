@@ -4,6 +4,7 @@ const paginate = require('node-paginate-anything');
 const jsonpatch = require('fast-json-patch');
 const mongodb = require('mongodb');
 const moment = require('moment');
+const parseRange = require('range-parser');
 const debug = {
   query: require('debug')('resourcejs:query'),
   index: require('debug')('resourcejs:index'),
@@ -399,6 +400,26 @@ class Resource {
   }
 
   /**
+   * Get the range of items from headers
+   *
+   * @param req
+   * @param size
+   * @returns {Object}
+   */
+  static getRangeFromHeaders(req, size) {
+    if (!req.headers.range) {
+      return null;
+    }
+
+    const range = parseRange(size, req.headers.range);
+    if (range.type !== 'items') {
+      return null;
+    }
+
+    return range[0];
+  }
+
+  /**
    * Get the find query for the index.
    *
    * @param req
@@ -565,6 +586,16 @@ class Resource {
 
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
+
+        const range = Resource.getRangeFromHeaders(req, count);
+        if (range) {
+          req.query.limit = req.query.limit || (range.end - range.start + 1);
+          req.query.skip = req.query.skip || range.start;
+
+          // Delete Range header to recreate it below for 'node-paginate-anything' compatibility
+          delete req.headers.range;
+        }
+
         let { limit, skip } = req.query
         limit = parseInt(limit, 10)
         limit = (isNaN(limit) || (limit < 0)) ? defaults.limit : limit

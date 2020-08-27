@@ -29,7 +29,8 @@
     "fast-json-patch": "^3.0.0-1",
     "moment": "^2.27.0",
     "mongodb": "^3.5.9",
-    "node-paginate-anything": "^1.0.0"
+    "node-paginate-anything": "^1.0.0",
+    "range-parser": "^1.2.1"
   },
   "devDependencies": {
     "body-parser": "^1.19.0",
