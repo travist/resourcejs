@@ -83,6 +83,10 @@ Resource(app, route, name, model)
  - ***name*** - The name of the resource, which will then be used for the URL path of that resource.
  - ***model*** - The Mongoose Model for this interface.
 
+Properties
+----------------
+There is environment variable ```MAX_COUNT_LIMIT``` used when executing a count query. It represents a threshold for deciding whether to return a real number of records or the given limit. 
+
 Only exposing certain methods
 -------------------
 You can also expose only a certain amount of methods, by instead of using

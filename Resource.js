@@ -524,9 +524,8 @@ class Resource {
     if (!utils.isEmpty(query._mongooseOptions) || !pipeline) {
       return query;
     }
-    const stages = [
+    const stagesMaxCount = [
       { $match: query.getQuery() },
-      ...pipeline,
       {
         $group: {
           _id : null,
@@ -534,13 +533,42 @@ class Resource {
         },
       },
     ];
+
     return {
       countDocuments(cb) {
-        query.model.aggregate(stages).exec((err, items) => {
+        query.model.aggregate(stagesMaxCount).exec((err, items) => {
           if (err) {
             return cb(err);
           }
-          return cb(null, items.length ? items[0].count : 0);
+
+          const maxCountLimit = process.env.MAX_COUNT_LIMIT;
+          const MAX_COUNT_LIMIT = maxCountLimit !== undefined ? maxCountLimit : 5000;
+
+          const itemsCount = items.length ? items[0].count : 0;
+          if (itemsCount > MAX_COUNT_LIMIT) {
+            return cb(null, MAX_COUNT_LIMIT);
+          }
+          else {
+
+            const stagesRealCount = [
+              {$match: query.getQuery()},
+              ...pipeline,
+              {
+                $group: {
+                  _id: null,
+                  count: {$sum: 1},
+                },
+              },
+            ];
+
+            query.model.aggregate(stagesRealCount).exec((errReal, itemsReal) => {
+              if (errReal) {
+                return cb(errReal);
+              }
+              return cb(null, itemsReal.length ? itemsReal[0].count : 0);
+            });
+
+          }
         });
       },
     };
