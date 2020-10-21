@@ -660,10 +660,20 @@ class Resource {
         }
 
         // Add limit and skip to aggregation pipeline if present except sorting presence.
-        if ( query.pipeline && query.pipeline.length > 0 && !query.pipeline.find((object) => object['$sort'])) {
-          query.pipeline.unshift({ $limit: reqQuery.limit });
-          query.pipeline.unshift({ $skip: reqQuery.skip });
-          reqQuery.skip = 0; // reset skip
+        if ( query.pipeline && query.pipeline.length > 0 ) {
+
+          // minimal limit for aggregations with nested query or sort
+          const aggregateMinLimit = process.env.FORMIO_AGGREGATE_MIN_LIMIT;
+          const FORMIO_AGGREGATE_MIN_LIMIT = aggregateMinLimit !== undefined ? aggregateMinLimit : 1000;
+
+          const nestedMatchCount = query.pipeline.filter(item => (item.$sort || (item.$match && item.$match.$and && item.$match.$and.length > 1))).length;
+          query.pipeline.unshift({ $limit: (nestedMatchCount > 0 ? FORMIO_AGGREGATE_MIN_LIMIT : reqQuery.limit) });
+
+          // no nested filter => skip in pipeline
+          if ( nestedMatchCount <= 0 ) {
+            query.pipeline.unshift({ $skip: reqQuery.skip });
+            reqQuery.skip = 0; // reset skip
+          }
         }
         
         if ( query.pipeline && query.pipeline.length > 0 && query.sort && Resource.getParamQuery(req, 'sort') ) {
