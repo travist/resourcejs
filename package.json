@@ -4,7 +4,9 @@
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
   "scripts": {
-    "test": "mocha --exit",
+    "test": "npm run test:express && npm run test:koa",
+    "test:express": "nyc mocha ./test/test.js --exit",
+    "test:koa": "nyc mocha ./test/testKoa.js --exit",
     "coverage": "nyc --reporter=lcov --report-dir=./coverage npm run test",
     "lint": "eslint Resource.js"
   },
@@ -25,8 +27,13 @@
   },
   "homepage": "https://github.com/travist/resourcejs",
   "dependencies": {
+    "@koa/router": "^9.3.1",
+    "koa-qs": "^3.0.0",
     "debug": "^4.1.1",
     "fast-json-patch": "^3.0.0-1",
+    "koa": "^2.13.0",
+    "koa-bodyparser": "^4.3.0",
+    "koa-compose": "^4.1.0",
     "moment": "^2.28.0",
     "mongodb": "^3.6.2",
     "node-paginate-anything": "^1.0.0",
