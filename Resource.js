@@ -663,8 +663,7 @@ class Resource {
         if ( query.pipeline && query.pipeline.length > 0 ) {
 
           // minimal limit for aggregations with nested query or sort
-          const aggregateMinLimit = process.env.FORMIO_AGGREGATE_MIN_LIMIT;
-          const FORMIO_AGGREGATE_MIN_LIMIT = aggregateMinLimit !== undefined ? aggregateMinLimit : 1000;
+          const FORMIO_AGGREGATE_MIN_LIMIT = parseInt(process.env.FORMIO_AGGREGATE_MIN_LIMIT) || 1000;
 
           const nestedMatchCount = query.pipeline.filter(item => (item.$sort || (item.$match && item.$match.$and && item.$match.$and.length > 1))).length;
           query.pipeline.unshift({ $limit: (nestedMatchCount > 0 ? FORMIO_AGGREGATE_MIN_LIMIT : reqQuery.limit) });
@@ -675,7 +674,7 @@ class Resource {
             reqQuery.skip = 0; // reset skip
           }
         }
-        
+
         if ( query.pipeline && query.pipeline.length > 0 && query.sort && Resource.getParamQuery(req, 'sort') ) {
           const sort = Resource.getParamQuery(req, 'sort');
           const negate = sort.indexOf('-') === 0;
@@ -758,7 +757,7 @@ class Resource {
         debug.get(`Populate: ${populate}`);
         query.populate(populate);
       }
-      
+
       // Filter specific attributes
       const select = Resource.getParamQuery(req, 'select');
       if (select) {
