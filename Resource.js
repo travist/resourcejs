@@ -433,7 +433,7 @@ class Resource {
     const {limit, skip, select, sort, populate, ...filters} = req.query;
 
     // Sets the findQuery property.
-    const setFilter = function(name, value) {
+    const setFindQuery = function(name, value) {
       // Ensure we do not override any existing query parameters.
       if (!existing || !existing.hasOwnProperty(name)) {
         findQuery[name] = value;
@@ -461,7 +461,7 @@ class Resource {
             regex = null;
           }
           if (regex) {
-            setFilter(filter.name, regex);
+            setFindQuery(filter.name, regex);
           }
           return;
         } // See if there is a selector.
@@ -488,20 +488,20 @@ class Resource {
           }
 
           filterQuery[`$${filter.selector}`] = value;
-          setFilter(filter.name, filterQuery);
+          setFindQuery(filter.name, filterQuery);
           return;
         }
         else {
           // Set the find query to this value.
           value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
-          setFilter(filter.name, value);
+          setFindQuery(filter.name, value);
           return;
         }
       }
 
       if (!options.queryFilter) {
         // Set the find query to this value.
-        setFilter(filter.name, value);
+        setFindQuery(filter.name, value);
       }
     });
 
