@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.3.3
+### Fixed
+ - Ensure that filter queries do not override existing filter queries.
+
 ## v2.3.2
 ### Changed
  - Upgrade dependencies.

@@ -425,12 +425,20 @@ class Resource {
    * @param req
    * @returns {Object}
    */
-  getFindQuery(req, options) {
+  getFindQuery(req, options, existing) {
     const findQuery = {};
     options = options || this.options;
 
     // Get the filters and omit the limit, skip, select, sort and populate.
     const {limit, skip, select, sort, populate, ...filters} = req.query;
+
+    // Sets the findQuery property.
+    const setFilter = function(name, value) {
+      // Ensure we do not override any existing query parameters.
+      if (!existing || !existing.hasOwnProperty(name)) {
+        findQuery[name] = value;
+      }
+    };
 
     // Iterate through each filter.
     Object.entries(filters).forEach(([name, value]) => {
@@ -453,14 +461,15 @@ class Resource {
             regex = null;
           }
           if (regex) {
-            findQuery[filter.name] = regex;
+            setFilter(filter.name, regex);
           }
           return;
         } // See if there is a selector.
         else if (filter.selector) {
+          var filterQuery = findQuery[filter.name];
           // Init the filter.
-          if (!Object.prototype.hasOwnProperty.call(findQuery, filter.name)) {
-            findQuery[filter.name] = {};
+          if (!filterQuery) {
+            filterQuery = {};
           }
 
           if (filter.selector === 'exists') {
@@ -478,20 +487,21 @@ class Resource {
             value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
           }
 
-          findQuery[filter.name][`$${filter.selector}`] = value;
+          filterQuery[`$${filter.selector}`] = value;
+          setFilter(filter.name, filterQuery);
           return;
         }
         else {
           // Set the find query to this value.
           value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
-          findQuery[filter.name] = value;
+          setFilter(filter.name, value);
           return;
         }
       }
 
       if (!options.queryFilter) {
         // Set the find query to this value.
-        findQuery[filter.name] = value;
+        setFilter(filter.name, value);
       }
     });
 
@@ -570,12 +580,12 @@ class Resource {
         return next();
       }
 
-      // Get the find query.
-      const findQuery = this.getFindQuery(req);
-
       // Get the query object.
       const countQuery = req.countQuery || req.modelQuery || req.model || this.model;
       const query = req.modelQuery || req.model || this.model;
+
+      // Get the find query.
+      const findQuery = this.getFindQuery(req, null, query._conditions);
 
       // First get the total count.
       this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
