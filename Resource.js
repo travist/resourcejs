@@ -519,7 +519,7 @@ class Resource {
     return finalQuery;
   }
 
-  countQuery(query, pipeline) {
+  countQuery(query, pipeline, populate) {
     // We cannot use aggregation if mongoose special options are used... like populate.
     if (!utils.isEmpty(query._mongooseOptions) || !pipeline) {
       return query;
@@ -545,8 +545,11 @@ class Resource {
           const MAX_COUNT_LIMIT = maxCountLimit !== undefined ? maxCountLimit : 5000;
 
           const itemsCount = items.length ? items[0].count : 0;
-          if (itemsCount > MAX_COUNT_LIMIT) {
+          if (itemsCount > MAX_COUNT_LIMIT && populate === "") {
             return cb(null, MAX_COUNT_LIMIT);
+          }
+          else if ( populate !== "" ) {
+            return cb(null, itemsCount);
           }
           else {
 
@@ -625,8 +628,10 @@ class Resource {
       const countQuery = req.countQuery || req.modelQuery || req.model || this.model;
       const query = req.modelQuery || req.model || this.model;
 
+      const populate = Resource.getParamQuery(req, 'populate');
+      
       // First get the total count.
-      this.countQuery(countQuery.find(findQuery), countQuery.pipeline).countDocuments((err, count) => {
+      this.countQuery(countQuery.find(findQuery), countQuery.pipeline, populate).countDocuments((err, count) => {
         if (err) {
           debug.index(err);
           return Resource.setResponse(res, { status: 400, error: err }, next);
@@ -658,8 +663,6 @@ class Resource {
           reqQuery.limit = pageRange.limit;
           reqQuery.skip = pageRange.skip;
         }
-
-        const populate = Resource.getParamQuery(req, 'populate');
 
         // Add limit and skip to aggregation pipeline if present except sorting presence.
         if ( query.pipeline && query.pipeline.length > 0 ) {
