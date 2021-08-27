@@ -11,7 +11,7 @@ const Resource = require('../Resource');
 const app = express();
 const _ = require('lodash');
 const MongoClient = require('mongodb').MongoClient;
-const ObjectId = require('mongodb').ObjectID;
+const ObjectId = require('mongodb').ObjectId;
 const chance = (new require('chance'))();
 
 const baseTestDate = moment.utc('2018-04-12T12:00:00.000Z');
@@ -90,7 +90,6 @@ function wasInvoked(entity, sequence, method) {
 
 describe('Connect to MongoDB', () => {
   it('Connect to MongoDB', () => mongoose.connect('mongodb://localhost:27017/test', {
-    useCreateIndex: true,
     useUnifiedTopology: true,
     useNewUrlParser: true,
   }));
@@ -98,7 +97,6 @@ describe('Connect to MongoDB', () => {
   it('Drop test database', () => mongoose.connection.db.dropDatabase());
 
   it('Should connect MongoDB without mongoose', () => MongoClient.connect('mongodb://localhost:27017', {
-    useCreateIndex: true,
     useUnifiedTopology: true,
     useNewUrlParser: true,
   })
@@ -405,7 +403,7 @@ describe('Build Resources for following tests', () => {
     assert.deepEqual(swaggerio, resource3Swaggerio);
   });
 
-  it('Build the /test/resource4 endpoints', () => {
+  it('Build the /test/resource4 endpoints', async () => {
     // Create the schema.
     const Resource4Schema = new mongoose.Schema({
       title: String,
@@ -416,7 +414,7 @@ describe('Build Resources for following tests', () => {
     const Resource4Model = mongoose.model('resource4', Resource4Schema);
 
     const doc = new Resource4Model({ title: 'Foo' });
-    doc.save();
+    await doc.save();
 
     // Create the REST resource and continue.
     const resource4 = Resource(app, '/test', 'resource4', Resource4Model)
@@ -882,20 +880,19 @@ describe('Test single resource CRUD capabilities', () => {
           });
       });
 
-      it('Should be able to create a reference doc directly with mongo', () => {
+      it('Should be able to create a reference doc directly with mongo', async () => {
         const doc = { data: 'test2' };
         const compare = _.clone(doc);
 
         const ref = db.collection('ref');
-        ref.insertOne(doc, (err, result) => {
-          const response = result.ops[0];
-          assert.deepEqual(_.omit(response, '_id'), compare);
-          response._id = response._id.toString();
-          doc2 = response;
-        });
+        const inserted = await ref.insertOne(doc);
+        const response = await ref.findOne(inserted.insertedId);
+        assert.deepEqual(_.omit(response, '_id'), compare);
+        response._id = response._id.toString();
+        doc2 = response;
       });
 
-      it('Should be able to directly create a resource with subdocuments using mongo', () => {
+      it('Should be able to directly create a resource with subdocuments using mongo', async () => {
         // Set the resource collection for direct mongo queries.
         const resource1 = db.collection('resource1');
 
@@ -907,11 +904,9 @@ describe('Test single resource CRUD capabilities', () => {
           ],
         };
         const compare = _.clone(tmp);
-
-        return resource1.insertOne(tmp).then((result) => {
-          resource = result.ops[0];
-          assert.deepEqual(_.omit(resource, '_id'), compare);
-        });
+        const inserted = await resource1.insertOne(tmp);
+        resource = await resource1.findOne({_id: inserted.insertedId});
+        assert.deepEqual(_.omit(resource, '_id'), compare);
       });
     });
 
@@ -942,17 +937,17 @@ describe('Test single resource CRUD capabilities', () => {
         ];
 
         const resource1 = db.collection('resource1');
-        resource1.findOneAndUpdate(
+        resource1.updateOne(
           { _id: ObjectId(resource._id) },
           { $set: { list: updates } },
-          { returnOriginal: false },
-          (err, doc) => {
-              const response = doc.value;
-            assert.equal(response.title, resource.title);
-            assert.equal(response.description, resource.description);
-            assert.equal(response._id, resource._id);
-            assert.deepEqual(response.list, updates);
-            resource = response;
+          () => {
+            resource1.findOne({_id: ObjectId(resource._id)}, (err, response) => {
+              assert.equal(response.title, resource.title);
+              assert.equal(response.description, resource.description);
+              assert.equal(response._id, resource._id);
+              assert.deepEqual(response.list, updates);
+              resource = response;
+            });
           });
       });
 
@@ -997,13 +992,13 @@ describe('Test single resource CRUD capabilities', () => {
     describe('Subdocument cleanup', () => {
       it('Should remove the test resource', () => {
         const resource1 = db.collection('resource1');
-        resource1.findOneAndDelete({ _id: ObjectId(resource._id) });
+        resource1.deleteOne({ _id: ObjectId(resource._id) });
       });
 
       it('Should remove the test ref resources', () => {
         const ref = db.collection('ref');
-        ref.findOneAndDelete({ _id: ObjectId(doc1._id) });
-        ref.findOneAndDelete({ _id: ObjectId(doc2._id) });
+        ref.deleteOne({ _id: ObjectId(doc1._id) });
+        ref.deleteOne({ _id: ObjectId(doc2._id) });
       });
     });
   });
@@ -2528,7 +2523,7 @@ describe('Test before hooks', () => {
         const response = res.body;
         assert(calls.length === 1);
         assert.equal(calls[0], 'before');
-        assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+        assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" (type string) at path "_id" for model "hook"');
       }));
 
     it('test unknown resource', () => request(app)
@@ -2571,7 +2566,7 @@ describe('Test before hooks', () => {
       .then((res) => {
         const response = res.body;
         assert(calls.length === 0);
-        assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+        assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" (type string) at path "_id" for model "hook"');
       }));
 
     it('test unknown resource', () => request(app)
@@ -2610,7 +2605,7 @@ describe('Test before hooks', () => {
       .then((res) => {
         const response = res.body;
         assert(calls.length === 0);
-        assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" at path "_id" for model "hook"');
+        assert.equal(_.get(response, 'message'), 'Cast to ObjectId failed for value "undefined" (type string) at path "_id" for model "hook"');
       }));
 
     it('test unknown resource', () => request(app)

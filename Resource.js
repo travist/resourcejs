@@ -230,6 +230,15 @@ class Resource {
     next();
   }
 
+  static ObjectId(id) {
+    try {
+      return (new mongodb.ObjectId(id));
+    }
+    catch (e) {
+      return id;
+    }
+  }
+
   /**
    * Sets the response that needs to be made and calls the next middleware for
    * execution.
@@ -386,13 +395,13 @@ class Resource {
       options.convertIds &&
       name.match(options.convertIds) &&
       (typeof value === 'string') &&
-      (mongodb.ObjectID.isValid(value))
+      (mongodb.ObjectId.isValid(value))
     ) {
       try {
-        value = new mongodb.ObjectID(value);
+        value = Resource.ObjectId(value);
       }
       catch (err) {
-        console.warn(`Invalid ObjectID: ${value}`);
+        console.warn(`Invalid ObjectId: ${value}`);
       }
     }
 
@@ -581,8 +590,13 @@ class Resource {
       }
 
       // Get the query object.
-      const countQuery = req.countQuery || req.modelQuery || req.model || this.model;
+      let countQuery = req.countQuery || req.modelQuery || req.model || this.model;
       const query = req.modelQuery || req.model || this.model;
+
+      // Make sure to clone the count query if it is available.
+      if (typeof countQuery.clone === 'function') {
+        countQuery = countQuery.clone();
+      }
 
       // Get the find query.
       const findQuery = this.getFindQuery(req, null, query._conditions);
@@ -839,7 +853,7 @@ class Resource {
       const { __v, ...update} = req.body;
       const query = req.modelQuery || req.model || this.model;
 
-      query.findOne({ _id: req.params[`${this.name}Id`] }, (err, item) => {
+      query.findOne({ _id: Resource.ObjectId(req.params[`${this.name}Id`]) }, (err, item) => {
         if (err) {
           debug.put(err);
           return Resource.setResponse(res, { status: 400, error: err }, next);

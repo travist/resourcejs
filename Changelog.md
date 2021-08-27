@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.4.0
+### Changed
+ - Upgrade debug@4.3.2, coveralls@3.1.1, supertest@6.1.6, fast-json-patch@3.1.0, eslint@7.32.0, mongodb@4.1.1, mocha@9.1.0, mongoose@6.0.2
+
 ## v2.3.4
 ### Changed
  - Upgrade dependencies.
@@ -61,7 +65,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  - The resourcejs middleware paths to be able to be processed outside of Express.
 
 ### Changed
- - Upgrade mocha@7.1.0 
+ - Upgrade mocha@7.1.0
 
 ## v2.0.0
 ### Changed
@@ -71,7 +75,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v1.39.0
 ### Changed
- - Upgrade mongoose@5.8.11, mongodb@3.5.3, mocha@7.0.1 
+ - Upgrade mongoose@5.8.11, mongodb@3.5.3, mocha@7.0.1
 
 ## v1.38.2
 ### Fixed
@@ -87,7 +91,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## v1.38.0
 ### Fixed
  - Issue where the ObjectId object is not defined in Swagger.js.
- 
+
 ### Changed
  - Upgraded mongodb@3.4.0, mongoose@5.8.0
 
@@ -131,7 +135,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v1.25.1
 ### Changed
- - Upgraded  mongodb@3.1.3, mongoose@5.2.8, eslint@5.3.0 
+ - Upgraded  mongodb@3.1.3, mongoose@5.2.8, eslint@5.3.0
 
 ## v1.25.0
 ### Changed
