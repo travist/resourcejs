@@ -45,7 +45,7 @@
     "supertest": "^6.1.6"
   },
   "peerDependencies": {
-    "mongoose": "5.x",
+    "mongoose": "6.x",
     "express": "4.x"
   }
 }
