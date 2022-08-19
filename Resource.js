@@ -463,7 +463,8 @@ class Resource {
           const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
           let regex = null;
           try {
-            regex = new RegExp(parts[1], (parts[2] || 'i'));
+            // Escape the RegExp special characters "^", "$", "\", ".", "*", "+", * "?", "(", ")", "[", "]", "{", "}", and "|" in string.
+            regex = new RegExp((parts[1]).replace(/[\\^$.*+?()[\]{}|]/g, '\\$&'), (parts[2] || 'i'));
           }
           catch (err) {
             debug.query(err);
