@@ -644,7 +644,6 @@ describe('Test single resource CRUD capabilities', () => {
     .expect('Content-Range', '*/0')
     .expect(200)
     .then((res) => {
-      assert.equal(res.hasOwnProperty('body'), true);
       assert.deepEqual(res.body, []);
     }));
 
@@ -854,7 +853,6 @@ describe('Test single resource CRUD capabilities', () => {
     .expect('Content-Range', '*/0')
     .expect(200)
     .then((res) => {
-      assert.equal(res.hasOwnProperty('body'), true);
       assert.deepEqual(res.body, []);
     }));
 
@@ -2052,7 +2050,6 @@ describe('Test nested resource CRUD capabilities', () => {
     .expect('Content-Range', '*/0')
     .expect(200)
     .then((res) => {
-      assert.equal(res.hasOwnProperty('body'), true);
       assert.deepEqual(res.body, []);
     }));
 
@@ -2193,7 +2190,6 @@ describe('Test nested resource CRUD capabilities', () => {
     .expect('Content-Range', '*/0')
     .expect(200)
     .then((res) => {
-      assert.equal(res.hasOwnProperty('body'), true);
       assert.deepEqual(res.body, []);
     }));
 });
@@ -2341,7 +2337,6 @@ describe('Test mount variations', () => {
     .expect('Content-Range', '*/0')
     .expect(200)
     .then((res) => {
-      assert.equal(res.hasOwnProperty('body'), true);
       assert.deepEqual(res.body, []);
     }));
 
