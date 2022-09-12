@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.5.0
+### Changed
+ - Upgrade dependencies.
+ - Migrate to yarn.
+
 ## v2.4.0
 ### Changed
  - Upgrade debug@4.3.2, coveralls@3.1.1, supertest@6.1.6, fast-json-patch@3.1.0, eslint@7.32.0, mongodb@4.1.1, mocha@9.1.0, mongoose@6.0.2
