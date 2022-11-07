@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
  - Increment minor version.
 
+### Fixed
+ - FIO-5398: Fixes special characters not escaped in regex query
+
 ## v2.5.0
 ### Changed
  - Upgrade dependencies.
