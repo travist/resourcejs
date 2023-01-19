@@ -125,8 +125,9 @@ class Resource {
     // Add a fallback error handler.
     const error = (err, req, res, next) => {
       if (err) {
-        res.status(400).json({
-          status: 400,
+        const status = err.status ? err.status : 400;
+        res.status(status).json({
+          status,
           message: err.message || err,
         });
       }
