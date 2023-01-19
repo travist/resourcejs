@@ -26,7 +26,7 @@
   "homepage": "https://github.com/travist/resourcejs",
   "dependencies": {
     "debug": "^4.3.2",
-    "fast-json-patch": "^3.1.0",
+    "fast-json-patch": "^3.1.1",
     "moment": "^2.29.1",
     "mongodb": "^4.1.1",
     "node-paginate-anything": "^1.0.0",
