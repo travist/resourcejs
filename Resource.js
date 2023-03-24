@@ -488,7 +488,7 @@ class Resource {
             value = !!value;
           }
           // Special case for in filter with multiple values.
-          else if (['in', 'nin'].includes(filter.selector)) {
+          else if (['in', 'nin', 'all'].includes(filter.selector)) {
             value = Array.isArray(value) ? value : value.split(',');
             value = value.map((item) => Resource.getQueryValue(filter.name, item, param, options, filter.selector));
           }
