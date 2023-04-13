@@ -1,0 +1,94 @@
+{
+  "name": "@sefriol/resourcejs-koa",
+  "type": "module",
+  "version": "3.0.0-edge",
+  "description": "A KoaJS library to wrap Mongoose models as a REST interface.",
+  "main": "lib/resource.mjs",
+  "typings": "types.d.ts",
+  "scripts": {
+    "lint": "eslint . --ext .js,.ts",
+    "fmt": "eslint . --ext .js,.ts --fix",
+    "test": "ava",
+    "coverage": "c8 -r html ava",
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sefriol/resourcejs"
+  },
+  "keywords": [
+    "KoaJS",
+    "Mongoose",
+    "Node",
+    "MEAN"
+  ],
+  "author": "Travis Tidwell",
+  "contributors": [
+    {
+      "name": "Joakim Järvinen",
+      "email": "Sefriol@users.noreply.github.com",
+      "url": "https://github.com/Sefriol"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sefriol/resourcejs/issues"
+  },
+  "homepage": "https://github.com/sefriol/resourcejs",
+  "dependencies": {
+    "@koa/router": "^12.0.0",
+    "debug": "^4.3.4",
+    "fast-json-patch": "^3.1.1",
+    "koa-compose": "^4.1.0",
+    "koa-qs": "^3.0.0",
+    "luxon": "^3.3.0",
+    "mongodb": "4.3.1",
+    "node-mocks-http": "^1.12.2",
+    "path-to-regexp": "^6.2.1"
+  },
+  "devDependencies": {
+    "@ava/typescript": "^4.0.0",
+    "@faker-js/faker": "^7.6.0",
+    "@types/debug": "^4.1.7",
+    "@types/koa": "^2.13.6",
+    "@types/koa__router": "^12.0.0",
+    "@types/koa-bodyparser": "^4.3.10",
+    "@types/koa-qs": "^2.0.0",
+    "@types/luxon": "^3.3.0",
+    "@types/supertest": "^2.0.12",
+    "@typescript-eslint/eslint-plugin": "^5.57.1",
+    "@typescript-eslint/parser": "^5.57.1",
+    "ava": "^5.2.0",
+    "c8": "^7.13.0",
+    "coveralls": "^3.1.1",
+    "eslint": "^8.38.0",
+    "eslint-config-standard-with-typescript": "^34.0.1",
+    "eslint-plugin-ava": "^14.0.0",
+    "koa": "^2.14.1",
+    "koa-bodyparser": "^4.4.0",
+    "mongodb-memory-server": "^8.12.2",
+    "mongoose": "^6.2.1",
+    "openapi-types": "^12.1.0",
+    "supertest": "^6.3.3",
+    "typescript": "^5.0.4"
+  },
+  "peerDependencies": {
+    "koa": "^2.x",
+    "koa-bodyparser": "4.x",
+    "mongoose": "6.x"
+  },
+  "nyc": {
+    "reporter": [
+      "lcov"
+    ]
+  },
+  "ava": {
+    "typescript": {
+      "rewritePaths": {
+        "/": "build/"
+      },
+      "compile": "tsc"
+    }
+  }
+}
