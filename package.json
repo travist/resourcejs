@@ -2,7 +2,8 @@
   "name": "resourcejs",
   "private": true,
   "scripts": {
-    "setup": "npm install && lerna bootstrap"
+    "setup": "npm install && lerna bootstrap",
+    "rename": "node ./rename-package.js"
   },
   "workspaces": [
     "lib/*"

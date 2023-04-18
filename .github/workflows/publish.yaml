@@ -1,0 +1,65 @@
+name: Publish
+permissions:
+  packages: write
+  contents: write
+  pull-requests: read
+  issues: write
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - dev
+      - master
+  workflow_dispatch:
+
+jobs:
+  publish:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    permissions:
+      packages: write
+      contents: read
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.PAT }}
+
+    - name: "Use NodeJS LTS"
+      uses: actions/setup-node@v3
+      with:
+        node-version: 'lts/*'
+        registry-url: https://npm.pkg.github.com/
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+    - name: "Setup npm"
+      run: |
+        npm set @${{github.repository_owner}}:registry=https://npm.pkg.github.com/${{github.repository_owner}}
+        npm set "//npm.pkg.github.com/:_authToken=${{ secrets.PAT }}"
+    - name: "Check token permissions"
+      uses: actions-cool/check-user-permission@v2
+      with:
+        token: ${{ secrets.PAT }}
+
+    - name: "Version and publish"
+      env:
+        GH_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+        NODE_AUTH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "${{github.actor}}"
+        git config user.email "${{github.actor}}@users.noreply.github.com"
+
+        # Add Release candidate incase PR finished in dev.
+        if [ ${{ github.base_ref }} = dev ] || [ ${{github.ref_name}} = dev ]; then
+          npx lerna version --conventional-commits --conventional-prerelease --preid rc --yes
+        else
+          npx lerna version --conventional-commits --conventional-graduate --yes
+        fi
+
+        # Do not git reset these changes, but do not commit them either.
+        npx lerna publish from-git --yes

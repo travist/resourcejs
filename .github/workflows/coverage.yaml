@@ -1,0 +1,31 @@
+name: Coverage
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [ ^16, ^18, ^20 ]
+
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: "Setup NodeJS"
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        npx lerna bootstrap
+
+    - name: Run tests # Run Coverage for of all packages
+      run: npx lerna exec npm run coverage
