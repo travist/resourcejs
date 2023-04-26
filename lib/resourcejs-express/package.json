@@ -1,5 +1,5 @@
 {
-  "name": "resourcejs",
+  "name": "@sefriol/resourcejs-express",
   "version": "2.6.0-rc.1",
   "description": "A simple Express library to reflect Mongoose models to a REST interface.",
   "main": "Resource.js",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/travist/resourcejs"
+    "url": "https://github.com/sefriol/resourcejs"
   },
   "keywords": [
     "Express",
