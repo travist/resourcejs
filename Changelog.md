@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.6.0
+### Changed
+ - Official Release
+
 ## 2.6.0-rc.2
 ### Added
  - FIO-6593: Adding a __all operator to the queries.
