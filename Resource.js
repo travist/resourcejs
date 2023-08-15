@@ -461,7 +461,17 @@ class Resource {
         // See if this selector is a regular expression.
         if (filter.selector === 'regex') {
           // Set the regular expression for the filter.
-          const parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
+          let parts = [];
+          const slashCount = (value.match(/\//g) || []).length;
+          if (slashCount > 2) {
+            const firstSlashPosition = value.indexOf('/');
+            const lastSlashPosition = value.lastIndexOf('/');
+            parts.push(value)
+            parts.push(value.substring(firstSlashPosition + 1, lastSlashPosition))
+            parts.push(value.substring(lastSlashPosition + 1))
+          } else {
+            parts = value.match(/\/?([^/]+)\/?([^/]+)?/);
+          }
           let regex = null;
           try {
             regex = new RegExp(parts[1], (parts[2] || 'i'));
@@ -871,22 +881,22 @@ class Resource {
           res,
           item,
           () => {
-          const writeOptions = req.writeOptions || {};
-          item.save(writeOptions, (err, item) => {
-            if (err) {
-              debug.put(err);
-              return Resource.setResponse(res, { status: 400, error: err }, next);
-            }
+            const writeOptions = req.writeOptions || {};
+            item.save(writeOptions, (err, item) => {
+              if (err) {
+                debug.put(err);
+                return Resource.setResponse(res, { status: 400, error: err }, next);
+              }
 
-            return options.hooks.put.after.call(
-              this,
-              req,
-              res,
-              item,
-              Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
-            );
+              return options.hooks.put.after.call(
+                this,
+                req,
+                res,
+                item,
+                Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
+              );
+            });
           });
-        });
       });
     }, Resource.respond, options);
     return this;
