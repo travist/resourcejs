@@ -896,7 +896,8 @@ class Resource {
                 Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
               );
             });
-          });
+          }
+        );
       });
     }, Resource.respond, options);
     return this;
