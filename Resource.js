@@ -535,12 +535,13 @@ class Resource {
       },
     ];
     return {
-      countDocuments(cb) {
-        query.model.aggregate(stages).exec((err, items) => {
-          if (err) {
-            return cb(err);
-          }
-          return cb(null, items.length ? items[0].count : 0);
+      countDocuments() {
+        return query.model.aggregate(stages).exec()
+        .then(items => {
+          return items.length ? items[0].count : 0;
+        })
+        .catch(err => {
+          throw err;
         });
       },
     };
@@ -603,12 +604,8 @@ class Resource {
       const findQuery = this.getFindQuery(req, null, query._conditions);
 
       // First get the total count.
-      this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
-        if (err) {
-          debug.index(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
-        }
-
+      this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments()
+      .then(count => {
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
 
@@ -666,19 +663,8 @@ class Resource {
           req,
           res,
           findQuery,
-          () => this.indexQuery(queryExec, query.pipeline).exec((err, items) => {
-            if (err) {
-              debug.index(err);
-              debug.index(err.name);
-
-              if (err.name === 'CastError' && populate) {
-                err.message = `Cannot populate "${populate}" as it is not a reference in this resource`;
-                debug.index(err.message);
-              }
-
-              return Resource.setResponse(res, { status: 400, error: err }, next);
-            }
-
+          () => this.indexQuery(queryExec, query.pipeline).exec()
+          .then(items => {
             debug.index(items);
             options.hooks.index.after.call(
               this,
@@ -688,7 +674,22 @@ class Resource {
               Resource.setResponse.bind(Resource, res, { status: res.statusCode, item: items }, next)
             );
           })
+          .catch(err => {
+            debug.index(err);
+            debug.index(err.name);
+
+            if (err.name === 'CastError' && populate) {
+              err.message = `Cannot populate "${populate}" as it is not a reference in this resource`;
+              debug.index(err.message);
+            }
+
+            return Resource.setResponse(res, { status: 400, error: err }, next);
+          })
         );
+      })
+      .catch(err => {
+        debug.index(err);
+        return Resource.setResponse(res, { status: 400, error: err }, next);
       });
     }, Resource.respond, options);
     return this;
@@ -724,8 +725,8 @@ class Resource {
         res,
         search,
         () => {
-          query.where(search).lean().exec((err, item) => {
-            if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
+          query.where(search).lean().exec()
+          .then(item => {
             if (!item) return Resource.setResponse(res, { status: 404 }, next);
 
             return options.hooks.get.after.call(
@@ -753,7 +754,8 @@ class Resource {
                 Resource.setResponse(res, { status: 200, item: item }, next)
               }
             );
-          });
+          })
+          .catch(err => Resource.setResponse(res, { status: 400, error: err }, next));
         }
       );
     }, Resource.respond, options);
@@ -780,11 +782,13 @@ class Resource {
       }
       const query = req.modelQuery || req.model;
       if (!query) return Resource.setResponse(res, { status: 404 }, next);
-      query.exec((err, item) => {
-        if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
+
+      query.exec()
+      .then(item => {
         if (!item) return Resource.setResponse(res, { status: 404 }, next);
         return Resource.setResponse(res, { status: 200, item }, next);
-      });
+      })
+      .catch(err => Resource.setResponse(res, { status: 400, error: err }, next));
     }, Resource.respond, options);
     return this;
   }
@@ -813,11 +817,8 @@ class Resource {
         req.body,
         () => {
           const writeOptions = req.writeOptions || {};
-          model.save(writeOptions, (err, item) => {
-            if (err) {
-              debug.post(err);
-              return Resource.setResponse(res, { status: 400, error: err }, next);
-            }
+          model.save(writeOptions)
+          .then(item => {
 
             debug.post(item);
             // Trigger any after hooks before responding.
@@ -828,6 +829,10 @@ class Resource {
               item,
               Resource.setResponse.bind(Resource, res, { status: 201, item }, next)
             );
+          })
+          .catch(err => {
+            debug.post(err);
+            return Resource.setResponse(res, { status: 400, error: err }, next);
           });
         }
       );
@@ -854,11 +859,8 @@ class Resource {
       const { __v, ...update} = req.body;
       const query = req.modelQuery || req.model || this.model;
 
-      query.findOne({ _id: Resource.ObjectId(req.params[`${this.name}Id`]) }, (err, item) => {
-        if (err) {
-          debug.put(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
-        }
+      query.findOne({ _id: Resource.ObjectId(req.params[`${this.name}Id`]) })
+      .then(item => {
         if (!item) {
           debug.put(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
           return Resource.setResponse(res, { status: 404 }, next);
@@ -872,11 +874,8 @@ class Resource {
           item,
           () => {
           const writeOptions = req.writeOptions || {};
-          item.save(writeOptions, (err, item) => {
-            if (err) {
-              debug.put(err);
-              return Resource.setResponse(res, { status: 400, error: err }, next);
-            }
+          item.save(writeOptions)
+          .then(item => {
 
             return options.hooks.put.after.call(
               this,
@@ -885,8 +884,16 @@ class Resource {
               item,
               Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
             );
+          })
+          .catch(err => {
+            debug.put(err);
+            return Resource.setResponse(res, { status: 400, error: err }, next);
           });
         });
+      })
+      .catch(err => {
+        debug.put(err);
+        return Resource.setResponse(res, { status: 400, error: err }, next);
       });
     }, Resource.respond, options);
     return this;
@@ -908,8 +915,8 @@ class Resource {
       }
       const query = req.modelQuery || req.model || this.model;
       const writeOptions = req.writeOptions || {};
-      query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
-        if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
+      query.findOne({ '_id': req.params[`${this.name}Id`] })
+      .then(item => {
         if (!item) return Resource.setResponse(res, { status: 404, error: err }, next);
 
         // Ensure patches is an array
@@ -970,11 +977,11 @@ class Resource {
               return Resource.setResponse(res, { status: 400, item, error: err }, next);
           }
         }
-        item.save(writeOptions, (err, item) => {
-          if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
-          return Resource.setResponse(res, { status: 200, item }, next);
-        });
-      });
+        item.save(writeOptions)
+        .then(item => Resource.setResponse(res, { status: 200, item }, next))
+        .catch(err => Resource.setResponse(res, { status: 400, error: err }, next));
+      })
+      .catch(err => Resource.setResponse(res, { status: 400, error: err }, next))
     }, Resource.respond, options);
     return this;
   }
@@ -995,14 +1002,11 @@ class Resource {
       }
 
       const query = req.modelQuery || req.model || this.model;
-      query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
-        if (err) {
-          debug.delete(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
-        }
+      query.findOne({ '_id': req.params[`${this.name}Id`] })
+      .then(item => {
         if (!item) {
           debug.delete(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
-          return Resource.setResponse(res, { status: 404, error: err }, next);
+          return Resource.setResponse(res, { status: 404 }, next);
         }
         if (req.skipDelete) {
           return Resource.setResponse(res, { status: 204, item, deleted: true }, next);
@@ -1015,12 +1019,8 @@ class Resource {
           item,
           () => {
             const writeOptions = req.writeOptions || {};
-            item.remove(writeOptions, (err) => {
-              if (err) {
-                debug.delete(err);
-                return Resource.setResponse(res, { status: 400, error: err }, next);
-              }
-
+            item.deleteOne(writeOptions)
+            .then(() => {
               debug.delete(item);
               options.hooks.delete.after.call(
                 this,
@@ -1029,9 +1029,17 @@ class Resource {
                 item,
                 Resource.setResponse.bind(Resource, res, { status: 204, item, deleted: true }, next)
               );
+            })
+            .catch(err => {
+              debug.delete(err);
+              return Resource.setResponse(res, { status: 400, error: err }, next);
             });
           }
         );
+      })
+      .catch(err => {
+        debug.delete(err);
+        return Resource.setResponse(res, { status: 400, error: err }, next);
       });
     }, Resource.respond, options);
     return this;
