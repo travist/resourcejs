@@ -81,6 +81,11 @@ const getProperty = function(path, name) {
           'type': 'string',
           'description': 'ObjectId',
         };
+        case 'SchemaObjectId':
+          return {
+            'type': 'string',
+            'description': 'ObjectId',
+          };
       case 'Oid':
         return {
           'type': 'string',
@@ -109,6 +114,11 @@ const getProperty = function(path, name) {
       return {
         'type': 'string',
         'description': 'ObjectId',
+      };
+    case 'SchemaObjectId':
+        return {
+          'type': 'string',
+          'description': 'ObjectId',
       };
     case String:
       return {
@@ -496,3 +506,4 @@ module.exports = function(resource) {
   // Return the swagger definition for this resource.
   return swagger;
 };
+

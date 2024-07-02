@@ -420,8 +420,11 @@ describe('Build Resources for following tests', () => {
     const resource4 = Resource(app, '/test', 'resource4', Resource4Model)
     .rest({
       beforePatch(req, res, next) {
-        req.modelQuery = { findOne: function findOne(_,callback) {
-          callback(new Error('failed'), undefined);
+        req.modelQuery = {
+          findOne: function findOne() {
+            return new Promise((resolve, reject) => {
+              reject(new Error('failed'));
+            });
           },
         };
         next();
@@ -446,9 +449,12 @@ describe('Build Resources for following tests', () => {
     .virtual({
       path: 'error',
       before: function(req, res, next) {
-        req.modelQuery = { exec: function exec(callback) {
-          callback(new Error('Failed'), undefined);
-          },
+        req.modelQuery = {
+          exec: function exec() {
+            return new Promise((resolve, reject) => {
+              reject(new Error('Failed'));
+            });
+          }
         };
         return next();
       },
@@ -456,8 +462,11 @@ describe('Build Resources for following tests', () => {
     .virtual({
       path: 'empty',
       before: function(req, res, next) {
-        req.modelQuery = { exec: function exec(callback) {
-          callback(undefined, undefined);
+        req.modelQuery = {
+          exec: function exec() {
+            return new Promise((resolve, reject) => {
+              resolve(undefined);
+            });
           },
         };
         return next();
@@ -927,7 +936,7 @@ describe('Test single resource CRUD capabilities', () => {
           });
       });
 
-      it('Manual DB updates to a resource with subdocuments should not mangle the subdocuments', () => {
+      it('Manual DB updates to a resource with subdocuments should not mangle the subdocuments', async () => {
         const updates = [
           { label: '1', data: [doc1._id] },
           { label: '2', data: [doc2._id] },
@@ -935,18 +944,17 @@ describe('Test single resource CRUD capabilities', () => {
         ];
 
         const resource1 = db.collection('resource1');
-        resource1.updateOne(
-          { _id: ObjectId(resource._id) },
-          { $set: { list: updates } },
-          () => {
-            resource1.findOne({_id: ObjectId(resource._id)}, (err, response) => {
+          await resource1.updateOne(
+            { _id: new ObjectId(resource._id) },
+            { $set: { list: updates } })
+            resource1.findOne({_id: new ObjectId(resource._id)})
+             .then (response => {
               assert.equal(response.title, resource.title);
               assert.equal(response.description, resource.description);
               assert.equal(response._id, resource._id);
               assert.deepEqual(response.list, updates);
               resource = response;
             });
-          });
       });
 
       it('/PUT to a resource subdocument should not mangle the subdocuments', () => {
@@ -990,13 +998,13 @@ describe('Test single resource CRUD capabilities', () => {
     describe('Subdocument cleanup', () => {
       it('Should remove the test resource', () => {
         const resource1 = db.collection('resource1');
-        resource1.deleteOne({ _id: ObjectId(resource._id) });
+        resource1.deleteOne({ _id: new ObjectId(resource._id) });
       });
 
       it('Should remove the test ref resources', () => {
         const ref = db.collection('ref');
-        ref.deleteOne({ _id: ObjectId(doc1._id) });
-        ref.deleteOne({ _id: ObjectId(doc2._id) });
+        ref.deleteOne({ _id: new ObjectId(doc1._id) });
+        ref.deleteOne({ _id: new ObjectId(doc2._id) });
       });
     });
   });
