@@ -535,13 +535,9 @@ class Resource {
       },
     ];
     return {
-      countDocuments(cb) {
-        query.model.aggregate(stages).exec((err, items) => {
-          if (err) {
-            return cb(err);
-          }
-          return cb(null, items.length ? items[0].count : 0);
-        });
+      async countDocuments() {
+        const items = await query.model.aggregate(stages).exec()
+        return items.length ? items[0].count : 0;
       },
     };
   }
@@ -580,7 +576,7 @@ class Resource {
   index(options) {
     options = Resource.getMethodOptions('index', options);
     this.methods.push('index');
-    this._register('get', this.route, (req, res, next) => {
+    this._register('get', this.route, async (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'index';
 
@@ -603,12 +599,8 @@ class Resource {
       const findQuery = this.getFindQuery(req, null, query._conditions);
 
       // First get the total count.
-      this.countQuery(countQuery.find(findQuery), query.pipeline).countDocuments((err, count) => {
-        if (err) {
-          debug.index(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
-        }
-
+      try {
+        const count = await this.countQuery( countQuery.find(findQuery), query.pipeline).countDocuments();
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
 
@@ -666,8 +658,19 @@ class Resource {
           req,
           res,
           findQuery,
-          () => this.indexQuery(queryExec, query.pipeline).exec((err, items) => {
-            if (err) {
+          async () => {
+            try {
+              const items = await this.indexQuery(queryExec, query.pipeline).exec();
+              debug.index(items);
+              options.hooks.index.after.call(
+                this,
+                req,
+                res,
+                items,
+                Resource.setResponse.bind(Resource, res, { status: res.statusCode, item: items }, next)
+              );
+            }
+            catch (err) {
               debug.index(err);
               debug.index(err.name);
 
@@ -678,18 +681,13 @@ class Resource {
 
               return Resource.setResponse(res, { status: 400, error: err }, next);
             }
-
-            debug.index(items);
-            options.hooks.index.after.call(
-              this,
-              req,
-              res,
-              items,
-              Resource.setResponse.bind(Resource, res, { status: res.statusCode, item: items }, next)
-            );
-          })
+          }
         );
-      });
+      }
+      catch (err) {
+        debug.index(err);
+        return Resource.setResponse(res, { status: 400, error: err }, next);
+      }
     }, Resource.respond, options);
     return this;
   }
@@ -723,9 +721,9 @@ class Resource {
         req,
         res,
         search,
-        () => {
-          query.where(search).lean().exec((err, item) => {
-            if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
+        async () => {
+          try {
+            let item = await query.where(search).lean().exec()
             if (!item) return Resource.setResponse(res, { status: 404 }, next);
 
             return options.hooks.get.after.call(
@@ -753,7 +751,10 @@ class Resource {
                 Resource.setResponse(res, { status: 200, item: item }, next)
               }
             );
-          });
+          }
+          catch (err) {
+            return  Resource.setResponse(res, { status: 400, error: err }, next);
+          }
         }
       );
     }, Resource.respond, options);
@@ -770,7 +771,7 @@ class Resource {
     const path = options.path;
     options = Resource.getMethodOptions('virtual', options);
     this.methods.push(`virtual/${path}`);
-    this._register('get', `${this.route}/virtual/${path}`, (req, res, next) => {
+    this._register('get', `${this.route}/virtual/${path}`, async (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'virtual';
 
@@ -780,11 +781,15 @@ class Resource {
       }
       const query = req.modelQuery || req.model;
       if (!query) return Resource.setResponse(res, { status: 404 }, next);
-      query.exec((err, item) => {
-        if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
+
+      try {
+        const item = await query.exec()
         if (!item) return Resource.setResponse(res, { status: 404 }, next);
         return Resource.setResponse(res, { status: 200, item }, next);
-      });
+      }
+      catch (err) {
+        return  Resource.setResponse(res, { status: 400, error: err }, next)
+      }
     }, Resource.respond, options);
     return this;
   }
@@ -811,14 +816,10 @@ class Resource {
         req,
         res,
         req.body,
-        () => {
+        async () => {
+          try {
           const writeOptions = req.writeOptions || {};
-          model.save(writeOptions, (err, item) => {
-            if (err) {
-              debug.post(err);
-              return Resource.setResponse(res, { status: 400, error: err }, next);
-            }
-
+          const item = await model.save(writeOptions)
             debug.post(item);
             // Trigger any after hooks before responding.
             return options.hooks.post.after.call(
@@ -828,7 +829,11 @@ class Resource {
               item,
               Resource.setResponse.bind(Resource, res, { status: 201, item }, next)
             );
-          });
+          }
+          catch (err) {
+            debug.post(err);
+            return Resource.setResponse(res, { status: 400, error: err }, next);
+          }
         }
       );
     }, Resource.respond, options);
@@ -841,7 +846,7 @@ class Resource {
   put(options) {
     options = Resource.getMethodOptions('put', options);
     this.methods.push('put');
-    this._register('put', `${this.route}/:${this.name}Id`, (req, res, next) => {
+    this._register('put', `${this.route}/:${this.name}Id`, async (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'put';
 
@@ -854,11 +859,8 @@ class Resource {
       const { __v, ...update} = req.body;
       const query = req.modelQuery || req.model || this.model;
 
-      query.findOne({ _id: Resource.ObjectId(req.params[`${this.name}Id`]) }, (err, item) => {
-        if (err) {
-          debug.put(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
-        }
+      try {
+        const item = await query.findOne({ _id: Resource.ObjectId(req.params[`${this.name}Id`]) })
         if (!item) {
           debug.put(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
           return Resource.setResponse(res, { status: 404 }, next);
@@ -870,24 +872,29 @@ class Resource {
           req,
           res,
           item,
-          () => {
+          async () => {
           const writeOptions = req.writeOptions || {};
-          item.save(writeOptions, (err, item) => {
-            if (err) {
-              debug.put(err);
-              return Resource.setResponse(res, { status: 400, error: err }, next);
-            }
-
+          try {
+            const savedItem = await item.save(writeOptions);
             return options.hooks.put.after.call(
               this,
               req,
               res,
-              item,
-              Resource.setResponse.bind(Resource, res, { status: 200, item }, next)
+              savedItem,
+              Resource.setResponse.bind(Resource, res, { status: 200, item: savedItem }, next)
             );
-          });
+          }
+          catch (err) {
+            debug.put(err);
+            return Resource.setResponse(res, { status: 400, error: err }, next);
+          }
         });
-      });
+
+      }
+      catch (err) {
+        debug.put(err);
+        return Resource.setResponse(res, { status: 400, error: err }, next);
+      }
     }, Resource.respond, options);
     return this;
   }
@@ -898,7 +905,7 @@ class Resource {
   patch(options) {
     options = Resource.getMethodOptions('patch', options);
     this.methods.push('patch');
-    this._register('patch', `${this.route}/:${this.name}Id`, (req, res, next) => {
+    this._register('patch', `${this.route}/:${this.name}Id`, async (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'patch';
 
@@ -908,8 +915,8 @@ class Resource {
       }
       const query = req.modelQuery || req.model || this.model;
       const writeOptions = req.writeOptions || {};
-      query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
-        if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
+      try {
+        const item = await query.findOne({ '_id': req.params[`${this.name}Id`] });
         if (!item) return Resource.setResponse(res, { status: 404, error: err }, next);
 
         // Ensure patches is an array
@@ -970,11 +977,18 @@ class Resource {
               return Resource.setResponse(res, { status: 400, item, error: err }, next);
           }
         }
-        item.save(writeOptions, (err, item) => {
-          if (err) return Resource.setResponse(res, { status: 400, error: err }, next);
-          return Resource.setResponse(res, { status: 200, item }, next);
-        });
-      });
+        try {
+        const savedItem = await item.save(writeOptions);
+        return Resource.setResponse(res, { status: 200, item: savedItem }, next);
+        }
+        catch (err) {
+          return Resource.setResponse(res, { status: 400, error: err }, next);
+        }
+
+      }
+      catch(err) {
+        return Resource.setResponse(res, { status: 400, error: err }, next)
+      }
     }, Resource.respond, options);
     return this;
   }
@@ -985,7 +999,7 @@ class Resource {
   delete(options) {
     options = Resource.getMethodOptions('delete', options);
     this.methods.push('delete');
-    this._register('delete', `${this.route}/:${this.name}Id`, (req, res, next) => {
+    this._register('delete', `${this.route}/:${this.name}Id`, async (req, res, next) => {
       // Store the internal method for response manipulation.
       req.__rMethod = 'delete';
 
@@ -995,14 +1009,11 @@ class Resource {
       }
 
       const query = req.modelQuery || req.model || this.model;
-      query.findOne({ '_id': req.params[`${this.name}Id`] }, (err, item) => {
-        if (err) {
-          debug.delete(err);
-          return Resource.setResponse(res, { status: 400, error: err }, next);
-        }
+      try {
+        const item = await query.findOne({ '_id': req.params[`${this.name}Id`] });
         if (!item) {
           debug.delete(`No ${this.name} found with ${this.name}Id: ${req.params[`${this.name}Id`]}`);
-          return Resource.setResponse(res, { status: 404, error: err }, next);
+          return Resource.setResponse(res, { status: 404 }, next);
         }
         if (req.skipDelete) {
           return Resource.setResponse(res, { status: 204, item, deleted: true }, next);
@@ -1013,14 +1024,10 @@ class Resource {
           req,
           res,
           item,
-          () => {
+          async () => {
             const writeOptions = req.writeOptions || {};
-            item.remove(writeOptions, (err) => {
-              if (err) {
-                debug.delete(err);
-                return Resource.setResponse(res, { status: 400, error: err }, next);
-              }
-
+            try {
+              await item.deleteOne(writeOptions);
               debug.delete(item);
               options.hooks.delete.after.call(
                 this,
@@ -1029,10 +1036,19 @@ class Resource {
                 item,
                 Resource.setResponse.bind(Resource, res, { status: 204, item, deleted: true }, next)
               );
-            });
+            }
+            catch (err) {
+              debug.delete(err);
+              return Resource.setResponse(res, { status: 400, error: err }, next);
+            }
           }
         );
-      });
+
+      }
+      catch (err) {
+        debug.delete(err);
+        return Resource.setResponse(res, { status: 400, error: err }, next);
+      }
     }, Resource.respond, options);
     return this;
   }
