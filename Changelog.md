@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased: 2.6.1-rc.3]
+### Changed
+ - Update yarn.lock
+
 ## 2.6.1-rc.2
 ### Changed
  - CHORE: upgrade mongodb driver dependency
