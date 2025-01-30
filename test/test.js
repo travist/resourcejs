@@ -1389,6 +1389,38 @@ function testSearch(testPath) {
       });
     }));
 
+  // the $all query filter in mongo returns any documents 
+  // with the queried array field including at least all of the specified query params
+  // so, if we ask for __all=one,two,three–– we get all documents with a list2 value of ["one", "two", "three", "four"]
+  // it would also return a document that had a list2 of, for example, ["one", "two", "three", "nine", "seven"] 
+  // since the array includes all the specified query params ("one", "two", and "three")
+  it('all search selector success', () => request(app)
+  // each resource has a list2 array with either one–four or five–eight
+  .get(`${testPath}?list2__all=one,two,three`)
+  .expect('Content-Type', /json/)
+  .expect(206)
+  .then((res) => {
+    const response = res.body;
+      assert.equal(response.length, 10);
+    response.forEach((resource) => {
+      assert(resource.list2.includes('one'));
+      assert(resource.list2.includes('two'));
+      assert(resource.list2.includes('three'));
+    });
+  }));
+
+  
+  it('all search selector failure', () => request(app)
+  // each resource has a list2 array with either one–four or five–eight
+  // if we search for one, two, and five, it will not return any matches
+  .get(`${testPath}?list2__all=one,two,five`)
+  .expect('Content-Type', /json/)
+  .expect(200)
+  .then((res) => {
+    const response = res.body;
+      assert.equal(response.length, 0);
+  }));
+
   it('exists=false search selector', () => request(app)
     .get(`${testPath}?age__exists=false`)
     .expect('Content-Type', /json/)
@@ -1522,6 +1554,8 @@ describe('Test single resource search capabilities', () => {
       });
   });
 
+  const list2Strings1 = ['one', 'two', 'three', 'four'];
+  const list2Strings2 = ['five', 'six', 'seven', 'eight'];
   it('Create a full index of resources', () => _.range(25).reduce((promise, age) => {
     const name = (chance.name()).toUpperCase();
     resourceNames.push(name);
@@ -1532,6 +1566,7 @@ describe('Test single resource search capabilities', () => {
         description: `Description of test age ${age}`,
         name,
         age,
+        list2: age % 2 === 0 ? list2Strings1 : list2Strings2,
       })
       .then((res) => {
         const response = res.body;
