@@ -527,12 +527,7 @@ class Resource {
     const stages = [
       { $match: query.getQuery() },
       ...pipeline,
-      {
-        $group: {
-          _id : null,
-          count : { $sum : 1 },
-        },
-      },
+      { $count: 'count' },
     ];
     return {
       async countDocuments() {
@@ -550,7 +545,6 @@ class Resource {
 
     const stages = [
       { $match: query.getQuery() },
-      ...pipeline,
     ];
 
     if (query.options && query.options.sort && !utils.isEmpty(query.options.sort)) {
@@ -565,6 +559,7 @@ class Resource {
     if (!utils.isEmpty(query._fields)) {
       stages.push({ $project: query._fields });
     }
+    stages.push(...pipeline);
     return query.model.aggregate(stages);
   }
 
@@ -593,6 +588,8 @@ class Resource {
       // Make sure to clone the count query if it is available.
       if (typeof countQuery.clone === 'function') {
         countQuery = countQuery.clone();
+        // countQuery pipeline gets removed by clone() so add it back
+        countQuery.pipeline = req.countQuery.pipeline;
       }
 
       // Get the find query.
@@ -600,7 +597,7 @@ class Resource {
 
       // First get the total count.
       try {
-        const count = await this.countQuery( countQuery.find(findQuery), query.pipeline).countDocuments();
+        const count = await this.countQuery( countQuery.find(findQuery), countQuery.pipeline || query.pipeline).countDocuments();
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };
 
@@ -818,8 +815,8 @@ class Resource {
         req.body,
         async () => {
           try {
-          const writeOptions = req.writeOptions || {};
-          const item = await model.save(writeOptions)
+            const writeOptions = req.writeOptions || {};
+            const item = await model.save(writeOptions)
             debug.post(item);
             // Trigger any after hooks before responding.
             return options.hooks.post.after.call(
@@ -873,22 +870,22 @@ class Resource {
           res,
           item,
           async () => {
-          const writeOptions = req.writeOptions || {};
-          try {
-            const savedItem = await item.save(writeOptions);
-            return options.hooks.put.after.call(
-              this,
-              req,
-              res,
-              savedItem,
-              Resource.setResponse.bind(Resource, res, { status: 200, item: savedItem }, next)
-            );
-          }
-          catch (err) {
-            debug.put(err);
-            return Resource.setResponse(res, { status: 400, error: err }, next);
-          }
-        });
+            const writeOptions = req.writeOptions || {};
+            try {
+              const savedItem = await item.save(writeOptions);
+              return options.hooks.put.after.call(
+                this,
+                req,
+                res,
+                savedItem,
+                Resource.setResponse.bind(Resource, res, { status: 200, item: savedItem }, next)
+              );
+            }
+            catch (err) {
+              debug.put(err);
+              return Resource.setResponse(res, { status: 400, error: err }, next);
+            }
+          });
 
       }
       catch (err) {
@@ -978,8 +975,8 @@ class Resource {
           }
         }
         try {
-        const savedItem = await item.save(writeOptions);
-        return Resource.setResponse(res, { status: 200, item: savedItem }, next);
+          const savedItem = await item.save(writeOptions);
+          return Resource.setResponse(res, { status: 200, item: savedItem }, next);
         }
         catch (err) {
           return Resource.setResponse(res, { status: 400, error: err }, next);
