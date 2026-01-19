@@ -26,6 +26,19 @@ const testDates = [
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+app.use((err, req, res, next) => {
+  // delegate to the default Express error handler when the headers have already been sent to the client
+  if (res.headersSent) {
+    return next(err);
+  }
+  console.log('Uncaught exception:');
+  if (err) {
+    console.log(err);
+    console.log(err.stack);
+  }
+  res.status(err.status ? err.status : 400).send(typeof err === 'string' ? {message: err} : err);
+});
+
 // An object to store handler events.
 let handlers = {};
 
@@ -2313,8 +2326,8 @@ describe('Test nested resource handlers capabilities', () => {
   it('A GET (Index) request to a child resource should invoke the global handlers', (done) => {
     request(app)
       .get(`/test/resource2/${resource._id}/nested2`)
-      // .expect('Content-Type', /json/)
-      // .expect(200)
+      .expect('Content-Type', /json/)
+      .expect(200)
       .then((res) => {
         const response = res.body;
         assert.equal(response.length, 1);
