@@ -26,19 +26,6 @@ const testDates = [
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-app.use((err, req, res, next) => {
-  // delegate to the default Express error handler when the headers have already been sent to the client
-  if (res.headersSent) {
-    return next(err);
-  }
-  console.log('Uncaught exception:');
-  if (err) {
-    console.log(err);
-    console.log(err.stack);
-  }
-  res.status(err.status ? err.status : 400).send(typeof err === 'string' ? {message: err} : err);
-});
-
 // An object to store handler events.
 let handlers = {};
 
