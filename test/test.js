@@ -1504,6 +1504,23 @@ function testSearch(testPath) {
           });
       });
   });
+
+  it('or search selector', () => request(app)
+    .get(`${testPath}?__or=age__eq=5,title__eq=No Age`)
+    .expect('Content-Type', /json/)
+    .expect(200)
+    .then((res) => {
+      const response = res.body;
+      assert.equal(response.length, 2);
+      response.forEach((resource) => {
+        if (typeof resource.age === 'number') {
+          assert.equal(resource.age, 5);
+        }
+        else {
+          assert.equal(resource.title, 'No Age');
+        }
+      });
+    }));
 }
 
 describe('Test single resource search capabilities', () => {
@@ -2293,24 +2310,27 @@ describe('Test nested resource handlers capabilities', () => {
       nested = response;
     }));
 
-  it('A GET (Index) request to a child resource should invoke the global handlers', () => request(app)
-    .get(`/test/resource2/${resource._id}/nested2`)
-    .expect('Content-Type', /json/)
-    .expect(200)
-    .then((res) => {
-      const response = res.body;
-      assert.equal(response.length, 1);
-      assert.equal(response[0].title, nested.title);
-      assert.equal(response[0].description, nested.description);
-      assert(response[0].hasOwnProperty('resource2'), 'The response must contain the parent object `_id`');
-      assert.equal(response[0].resource2, resource._id);
-      assert(response[0].hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
-      assert.equal(response[0]._id, nested._id);
+  it('A GET (Index) request to a child resource should invoke the global handlers', (done) => {
+    request(app)
+      .get(`/test/resource2/${resource._id}/nested2`)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then((res) => {
+        const response = res.body;
+        assert.equal(response.length, 1);
+        assert.equal(response[0].title, nested.title);
+        assert.equal(response[0].description, nested.description);
+        assert(response[0].hasOwnProperty('resource2'), 'The response must contain the parent object `_id`');
+        assert.equal(response[0].resource2, resource._id);
+        assert(response[0].hasOwnProperty('_id'), 'The response must contain the mongo object `_id`');
+        assert.equal(response[0]._id, nested._id);
 
-      // Confirm that the handlers were called.
-      assert.equal(wasInvoked('nested2', 'before', 'index'), true);
-      assert.equal(wasInvoked('nested2', 'after', 'index'), true);
-    }));
+        // Confirm that the handlers were called.
+        assert.equal(wasInvoked('nested2', 'before', 'index'), true);
+        assert.equal(wasInvoked('nested2', 'after', 'index'), true);
+        done();
+      }).catch(done)
+  });
 
   it('A DELETE request to a child resource should invoke the global handlers', () => request(app)
     .delete(`/test/resource2/${resource._id}/nested2/${nested._id}`)

@@ -450,8 +450,7 @@ class Resource {
       }
     };
 
-    // Iterate through each filter.
-    Object.entries(filters).forEach(([name, value]) => {
+    const processSingleFilter = (name, value)=> {
       // Get the filter object.
       const filter = utils.zipObject(['name', 'selector'], name.split('__'));
 
@@ -471,7 +470,7 @@ class Resource {
             regex = null;
           }
           if (regex) {
-            setFindQuery(filter.name, regex);
+            return [filter.name, regex];
           }
           return;
         } // See if there is a selector.
@@ -498,20 +497,44 @@ class Resource {
           }
 
           filterQuery[`$${filter.selector}`] = value;
-          setFindQuery(filter.name, filterQuery);
-          return;
+          return [filter.name, filterQuery];
         }
         else {
           // Set the find query to this value.
           value = Resource.getQueryValue(filter.name, value, param, options, filter.selector);
-          setFindQuery(filter.name, value);
-          return;
+          return [filter.name, value];
         }
       }
 
       if (!options.queryFilter) {
         // Set the find query to this value.
-        setFindQuery(filter.name, value);
+        return [filter.name, value];
+      }
+    }
+
+    // Iterate through each filter.
+    Object.entries(filters).forEach(([name, value]) => {
+      let filter;
+      // Process each statement of 'or' operator separately
+      if (name === '__or') {
+        const isParsed = Array.isArray(value);
+        const statements = !isParsed ? value.split(',') : value;
+        const filters = statements.map((statement) => {
+          const [statementName, statementValue] = !isParsed ? statement.split('=') : Object.entries(statement)[0];
+          const filter = processSingleFilter(statementName, statementValue);
+          if (filter.length) {
+            const [n, v] = filter;
+            return { [n]: v };
+          }
+          return null;
+        }).filter(item => !!item);
+        filter = ['$or', filters];
+      }
+      else {
+        filter = processSingleFilter(name, value);
+      }
+      if (filter?.length) {
+        setFindQuery(...filter);
       }
     });
 

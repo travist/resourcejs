@@ -411,22 +411,23 @@ Filtering the results.
 --------------------------------
 The ```index()``` that is created is capable of doing some complex filtering using Query arguments within the URL. They are described as the following.
 
-| Filter                       | Query    | Example                                              | Description                                                      |
-|------------------------------|----------|------------------------------------------------------|------------------------------------------------------------------|
-| **equal**                    | `equals` | `/users?gender=male` 			                     | both return all male users                                       |
-| **not equal**                | `ne`     | `/users?gender__ne=male`                             | returns all users who are not male (`female` and `x`)            |
-| **greater than**             | `gt`     | `/users?age__gt=18`                                  | returns all users older than 18                                  |
-| **greater than or equal to** | `gte`    | `/users?age__gte=18`                                 | returns all users 18 and older (age should be a number property) |
-| **less than**                | `lt`     | `/users?age__lt=30`                                  | returns all users age 29 and younger                             |
-| **less than or equal to**    | `lte`    | `/users?age__lte=30`                                 | returns all users age 30 and younger                             |
-| **in**                       | `in`     | `/users?gender__in=female,male`                      | returns all female and male users                                |
-| **nin**                      | `nin`    | `/users?age__nin=18,21`                              | returns all users who are not 18 or 21                           |
-| **exists=true**              | `exists` | `/users?age__exists=true`                            | returns all users where the age is provided.                     |
-| **exists=false**             | `exists` | `/users?age__exists=false`                           | returns all users where the age is not provided.                 |
-| **Regex**                    | `regex`  | `/users?username__regex=/^travis/i`                  | returns all users with a username starting with travis           |
-| **limit**                    | `limit` | `/users?limit=5`                                     | limits results to the specified amount
-| **skip**                     | `skip` | `/users?skip=10`                                     | skip to the specified record in the result set
-| **select**                   | `select` | `/users?select=first_name,last_name`               | return only the specified fields
+| Filter                       | Query    | Example                                                      | Description                                                      |
+|------------------------------|----------|--------------------------------------------------------------|------------------------------------------------------------------|
+| **equal**                    | `equals` | `/users?gender=male` 			                                     | both return all male users                                       |
+| **not equal**                | `ne`     | `/users?gender__ne=male`                                     | returns all users who are not male (`female` and `x`)            |
+| **greater than**             | `gt`     | `/users?age__gt=18`                                          | returns all users older than 18                                  |
+| **greater than or equal to** | `gte`    | `/users?age__gte=18`                                         | returns all users 18 and older (age should be a number property) |
+| **less than**                | `lt`     | `/users?age__lt=30`                                          | returns all users age 29 and younger                             |
+| **less than or equal to**    | `lte`    | `/users?age__lte=30`                                         | returns all users age 30 and younger                             |
+| **in**                       | `in`     | `/users?gender__in=female,male`                              | returns all female and male users                                |
+| **nin**                      | `nin`    | `/users?age__nin=18,21`                                      | returns all users who are not 18 or 21                           |
+| **exists=true**              | `exists` | `/users?age__exists=true`                                    | returns all users where the age is provided.                     |
+| **exists=false**             | `exists` | `/users?age__exists=false`                                   | returns all users where the age is not provided.                 |
+| **Regex**                    | `regex`  | `/users?username__regex=/^travis/i`                          | returns all users with a username starting with travis           |
+| **or**                       | `or`     | `/users?__or=first_name__regex=/^travis/i,age__gt=18` | return all users with a username starting with travis OR older than 18
+| **limit**                    | `limit`  | `/users?limit=5`                                             | limits results to the specified amount
+| **skip**                     | `skip`   | `/users?skip=10`                                             | skip to the specified record in the result set
+| **select**                   | `select` | `/users?select=first_name,last_name`                         | return only the specified fields
 
 Adding Swagger.io v2 documentation
 --------------------------------
