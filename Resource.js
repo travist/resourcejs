@@ -842,7 +842,7 @@ class Resource {
             const item = await model.save(writeOptions)
             debug.post(item);
             // Trigger any after hooks before responding.
-            return options.hooks.post.after.call(
+            return await options.hooks.post.after.call(
               this,
               req,
               res,
