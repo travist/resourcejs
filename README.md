@@ -249,7 +249,7 @@ resource(app, '', 'product', productModel)
 
 Finally you can retrieve the virtual resources using their generated urls:
 
-#####max-price
+##### max-price
 * /product/virtual/max-price
 
 returns the `max-price` virtual resource as json:
@@ -260,7 +260,7 @@ returns the `max-price` virtual resource as json:
 }
 ```
 
-#####max-stock
+##### max-stock
 * /product/virtual/max-stock
 
 returns the `max-stock` virtual resource as json:
