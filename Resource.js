@@ -607,12 +607,13 @@ class Resource {
       // Get the query object.
       let countQuery = req.countQuery || req.modelQuery || req.model || this.model;
       const query = req.modelQuery || req.model || this.model;
+      const pipeline = countQuery.pipeline;
 
       // Make sure to clone the count query if it is available.
       if (typeof countQuery.clone === 'function') {
         countQuery = countQuery.clone();
         // countQuery pipeline gets removed by clone() so add it back
-        countQuery.pipeline = req.countQuery.pipeline;
+        countQuery.pipeline = pipeline;
       }
 
       // Get the find query.
