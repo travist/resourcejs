@@ -515,6 +515,28 @@ describe('Build Resources for following tests', () => {
     assert.equal(Object.values(swaggerio.paths).length, 3);
     assert.deepEqual(swaggerio, skipSwaggerio);
   });
+
+  it('Build the /test/collation endpoints with collation option', () => {
+    const CollationSchema = new mongoose.Schema({
+      title: { type: String, required: true },
+      name:  { type: String },
+    });
+    const CollationModel = mongoose.model('collation', CollationSchema);
+
+    Resource(app, '/test', 'collation', CollationModel, {
+      collation: { locale: 'en', strength: 2 },
+    }).rest();
+  });
+
+  it('/test/collation with mixed-case titles', () => Promise.all([
+    request(app).post('/test/collation').send({ title: 'Easy Form',      name: 'easy-form'      }),
+    request(app).post('/test/collation').send({ title: 'EASY UPPERCASE', name: 'easy-upper'     }),
+    request(app).post('/test/collation').send({ title: 'easy lowercase', name: 'easy-lower'     }),
+    request(app).post('/test/collation').send({ title: 'Hard Form',      name: 'hard-form'      }),
+    request(app).post('/test/collation').send({ title: 'Test Form',      name: 'test-form'      }),
+    request(app).post('/test/collation').send({ title: 'M505738-1',      name: 'ticket-pattern' }),
+    request(app).post('/test/collation').send({ title: 'another form',   name: 'another'        }),
+  ]));
 });
 
 describe('Test skipResource', () => {
@@ -2661,4 +2683,51 @@ describe('Test before hooks', () => {
 
 describe('Test Swagger.io', () => {
 
+});
+
+describe('Test collation option: regex selector', () => {
+  it('Should contain all documents without filter', () =>
+    request(app)
+      .get('/test/collation?limit=100')
+      .expect(200)
+      .expect('Content-Range', '0-6/7')
+      .then((res) => {
+        assert.equal(res.body.length, 7);
+      }));
+
+  it('regex /Easy/i should find all variants', () =>
+    request(app)
+      .get('/test/collation?title__regex=/Easy/i')
+      .expect('Content-Range', '0-2/3')
+      .expect(200)
+      .then((res) => {
+        const titles = res.body.map((r) => r.title);
+        assert.ok(titles.includes('Easy Form'));
+        assert.ok(titles.includes('EASY UPPERCASE'));
+        assert.ok(titles.includes('easy lowercase'));
+        assert.ok(!titles.includes('Hard Form'));
+        assert.ok(!titles.includes('Test Form'));
+      }));
+
+  it('regex /easy/i (lowercase pattern) should find all case variants', () =>
+    request(app)
+      .get('/test/collation?title__regex=/easy/i')
+      .expect('Content-Range', '0-2/3')
+      .expect(200)
+      .then((res) => {
+        const titles = res.body.map((r) => r.title);
+        assert.ok(titles.includes('Easy Form'));
+        assert.ok(titles.includes('EASY UPPERCASE'));
+        assert.ok(titles.includes('easy lowercase'));
+        assert.ok(!titles.includes('Hard Form'));
+        assert.ok(!titles.includes('Test Form'));
+      }));
+
+  it('regex with no matches should return empty array', () =>
+    request(app)
+      .get('/test/collation?title__regex=/noMatches/i')
+      .expect(200)
+      .then((res) => {
+        assert.deepEqual(res.body, []);
+      }));
 });
