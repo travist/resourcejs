@@ -522,6 +522,9 @@ class Resource {
   countQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
     if (!utils.isEmpty(query._mongooseOptions) || !pipeline) {
+      if (this.options.collation) {
+        return query.collation(this.options.collation);
+      }
       return query;
     }
     const stages = [
@@ -529,9 +532,15 @@ class Resource {
       ...pipeline,
       { $count: 'count' },
     ];
+    const collation = this.options.collation;
+
     return {
       async countDocuments() {
-        const items = await query.model.aggregate(stages).exec()
+        const agg = query.model.aggregate(stages);
+        if (collation) {
+          agg.option({ collation });
+        }
+        const items = await agg.exec();
         return items.length ? items[0].count : 0;
       },
     };
@@ -540,7 +549,11 @@ class Resource {
   indexQuery(query, pipeline) {
     // We cannot use aggregation if mongoose special options are used... like populate.
     if (!utils.isEmpty(query._mongooseOptions) || !pipeline) {
-      return query.lean();
+      const q = query.lean();
+      if (this.options.collation) {
+        q.collation(this.options.collation);
+      }
+      return q;
     }
 
     const stages = [
@@ -560,7 +573,11 @@ class Resource {
       stages.push({ $project: query._fields });
     }
     stages.push(...pipeline);
-    return query.model.aggregate(stages);
+    const agg = query.model.aggregate(stages);
+    if (this.options.collation) {
+      agg.option({ collation: this.options.collation });
+    }
+    return agg;
   }
 
   /**
