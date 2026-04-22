@@ -54,7 +54,6 @@ const sanitizeQueryParameters = (params) => {
       else {
         throw new Error(`[${key}] is not allowed. Please use __${key} instead. Read https://github.com/travist/resourcejs#filtering-the-results for a list of available query arguments`);
       }
-      // If the key starts with '$', it's skipped.
     }
   }
 
