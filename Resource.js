@@ -439,8 +439,10 @@ class Resource {
     const findQuery = {};
     options = options || this.options;
 
+    const sanitizeQuery = utils.sanitizeQueryParameters(req.query);
+
     // Get the filters and omit the limit, skip, select, sort and populate.
-    const {limit, skip, select, sort, populate, ...filters} = req.query;
+    const {limit, skip, select, sort, populate, ...filters} = sanitizeQuery;
 
     // Sets the findQuery property.
     const setFindQuery = function(name, value) {
@@ -633,11 +635,11 @@ class Resource {
         countQuery.pipeline = pipeline;
       }
 
-      // Get the find query.
-      const findQuery = this.getFindQuery(req, null, query._conditions);
-
-      // First get the total count.
       try {
+        // Get the find query.
+        const findQuery = this.getFindQuery(req, null, query._conditions);
+
+        // First get the total count.
         const count = await this.countQuery( countQuery.find(findQuery), countQuery.pipeline || query.pipeline).countDocuments();
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };

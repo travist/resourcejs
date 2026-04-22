@@ -26,4 +26,39 @@ const isEmpty = (obj) => {
   return !obj || (Object.entries(obj).length === 0 && obj.constructor === Object);
 };
 
-module.exports = { zipObject, isObjectLike, isEmpty, get, set };
+/**
+ * Recursively removes properties whose keys start with '$' from an object or array.
+ * @param {any} params - The object or array to clean.
+ * @returns {any} A new object/array with '$' properties removed, or the original primitive value.
+ */
+const sanitizeQueryParameters = (params) => {
+  // If the data is not an object or is null, return it as is.
+  if (params === null || typeof params !== 'object') {
+    return params;
+  }
+
+  // If it's an array, process each element.
+  if (Array.isArray(params)) {
+    return params.map(item => sanitizeQueryParameters(item));
+  }
+
+  // If it's a plain object, iterate over its keys.
+  const cleanedObject = {};
+  for (const key in params) {
+    // Ensure the key is directly on the object and not inherited
+    if (Object.prototype.hasOwnProperty.call(params, key)) {
+      // If the key does NOT start with '$', include it and recursively clean its value.
+      if (!key.startsWith('$')) {
+        cleanedObject[key] = sanitizeQueryParameters(params[key]);
+      }
+      else {
+        throw new Error(`[${key}] is not allowed. Please use __${key} instead. Read https://github.com/travist/resourcejs#filtering-the-results for a list of available query arguments`);
+      }
+      // If the key starts with '$', it's skipped.
+    }
+  }
+
+  return cleanedObject;
+};
+
+module.exports = { zipObject, isObjectLike, isEmpty, get, set, sanitizeQueryParameters };
