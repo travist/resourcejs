@@ -28,32 +28,45 @@ const isEmpty = (obj) => {
 
 /**
  * Recursively removes properties whose keys start with '$' from an object or array.
+ * This version preserves the original object's prototype chain and property descriptors
+ * (including getters and setters) for generic objects.
+ *
+ * It returns a new, sanitized object or array without modifying the original.
+ *
  * @param {any} params - The object or array to clean.
- * @returns {any} A new object/array with '$' properties removed, or the original primitive value.
+ * @returns {any} A new object/array with '$' properties removed, or the original primitive value/uncleanable object type.
  */
 const sanitizeQueryParameters = (params) => {
-  // If the data is not an object or is null, return it as is.
   if (params === null || typeof params !== 'object') {
     return params;
   }
 
-  // If it's an array, process each element.
   if (Array.isArray(params)) {
     return params.map(item => sanitizeQueryParameters(item));
   }
 
-  // If it's a plain object, iterate over its keys.
-  const cleanedObject = {};
+  const cleanedObject = Object.create(Object.getPrototypeOf(params));
+
   for (const key in params) {
-    // Ensure the key is directly on the object and not inherited
-    if (Object.prototype.hasOwnProperty.call(params, key)) {
-      // If the key does NOT start with '$', include it and recursively clean its value.
-      if (!key.startsWith('$')) {
-        cleanedObject[key] = sanitizeQueryParameters(params[key]);
+    if (Object.hasOwn(params, key)) {
+      if (key.startsWith('$')) {
+        continue;
       }
-      else {
-        throw new Error(`[${key}] is not allowed. Please use __${key} instead. Read https://github.com/travist/resourcejs#filtering-the-results for a list of available query arguments`);
+
+      // 4. Get the full property descriptor for the current key.
+      const descriptor = Object.getOwnPropertyDescriptor(params, key);
+
+      // 5. If it's a data property (has a 'value'), recursively sanitize its value.
+      if ('value' in descriptor) {
+        descriptor.value = sanitizeQueryParameters(descriptor.value);
       }
+      // If it's an accessor property (getter/setter), the getter/setter functions
+      // themselves are copied as they are, preserving the object's behavior.
+      // Sanitizing the *result* of a getter would require calling it, which can
+      // alter semantics and is a more complex use case.
+
+      // 6. Define the property on the new cleaned object using its (potentially updated) descriptor.
+      Object.defineProperty(cleanedObject, key, descriptor);
     }
   }
 

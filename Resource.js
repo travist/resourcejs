@@ -439,10 +439,8 @@ class Resource {
     const findQuery = {};
     options = options || this.options;
 
-    const sanitizeQuery = utils.sanitizeQueryParameters(req.query);
-
     // Get the filters and omit the limit, skip, select, sort and populate.
-    const {limit, skip, select, sort, populate, ...filters} = sanitizeQuery;
+    const {limit, skip, select, sort, populate, ...filters} = req.query;
 
     // Sets the findQuery property.
     const setFindQuery = function(name, value) {
@@ -622,6 +620,9 @@ class Resource {
         debug.index('Skipping Resource');
         return next();
       }
+
+      // Sanitize Queries that have [$operations]
+      req.query = utils.sanitizeQueryParameters(req.query);
 
       // Get the query object.
       let countQuery = req.countQuery || req.modelQuery || req.model || this.model;
