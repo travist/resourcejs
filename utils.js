@@ -53,19 +53,12 @@ const sanitizeQueryParameters = (params) => {
         continue;
       }
 
-      // 4. Get the full property descriptor for the current key.
       const descriptor = Object.getOwnPropertyDescriptor(params, key);
 
-      // 5. If it's a data property (has a 'value'), recursively sanitize its value.
       if ('value' in descriptor) {
         descriptor.value = sanitizeQueryParameters(descriptor.value);
       }
-      // If it's an accessor property (getter/setter), the getter/setter functions
-      // themselves are copied as they are, preserving the object's behavior.
-      // Sanitizing the *result* of a getter would require calling it, which can
-      // alter semantics and is a more complex use case.
 
-      // 6. Define the property on the new cleaned object using its (potentially updated) descriptor.
       Object.defineProperty(cleanedObject, key, descriptor);
     }
   }
