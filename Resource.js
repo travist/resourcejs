@@ -621,6 +621,10 @@ class Resource {
         return next();
       }
 
+      // Sanitize Queries that have [$operations]
+      req.query = utils.sanitizeQueryParameters(req.query);
+      // Get the find query.
+      const findQuery = this.getFindQuery(req, null, query._conditions);
       // Get the query object.
       let countQuery = req.countQuery || req.modelQuery || req.model || this.model;
       const query = req.modelQuery || req.model || this.model;
@@ -633,11 +637,8 @@ class Resource {
         countQuery.pipeline = pipeline;
       }
 
-      // Get the find query.
-      const findQuery = this.getFindQuery(req, null, query._conditions);
-
-      // First get the total count.
       try {
+        // First get the total count.
         const count = await this.countQuery( countQuery.find(findQuery), countQuery.pipeline || query.pipeline).countDocuments();
         // Get the default limit.
         const defaults = { limit: 10, skip: 0 };

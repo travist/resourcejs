@@ -26,4 +26,44 @@ const isEmpty = (obj) => {
   return !obj || (Object.entries(obj).length === 0 && obj.constructor === Object);
 };
 
-module.exports = { zipObject, isObjectLike, isEmpty, get, set };
+/**
+ * Recursively removes properties whose keys start with '$' from an object or array.
+ * This version preserves the original object's prototype chain and property descriptors
+ * (including getters and setters) for generic objects.
+ *
+ * It returns a new, sanitized object or array without modifying the original.
+ *
+ * @param {any} params - The object or array to clean.
+ * @returns {any} A new object/array with '$' properties removed, or the original primitive value/uncleanable object type.
+ */
+const sanitizeQueryParameters = (params) => {
+  if (params === null || typeof params !== 'object') {
+    return params;
+  }
+
+  if (Array.isArray(params)) {
+    return params.map(item => sanitizeQueryParameters(item));
+  }
+
+  const cleanedObject = Object.create(Object.getPrototypeOf(params));
+
+  for (const key in params) {
+    if (Object.hasOwn(params, key)) {
+      if (key.startsWith('$')) {
+        continue;
+      }
+
+      const descriptor = Object.getOwnPropertyDescriptor(params, key);
+
+      if ('value' in descriptor) {
+        descriptor.value = sanitizeQueryParameters(descriptor.value);
+      }
+
+      Object.defineProperty(cleanedObject, key, descriptor);
+    }
+  }
+
+  return cleanedObject;
+};
+
+module.exports = { zipObject, isObjectLike, isEmpty, get, set, sanitizeQueryParameters };
