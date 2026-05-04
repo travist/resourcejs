@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased: 2.6.2-rc.2]
+### Changed
+ - Added sanitization to query params
+ - Bump lodash from 4.17.23 to 4.18.1
+ - Bump picomatch from 2.3.1 to 2.3.2
+ - Bump flatted from 3.3.2 to 3.4.2
+
 ## 2.6.2-rc.1
 ### Changed
  - Feat/support or query string operator
