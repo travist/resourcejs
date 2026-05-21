@@ -4,9 +4,18 @@ All notable changes to this project will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased: 2.6.2-rc.2]
+## [Unreleased: 2.6.2-rc.3]
 ### Changed
- - Added sanitization to query params
+ - Bump mongoose from 8.11.0 to 8.22.1
+ - Revert "fix: count query pipeline after clone"
+ - Revert "FIO-11254 add collation functionallity"
+ - Revert "Feat/support or query string operator"
+
+## 2.6.2-rc.2
+### Changed
+ - FIO-11466 Added sanitization to query params
+ - fix: count query pipeline after clone
+ - FIO-11254 add collation functionallity
  - Bump lodash from 4.17.23 to 4.18.1
  - Bump picomatch from 2.3.1 to 2.3.2
  - Bump flatted from 3.3.2 to 3.4.2
